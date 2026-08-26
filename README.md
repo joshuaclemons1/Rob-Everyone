@@ -2,30 +2,40 @@
 
 Setup and dev plan for the game. Full plan: `docs/plan.md`.
 
-## First-time setup
+## Getting set up (Josh and Zach, separately)
 
-1. **Install Unity Hub and Unity LTS** (2022 LTS or the current Unity 6 LTS)
-   from unity.com if you haven't already.
+The Unity project already exists in this repo — you're cloning it, not
+creating a new one.
+
+1. **Install Unity Hub**, then install **Unity 6000.5.9f1** specifically
+   (matches `ProjectSettings/ProjectVersion.txt`) — pick that exact version
+   in Unity Hub's install screen, not just "the latest 6000.x."
 2. **Install Git LFS** (one-time, per machine): `git lfs install`
-3. **Create the Unity project in this exact folder:**
-   - Open Unity Hub → New Project
-   - Template: 3D (Core) — URP is fine too if you want nicer visuals later
-   - Project name: `Rob-Everyone`
-   - Location: `/Users/Shared`
-   - Unity Hub will populate `Assets/`, `Packages/`, and `ProjectSettings/`
-     directly into this existing folder alongside the files already here
-     (`.gitignore`, `CLAUDE.md`, `docs/`). That's expected.
-4. Once Unity finishes generating the project, come back here and commit:
+3. **Clone the repo:**
    ```
-   git add .
-   git commit -m "Initial Unity project"
+   git clone https://github.com/joshuaclemons1/Rob-Everyone.git
    ```
-5. **Your friend clones the repo** (once it's pushed to GitHub) rather than
-   creating their own Unity project — everyone should share one project,
-   not merge two separately-generated ones.
+4. **Check out your own branch:**
+   - Josh: `git checkout jclem's-branch`
+   - Zach: `git checkout zach's-branch`
+5. **Open the project in Unity Hub — use Add, not Import:**
+   - Projects tab → **Add** ▾ → **Add project from disk**
+   - Select the cloned `Rob-Everyone` folder itself (the one containing
+     `Assets/` and `ProjectSettings/`), not a subfolder — single-click to
+     highlight it, then **Add Project**
+   - "Import Project" won't recognize this folder as a Unity project; **Add**
+     is the one that works for a folder that already has a project in it
+6. First open takes several minutes — `Library/` isn't tracked in Git, so
+   Unity has to reimport every asset and resolve packages from scratch on a
+   fresh clone. A long "Importing" bar is normal, not a hang.
 
 ## Day to day
 
 - Follow `docs/plan.md` stage by stage — don't skip ahead to networking or
   the shop before Stage 3's offline loop works.
 - Scripts live under `Assets/Scripts/<System>/`.
+- Commit and push to your own branch as you work. Merge into `main` in
+  small, frequent pieces rather than letting two branches drift apart —
+  Unity scene files don't merge well in Git, so the longer two people
+  diverge on the same scene, the worse a conflict gets. See `docs/plan.md`'s
+  "Team workflow" section for how work is split between systems.
