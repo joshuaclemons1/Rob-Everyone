@@ -88,6 +88,10 @@ mono_crash.*
 # Crashlytics generated file
 crashlytics-build.properties
 
+# OS cruft (this is a mixed macOS/Windows team)
+.DS_Store
+Thumbs.db
+
 # TestRunner generated files
 InitTestScene*.unity*
 

@@ -2,6 +2,28 @@
 
 Full designed version with the map sketch and visual layout: https://claude.ai/code/artifact/e48a1ffb-47e8-47e6-ba90-dfb7b4a1d4f3
 
+## Where to pick up next
+
+Currently mid-**Stage 3** (full offline loop). Code side (quota/timer/exit,
+homeowner AI, police AI) is already merged on `jclem's-branch`.
+
+Art side: real assets have been sourced and imported, but **not yet placed
+in the scene**:
+
+- Kenney City Kit (Suburban, Roads, Commercial) + Modular Buildings under
+  `Assets/Art/Environment/`
+- Quaternius Ultimate Animated Character Pack under
+  `Assets/Art/Characters/`
+
+Full details (what each pack is for, the locked color palette, remaining
+art to-do by stage) are in [art-info.md](art-info.md).
+
+**Next steps:** open Unity, let it reimport `Assets/Art/`, then start
+swapping the Stage 3 placeholder/gray-box geometry for the real Kenney
+house pieces first (police station + character placement can follow).
+Remember: work happens on `jclem's-branch`; only merge to `main` once
+tested and confirmed working.
+
 ## Strategy
 
 Build the entire game single-player first. Steam P2P is the right multiplayer
@@ -58,6 +80,16 @@ extraction choke point.
 - Merge often, in small pieces — Unity scenes don't merge well in Git.
 - One person owns the Steam/networking integration end-to-end at Stage 5.
 - Playtest together every stage, even solo-buildable ones.
+
+## Future ideas (not yet scoped)
+
+- **Time-of-day rounds** — most rounds play in bright daytime, but
+  occasionally a round is dusk or night instead, raising difficulty (lower
+  visibility). See [art-info.md](art-info.md)'s "Lighting & time of day"
+  section for the draft visual treatment. Not part of the current build
+  order — stays daytime-only through at least Stage 3 — needs its own
+  scoping pass (how rounds get selected, how much harder night actually
+  is, whether it affects AI behavior) before it's added to a stage.
 
 ## Risks
 
