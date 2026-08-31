@@ -59,6 +59,16 @@ extraction choke point.
 - One person owns the Steam/networking integration end-to-end at Stage 5.
 - Playtest together every stage, even solo-buildable ones.
 
+## Future ideas (not yet scoped)
+
+- **Time-of-day rounds** — most rounds play in bright daytime, but
+  occasionally a round is dusk or night instead, raising difficulty (lower
+  visibility). See [art-style.md](art-style.md)'s "Lighting & time of day"
+  section for the draft visual treatment. Not part of the current build
+  order — stays daytime-only through at least Stage 3 — needs its own
+  scoping pass (how rounds get selected, how much harder night actually
+  is, whether it affects AI behavior) before it's added to a stage.
+
 ## Risks
 
 - **Scope creep** — police AI, homeowner AI, shop economy, and 4 sabotage
