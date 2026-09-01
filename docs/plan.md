@@ -106,6 +106,15 @@ extraction choke point.
   order — stays daytime-only through at least Stage 3 — needs its own
   scoping pass (how rounds get selected, how much harder night actually
   is, whether it affects AI behavior) before it's added to a stage.
+- **Real per-blade 3D grass** — yards currently use a procedural
+  striped-lawn Shader Graph material (flat plane + normal map, see
+  [lawn-shader-setup.md](lawn-shader-setup.md)), which was judged good
+  enough for now. Actual blade geometry (GPU-instanced or geometry-shader
+  grass, with wind sway) would look more like real grass, but is a real
+  technical undertaking — new rendering technique, LOD/performance tuning
+  across every yard on the map — considered and deliberately deferred
+  rather than taken on for a 2-person beginner team right now. Revisit
+  only as a late polish pass, not before the core loop is fun.
 
 ## Risks
 
