@@ -19,6 +19,7 @@ namespace RobEveryone.UI
 
         private GameObject previewInstance;
         private PlayerColorizer previewColorizer;
+        private bool swatchesBuilt;
 
         private void OnEnable()
         {
@@ -40,8 +41,8 @@ namespace RobEveryone.UI
 
         private void BuildSwatches()
         {
+            if (swatchesBuilt) return;
             if (palette == null || swatchContainer == null || swatchButtonTemplate == null) return;
-            if (swatchContainer.childCount > 0) return; // already built from a previous OnEnable
 
             IReadOnlyList<Color> colors = palette.Colors;
             for (int i = 0; i < colors.Count; i++)
@@ -57,6 +58,7 @@ namespace RobEveryone.UI
             }
 
             swatchButtonTemplate.gameObject.SetActive(false);
+            swatchesBuilt = true;
         }
 
         private void SelectColor(int index)
