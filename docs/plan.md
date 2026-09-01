@@ -60,16 +60,35 @@ loop (steal, quota, exit) is proven fun by yourself. Networking arrives at
 
 ## Core systems
 
-- **Player Controller** — first-person movement + interaction raycast
-- **Inventory** — carried items, weight/value, capacity
-- **Loot Tables** — per-house spawn tables; "Good Houses" roll higher value
+Full detailed design for economy/capacity/jail-bail/sabotage/movement is
+in [gameplay-design.md](gameplay-design.md) (written 2026-09-01, not yet
+implemented) — summary below, that doc is the source of truth for specifics.
+
+- **Player Controller** — first-person movement + interaction raycast;
+  designed (not yet built) to add sprint, crouch, jump, and bhop-style
+  advanced movement
+- **Inventory** — 5 shared carry slots (loot + brought-in items) + a
+  separate "Prison Wallet" safe slot; a Cash balance (separate from
+  carried items) accumulated by selling loot in the shop
+- **Loot Tables** — per-house spawn tables, randomized value per pickup;
+  "Good Houses" roll higher value *and* carry more risk (faster suspicion,
+  closer to the police station)
 - **Homeowner AI** — Idle → Suspicious → Alerted → calls police
 - **Police AI** — Patrol → Respond → Chase → Catch
-- **Jail State** — caught players sit out the round, earn nothing, start next round behind
-- **Sabotage Tools** — taser, hammer, alarm clock, bat — used on players or homeowners
-- **Round Manager** — Pre-Round Shop → Timer → Extraction → Scoring → next round, 5 rounds
-- **Economy/Quota** — per-player money, per-round quota, shop
-- **Win Condition** — highest total money after round 5
+- **Jail & Bail** — two tiers (mid-round catch vs. end-of-batch quota
+  failure), rescuable by other players for a Cash bond/bounty, self-bail
+  after enough time if unrescued — see gameplay-design.md for the full
+  breakdown
+- **Sabotage Tools** — mostly direct PvP with some environmental items,
+  tiered with a benefit+drawback per item (exact list TBD)
+- **Round Manager** — rounds happen in escalating batches of 3 (quota +
+  shop prices step up each batch, gating new shop unlocks); Ready-up shop
+  phase where players physically walk to a ready spot, not a countdown
+- **Economy/Quota** — quota is cumulative across a 3-round batch, plus a
+  personal add-on based on sabotage spending; Cash surplus above quota is
+  wiped at the batch boundary (anti-hoarding)
+- **Win Condition** — none — deliberately endless score-attack/freeplay,
+  no fixed round count or results screen
 
 ## Build order
 
@@ -79,8 +98,10 @@ loop (steal, quota, exit) is proven fun by yourself. Networking arrives at
 4. **Two players, same machine** — Mirror over `localhost` via two instances (ParrelSync or two builds).
 5. **Actually over the internet** — Steamworks.NET + FizzySteamworks, lobby via Steam overlay invite, test AppID 480.
 6. **Turn friends into rivals** — taser, hammer, alarm clock, bat, all networked correctly.
-7. **The meta-game** — pre-round shop, money carries across 5 rounds, results screen.
-8. **Playtest with the friend group** — real match with 3–4 people, collect notes, loop back as needed.
+7. **The meta-game** — Ready-up shop phase, Cash/quota-batch economy,
+   jail & bail — see [gameplay-design.md](gameplay-design.md) for the
+   full design.
+8. **Playtest with the friend group** — real match with 3–4 people (design target is 4–8), collect notes, loop back as needed.
 
 ## Map (from the sketch)
 
@@ -88,6 +109,11 @@ Outer ring of ~10 houses (reuse 2–3 house prefabs, don't build 10 uniques),
 a fenced central compound with a police station and two "Good Houses" (higher
 loot, deliberately placed next to the police), and a single exit as the
 extraction choke point.
+
+Map size is fixed regardless of player count — the design target is 4–8
+players (see [gameplay-design.md](gameplay-design.md)), all sharing this
+same house pool rather than the map scaling up. More players competing
+over the same fixed loot pool is the intended chaos, not a bigger map.
 
 ## Team workflow
 
