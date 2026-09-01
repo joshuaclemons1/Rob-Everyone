@@ -1,312 +1,414 @@
 # Main menu + player customization — Editor setup
 
-**Visual/animation design (sliding panels, title pulse, layout) is in
-[main-menu-visual-design.md](main-menu-visual-design.md)** — this doc is
-the functional Unity wiring (works with plain placeholder buttons); once
-the real art from that doc exists, Parts 5–8 below get re-skinned and the
-simple show/hide panel switching gets replaced with the slide+dim
-animation described there.
+**Visual/animation design (sliding panels, title pulse, layout, asset
+specs) is in [main-menu-visual-design.md](main-menu-visual-design.md)** —
+this doc is the Unity wiring.
 
 Detailed, click-by-click version. This is out of the normal build order
 (menus/cosmetics were "Tier 3, lower urgency" in [ui-design.md](ui-design.md))
 but self-contained, so it doesn't block or get blocked by Stage 3's
 remaining work.
 
-**No button art exists yet — that's fine.** Everywhere below that says
-"add a Button," we're using Unity's built-in default button (a plain
-gray rounded rectangle with text on it). That's the placeholder. Once
-real button art exists, reskinning is a 30-second swap (change the
-Button's **Source Image**) — nothing about the wiring/logic in this doc
-changes. Don't wait on art to get this functional.
+**Button style: brackets, not filled buttons.** You're using the pixel
+kit's `Button_L`/`Button_R` pieces as small end-caps that sit on either
+side of the label text — `[ Play ]` where `[` and `]` are the cap
+graphics — rather than one stretched background image behind the text.
+Because you need this exact 3-piece construction 7 times (every button in
+the menu), Part 5 builds it **once as a reusable Prefab**, and every
+button after that is just "drag a copy, rename it, change its label."
+
+Two real assets already exist and get used below:
+`Assets/Art/UI/bg_neighborhood.png` (3840×2160) and
+`Assets/Art/UI/Title_Wordmark.png` (2400×700). Everything else
+(`button_startgame.png`, `preview_frame.png`, `panel_backdrop.png`) is
+still pending per main-menu-visual-design.md's checklist — those slot in
+later without changing anything structural here.
 
 ## The end state (read this first)
-
-Here's the finished Hierarchy you're building toward, so you have a map
-before diving in. `Canvas` holds three "screens" as sibling panels —
-only one is ever active at a time, controlled by the `MenuActions`
-script:
 
 ```
 MainMenu (scene)
 ├── Canvas
+│   ├── Background            (bg_neighborhood.png, behind everything)
 │   ├── MainMenuPanel        (active by default)
-│   │   ├── TitleText
+│   │   ├── TitleWordmark     (Title_Wordmark.png)
 │   │   └── ButtonList
-│   │       ├── PlayButton
-│   │       ├── CustomizeButton
-│   │       ├── SettingsButton
-│   │       └── QuitButton
+│   │       ├── PlayButton         (MenuButton prefab instance)
+│   │       ├── CustomizeButton    (MenuButton prefab instance)
+│   │       ├── SettingsButton     (MenuButton prefab instance)
+│   │       └── QuitButton         (MenuButton prefab instance)
 │   ├── CustomizePanel       (starts inactive)
-│   │   ├── BackButton
-│   │   ├── PreviousButton
-│   │   ├── NextButton
+│   │   ├── BackButton             (MenuButton prefab instance)
+│   │   ├── PreviousButton         (MenuButton prefab instance)
+│   │   ├── NextButton             (MenuButton prefab instance)
 │   │   └── SwatchContainer
 │   │       └── SwatchButtonTemplate   (starts inactive)
 │   └── SettingsPanel        (starts inactive)
-│       └── BackButton
+│       └── BackButton             (MenuButton prefab instance)
 ├── EventSystem               (auto-created with Canvas)
 ├── MenuManager                (empty GameObject, holds scripts)
 ├── PreviewSpawnPoint          (3D world position, not UI)
 └── Main Camera + a Directional Light
 ```
 
-Four scripts are involved — three already exist, one is new:
+`Assets/Prefabs/UI/MenuButton.prefab` **(new this session)** — the
+reusable bracket-button. Everywhere the old version of this doc said
+"add a Button - TextMeshPro," it now means "drag a copy of this prefab."
 
-- `Assets/Scripts/UI/MenuActions.cs` **(new)** — Play/Quit/panel-switching
-  logic. Buttons call into this.
+Scripts involved (all already exist from last session, nothing new to
+write):
+
+- `Assets/Scripts/UI/MenuActions.cs` — Play/Quit/panel-switching logic.
 - `Assets/Scripts/UI/CustomizationUI.cs` — skin cycling + swatch picker +
-  live preview (built last session).
-- `Assets/Scripts/Customization/PlayerColorPalette.cs` — your preset
-  colors.
-- `Assets/Scripts/Customization/PlayerColorizer.cs` /
-  `PlayerCosmeticSelection.cs` — recoloring + save/load, nothing to touch
-  directly, `CustomizationUI` drives them.
+  live preview.
+- `Assets/Scripts/Customization/PlayerColorPalette.cs` /
+  `PlayerColorizer.cs` / `PlayerCosmeticSelection.cs` — palette data,
+  recoloring, save/load.
 
 ---
 
 ## Part 1 — Create the scene
 
-1. **File → New Scene**. In the dialog, pick the **Basic** template
-   (whichever default option is offered — it doesn't matter much, we're
-   about to gut it anyway) → **Create**.
-2. **File → Save As...** → navigate into `Assets/Scenes/` → filename
-   `MainMenu` → **Save**.
-3. If the new scene came with a default 3D object or extra camera you
-   don't need, that's fine to leave for now — it won't interfere.
+1. **File → New Scene**. Pick the **Basic** template → **Create**.
+2. **File → Save As...** → `Assets/Scenes/` → filename `MainMenu` →
+   **Save**.
 
 ## Part 2 — Add the scene to Build Settings
 
-Unity needs to know both scenes exist and which one launches first.
-
-1. **File → Build Settings...** (a separate window opens).
-2. If `MainMenu` isn't already listed under **Scenes In Build**, click
-   **Add Open Scenes** (adds whichever scene is currently open — make
-   sure `MainMenu` is your active scene first).
-3. Do the same for `SampleScene`: open it (double-click it in the Project
-   window under `Assets/Scenes/`), then back in Build Settings click **Add
-   Open Scenes** again.
-4. **Order matters** — drag `MainMenu` to the **top** of the list (index
-   0). Unity launches whichever scene is listed first.
-5. Re-open `MainMenu` (double-click it in the Project window) before
-   continuing — Build Settings switches your active scene around.
-6. Close the Build Settings window.
+1. **File → Build Settings...**
+2. With `MainMenu` open/active, click **Add Open Scenes**.
+3. Open `SampleScene`, click **Add Open Scenes** again.
+4. Drag `MainMenu` to the **top** of the list (index 0) — Unity launches
+   whichever scene is listed first.
+5. Re-open `MainMenu` before continuing (Build Settings switches your
+   active scene around). Close the window.
 
 ## Part 3 — Add the Canvas
 
-1. In the Hierarchy, right-click empty space → **UI → Canvas**. This
-   creates a `Canvas` GameObject, and Unity **auto-creates an
-   `EventSystem`** object alongside it the first time — that's normal and
-   required (it's what makes buttons actually clickable; don't delete it).
-2. Select `Canvas` in the Hierarchy. In the Inspector, find **Canvas
-   Scaler** and set:
+1. Right-click empty Hierarchy space → **UI → Canvas**. This
+   auto-creates an `EventSystem` too — required for buttons to be
+   clickable, don't delete it.
+2. Select `Canvas` → **Canvas Scaler** component:
    - **UI Scale Mode** → **Scale With Screen Size**
    - **Reference Resolution** → `X: 3840`, `Y: 2160`
-   - **Screen Match Mode** → **Match Width Or Height**
-   - **Match** slider → `0.5`
-   (Same settings as the crosshair fix, for consistency across scenes —
-   otherwise UI sized here will look wrong-scaled relative to the HUD.)
+   - **Screen Match Mode** → **Match Width Or Height**, **Match** → `0.5`
 
 ## Part 4 — Add the Menu Actions script
 
-1. In the Hierarchy, right-click empty space → **Create Empty**. Rename
-   it `MenuManager`.
-2. With `MenuManager` selected, in the Inspector click **Add Component**
-   → search `Menu Actions` → select it (`RobEveryone.UI`).
-3. Leave its fields empty for now — you'll wire `Main Menu Panel`,
-   `Customize Panel`, `Settings Panel` in Part 8, once those objects
-   actually exist.
+1. Right-click empty Hierarchy space → **Create Empty**. Rename it
+   `MenuManager`.
+2. **Add Component** → search `Menu Actions` → add it. Leave its fields
+   empty for now (wired in Part 11).
 
-## Part 5 — Build MainMenuPanel
+---
 
-1. Right-click `Canvas` in the Hierarchy → **UI → Panel**. Rename it
-   `MainMenuPanel`. (A Panel is just an Image that fills its parent by
-   default — good as both a background and a container.)
-2. Right-click `MainMenuPanel` → **UI → Text - TextMeshPro** (accept the
-   TMP Essentials import prompt if it appears again). Rename it
-   `TitleText`, set its text to `ROB EVERYONE` (placeholder). Position it
-   near the top — Anchor Preset: top-center, then adjust **Pos Y** down a
-   bit from the very edge.
+## Part 5 — Build the MenuButton prefab (do this once)
+
+### 5a. Import the cap sprites correctly
+
+`Button_L`/`Button_R` are already sliced inside
+`Assets/Art/UI/Pixel UI pack 3/07.png` at **8×26px** — tiny, meant to be
+scaled up as pixel art (keep **Filter Mode: Point** on that sheet, per
+the earlier pixel-kit import steps). You'll size them up in the Rect
+Transform in step 5c, not by changing the source import.
+
+### 5b. Build the hierarchy
+
+1. In the Hierarchy, right-click `Canvas` → **Create Empty**. Rename it
+   `MenuButton`. (Building it under Canvas temporarily so it previews at
+   the right scale — it becomes a prefab and gets removed from the scene
+   in step 5f.)
+2. On `MenuButton`'s **Rect Transform**, nothing special yet — its size
+   will come from step 5d's Content Size Fitter.
+3. **Add Component → Image**. This is the invisible click-catcher for
+   the whole bracket, not a visible background:
+   - **Color** → set **Alpha (A)** to `0` (fully transparent). Leave
+     **Raycast Target** checked — this is what makes clicks register
+     across the whole button, including the gap between the caps and the
+     text, not just directly on top of the cap graphics.
+4. **Add Component → Button**. Its **Target Graphic** should
+   auto-fill with the Image from step 3 — leave it for now, you'll
+   repoint it in step 5e for a better hover effect.
+
+### 5c. Add the two caps and the label
+
+1. Right-click `MenuButton` → **UI → Image**. Rename it `CapLeft`.
+   - **Source Image** → `Button_L` (from the sliced sheet).
+   - **Image Type** → Simple.
+   - Rect Transform **Width/Height** → set manually (don't use Set Native
+     Size — 8×26 is too small). Start around `46 x 150`, keeping the
+     source's ~1:3.25 width:height ratio. Adjust once you see it next to
+     real text.
+   - Uncheck **Raycast Target** on this Image (the parent's Image already
+     handles clicks — this avoids two overlapping raycast targets).
+2. Right-click `MenuButton` → **UI → Text - TextMeshPro**. Rename it
+   `Label`. Set placeholder text (`Play`, etc. — you'll change this per
+   button copy later). Uncheck its **Raycast Target** too, same reason.
+3. Right-click `MenuButton` → **UI → Image**. Rename it `CapRight`.
+   - **Source Image** → `Button_R`.
+   - Same size as `CapLeft`.
+   - **Rect Transform → Scale → X** → `-1` (mirrors it horizontally,
+     since `Button_R` in the sheet may already be a distinct mirrored
+     piece — check by eye once placed; only flip if it looks
+     backwards/wrong without this).
+   - Uncheck **Raycast Target**.
+4. Order in the Hierarchy should be `CapLeft`, `Label`, `CapRight` (top
+   to bottom) — this is the left-to-right visual order once the layout
+   group (next step) arranges them.
+
+### 5d. Auto-arrange with a Layout Group
+
+1. Select `MenuButton` itself (the parent). **Add Component → Horizontal
+   Layout Group**:
+   - **Child Alignment** → Middle Center
+   - **Spacing** → `16` (gap between each cap and the text — adjust to
+     taste)
+   - **Child Force Expand** → both unchecked
+2. **Add Component → Content Size Fitter**:
+   - **Horizontal Fit** → Preferred Size
+   - **Vertical Fit** → Preferred Size
+   (This makes the whole button — the invisible click-catcher included —
+   automatically resize to fit however wide the label text is, so
+   `Customization` and `Back` both get correctly fitted brackets without
+   manual sizing per button.)
+
+### 5e. Hover feedback (optional but easy)
+
+On the **Button** component (added in step 5b):
+
+- **Transition** → Color Tint (default)
+- **Target Graphic** → drag `Label` (the TMP text) instead of the
+  default Image. Since the click-catcher Image is invisible (alpha 0),
+  tinting it does nothing visible — tinting the text instead gives a
+  simple "brightens on hover" effect with zero extra art.
+
+### 5f. Turn it into a Prefab
+
+1. In the Project window, create the folder `Assets/Prefabs/UI/` if it
+   doesn't exist.
+2. Drag `MenuButton` from the Hierarchy into that folder — this creates
+   the Prefab asset and turns the Hierarchy instance blue/linked.
+3. Delete the `MenuButton` instance from the Hierarchy now (right-click →
+   Delete) — it was only there to build/preview it. You'll drag fresh
+   copies from the Project window wherever you need a button, starting
+   in Part 7.
+
+---
+
+## Part 6 — Add the background and title art
+
+1. Right-click `Canvas` → **UI → Image**. Rename it `Background`.
+   - **Source Image** → `bg_neighborhood.png`.
+   - **Rect Transform** → Anchor Preset: stretch-stretch (the "full
+     rectangle" option, holding Alt+Shift when clicking it), then set all
+     four (Left/Top/Right/Bottom) to `0` — fills the entire Canvas.
+   - Drag `Background` to be the **first** child under `Canvas` in the
+     Hierarchy (topmost in the list) — UI draws later siblings on top of
+     earlier ones, so this needs to render behind every panel.
+2. You'll add `TitleWordmark` as a child of `MainMenuPanel` in Part 7
+   (needs `MainMenuPanel` to exist first).
+
+---
+
+## Part 7 — Build MainMenuPanel
+
+1. Right-click `Canvas` → **UI → Panel**. Rename it `MainMenuPanel`. On
+   its **Image** component, set **Color alpha to 0** (or delete the Image
+   component entirely) — you don't want the default gray Panel fill
+   covering your background art; this object is just a container now.
+2. Right-click `MainMenuPanel` → **UI → Image**. Rename it
+   `TitleWordmark`.
+   - **Source Image** → `Title_Wordmark.png`, click **Set Native Size**
+     (this one's fine to use at its authored resolution, then scale down
+     if needed).
+   - Position per main-menu-visual-design.md's composition spec: Anchor
+     Preset top-center, roughly centered in the `x: 620–3220, y: 150–550`
+     region.
 3. Right-click `MainMenuPanel` → **Create Empty**. Rename it
-   `ButtonList`. This is going to auto-stack its child buttons for you —
-   no manual position math needed:
-   - Add Component → **Vertical Layout Group**. Set **Child Alignment**
-     → Middle Center, **Spacing** → `20`, leave **Child Force Expand**
-     both unchecked.
-   - Add Component → **Content Size Fitter**. Set **Vertical Fit** →
-     Preferred Size (keeps the group sized to exactly fit its buttons).
-   - On `ButtonList`'s own **Rect Transform**, set Anchor Preset to
-     middle-center, Pos `0, 0` — centers the whole button stack on
-     screen.
-4. Right-click `ButtonList` → **UI → Button - TextMeshPro**. Rename it
-   `PlayButton`. Expand it in the Hierarchy, select its child `Text
-   (TMP)`, change the text to `Play`.
-5. Repeat step 4 three more times for `CustomizeButton` ("Customize"),
-   `SettingsButton` ("Settings"), `QuitButton` ("Quit"). Since they're all
-   children of `ButtonList`, the Vertical Layout Group stacks them
-   automatically in the order they appear in the Hierarchy — drag to
-   reorder if you want a different button order.
+   `ButtonList`.
+   - **Add Component → Vertical Layout Group**: Child Alignment → Middle
+     Center, Spacing → `20`, Child Force Expand unchecked.
+   - **Add Component → Content Size Fitter**: Vertical Fit → Preferred
+     Size.
+   - Rect Transform: Anchor Preset middle-center. Per the composition
+     spec, the button stack sits in the **left half** of the screen (not
+     dead-center) — set **Pos X** to roughly `-900` to shift it left,
+     leaving the right side clear for the character preview.
+4. Drag a copy of `MenuButton` (from `Assets/Prefabs/UI/`) into
+   `ButtonList`. Rename the instance `PlayButton`. Expand it, select its
+   `Label` child, change the text to `Play`.
+5. Repeat for `CustomizeButton` ("Customize"), `SettingsButton`
+   ("Settings"), `QuitButton` ("Quit") — drag 3 more copies of the
+   prefab into `ButtonList`, rename each, edit each one's `Label` text.
+   The Vertical Layout Group stacks them in Hierarchy order automatically
+   — drag to reorder if needed.
 
-At this point, press Play — you should see a plain gray title + 4 plain
-gray buttons, stacked and centered. That's the correct placeholder look.
+Press Play — you should see the neighborhood background, the title
+wordmark, and 4 bracket-style buttons stacked on the left, each auto-
+sized to its own label text.
 
-## Part 6 — Build CustomizePanel
+## Part 8 — Build CustomizePanel
 
 1. Right-click `Canvas` → **UI → Panel**. Rename it `CustomizePanel`.
-2. Right-click `CustomizePanel` → **UI → Button - TextMeshPro**. Rename
-   it `BackButton`, text `Back`. Position it top-left (Anchor Preset:
-   top-left).
-3. Add two more buttons the same way: `PreviousButton` (text `<`) and
-   `NextButton` (text `>`), positioned left/right of center, roughly
-   where you'd want to flank a character preview.
+   Same as `MainMenuPanel`, zero out its Image's alpha (or remove it) so
+   the shared background shows through.
+2. Drag a `MenuButton` copy in, rename it `BackButton`, label `Back`,
+   position top-left.
+3. Drag two more copies: `PreviousButton` (label `<`), `NextButton`
+   (label `>`), positioned flanking where the character preview sits.
 4. Right-click `CustomizePanel` → **Create Empty**. Rename it
    `SwatchContainer`.
-   - Add Component → **Horizontal Layout Group**. **Spacing** → `10`,
-     **Child Alignment** → Middle Center.
-   - Position it near the bottom of the panel (Anchor Preset: bottom-
-     center, adjust Pos Y up from the very edge).
-5. Inside `SwatchContainer`, right-click → **UI → Button**. (Plain
-   Button, not TextMeshPro this time — it doesn't need a label, just a
-   colored Image.) Rename it `SwatchButtonTemplate`.
-   - On its **Image** component, note the **Color** field — this is what
-     `CustomizationUI` overwrites per-swatch at runtime, so its color
-     here doesn't matter.
-   - Set its Width/Height to something small and square, e.g. `60 x 60`.
-   - **Disable it**: uncheck the checkbox next to its name at the very
-     top of the Inspector (not the GameObject's active state via
-     right-click — the actual checkbox). `CustomizationUI` instantiates
-     copies of this at runtime; the template itself must stay hidden or
-     you'll see an extra unstyled "9th swatch."
-6. `CustomizePanel` should start **hidden**: select it, uncheck its
-   active checkbox (top-left of the Inspector, next to its name).
+   - **Add Component → Horizontal Layout Group**: Spacing `10`, Child
+     Alignment Middle Center.
+   - Position near the bottom of the panel (Anchor Preset bottom-center).
+5. Inside `SwatchContainer`, right-click → **UI → Button** (plain Button,
+   not the MenuButton prefab — swatches are just solid color squares, no
+   bracket/label needed). Rename it `SwatchButtonTemplate`.
+   - Its **Image** → **Color** is overwritten per-swatch at runtime by
+     `CustomizationUI`, so its color here doesn't matter.
+   - Width/Height → `60 x 60`.
+   - **Disable it** (uncheck the checkbox next to its name at the top of
+     the Inspector) — `CustomizationUI` instantiates copies of this;
+     the template itself must stay hidden.
+6. `CustomizePanel` should start **hidden**: uncheck its own active
+   checkbox.
 
-## Part 7 — Add the 3D preview spot
+## Part 9 — Add the 3D preview spot
 
-This lives in the actual 3D scene, not inside the Canvas.
+Lives in actual 3D space, not inside the Canvas.
 
 1. Right-click empty Hierarchy space → **Create Empty**. Rename it
    `PreviewSpawnPoint`.
-2. Position it a few units in front of wherever your **Main Camera**
-   looks — e.g. if the camera sits at `(0, 1, 0)` looking down `+Z`, put
-   this at roughly `(0, 0, 3)`. Eyeball it, then adjust once you can see
-   a model spawn there in Play mode.
-3. Optional but recommended: add a simple pedestal so the character
-   doesn't look like it's floating — right-click Hierarchy → **3D Object
-   → Cube**, flatten it (small Y scale), position it directly under
-   `PreviewSpawnPoint`.
-4. Make sure there's a **Directional Light** in the scene (Basic template
-   usually includes one) so the preview isn't pitch black.
+2. Position it a few units in front of your **Main Camera** — e.g. camera
+   at `(0, 1, 0)` looking down `+Z`, spawn point at roughly `(0, 0, 3)`.
+   Adjust once you can see a model spawn there in Play mode.
+3. Optional: add a flattened Cube under it as a simple pedestal so the
+   character doesn't look like it's floating.
+4. Confirm there's a **Directional Light** in the scene so the preview
+   isn't pitch black.
 
-## Part 8 — Build SettingsPanel (stub)
+## Part 10 — Build SettingsPanel (stub)
 
-Settings content isn't designed yet — this is just a placeholder shell so
-the button has somewhere to go.
+Settings content isn't designed yet — just a placeholder shell.
 
 1. Right-click `Canvas` → **UI → Panel**. Rename it `SettingsPanel`.
-2. Right-click `SettingsPanel` → **UI → Button - TextMeshPro**. Rename it
-   `BackButton`, text `Back`, position top-left.
+   Zero out its Image alpha like the others.
+2. Drag a `MenuButton` copy in, rename `BackButton`, label `Back`,
+   position top-left.
 3. Right-click `SettingsPanel` → **UI → Text - TextMeshPro**. Text:
    `Settings coming soon`.
-4. Start it hidden, same as `CustomizePanel` (uncheck its active
-   checkbox).
+4. Start it hidden (uncheck its active checkbox).
 
-## Part 9 — Wire everything together
+---
 
-This is the part that actually connects all the pieces you just built.
+## Part 11 — Wire everything together
 
-### 9a. MenuManager (MenuActions component)
+### 11a. MenuManager (MenuActions component)
 
-Select `MenuManager`. On its **Menu Actions** component:
+Select `MenuManager` → **Menu Actions** component:
 
-- `Main Menu Panel` → drag `MainMenuPanel`
-- `Customize Panel` → drag `CustomizePanel`
-- `Settings Panel` → drag `SettingsPanel`
+- `Main Menu Panel` → `MainMenuPanel`
+- `Customize Panel` → `CustomizePanel`
+- `Settings Panel` → `SettingsPanel`
 
-### 9b. Button OnClick() events
+### 11b. Button OnClick() events
 
-For each button below: select it → in the Inspector find the **Button**
-component → its **On Click ()** list → click the **+** at the bottom →
-drag `MenuManager` into the new empty **Object** slot → click the
-**function dropdown** (says "No Function") → find **Menu Actions** in the
-list → pick the matching method.
+For each row: select the button → **Button** component → **On Click ()**
+→ **+** → drag `MenuManager` into the **Object** slot → function
+dropdown → pick the method.
 
-| Button | OnClick target | Function |
-|---|---|---|
-| `PlayButton` | `MenuManager` | `MenuActions → PlayGame ()` |
-| `QuitButton` | `MenuManager` | `MenuActions → QuitGame ()` |
-| `CustomizeButton` | `MenuManager` | `MenuActions → OpenCustomize ()` |
-| `SettingsButton` | `MenuManager` | `MenuActions → OpenSettings ()` |
-| `BackButton` (under `CustomizePanel`) | `MenuManager` | `MenuActions → CloseCustomize ()` |
-| `BackButton` (under `SettingsPanel`) | `MenuManager` | `MenuActions → CloseSettings ()` |
+| Button | Function |
+|---|---|
+| `PlayButton` | `MenuActions → PlayGame ()` |
+| `QuitButton` | `MenuActions → QuitGame ()` |
+| `CustomizeButton` | `MenuActions → OpenCustomize ()` |
+| `SettingsButton` | `MenuActions → OpenSettings ()` |
+| `BackButton` (under `CustomizePanel`) | `MenuActions → CloseCustomize ()` |
+| `BackButton` (under `SettingsPanel`) | `MenuActions → CloseSettings ()` |
 
-### 9c. Customization UI component
+### 11c. Customization UI component
 
-Add component **Customization UI** to `MenuManager` (same object is
-fine — it can hold multiple scripts). Wire:
+Add component **Customization UI** to `MenuManager`. Wire:
 
-- `Skin Prefabs` → drag in a handful of skin `.fbx` files from
+- `Skin Prefabs` → a handful of skin `.fbx` files from
   `Assets/Art/Characters/Quaternius-UltimateAnimatedCharacterPack/FBX/`
-  (start with 5–6, not all 50+)
-- `Palette` → your `PlayerColorPalette` asset (create one first via
-  Project window right-click → **Create → Rob Everyone → Player Color
-  Palette** if you haven't yet, and fill in its `Colors` array)
+- `Palette` → your `PlayerColorPalette` asset (Project window → right-
+  click → **Create → Rob Everyone → Player Color Palette** if you
+  haven't made one yet)
 - `Preview Spawn Point` → `PreviewSpawnPoint`
 - `Swatch Container` → `SwatchContainer`
 - `Swatch Button Template` → `SwatchButtonTemplate`
 
-### 9d. Previous/Next buttons
+### 11d. Previous/Next buttons
 
-- `PreviousButton`'s On Click () → `+` → drag `MenuManager` → function
-  dropdown → **Customization UI → PreviousSkin ()**
-- `NextButton`'s On Click () → same, but **NextSkin ()**
+- `PreviousButton` → On Click () → `MenuManager` →
+  **Customization UI → PreviousSkin ()**
+- `NextButton` → same, **NextSkin ()**
 
-## Part 10 — Test
+## Part 12 — Test
 
-Press Play:
+1. Background + title + 4 bracket buttons on `MainMenuPanel`.
+2. **Customize** → panel swap, a character model appears at
+   `PreviewSpawnPoint`.
+3. Click a swatch → model's Body color changes (not Head).
+4. **`<`**/**`>`** → cycles skins.
+5. **Back** → returns to Main Menu.
+6. **Play** → loads `SampleScene`.
+7. Stop and re-enter Play, go to Customize — your last pick should
+   already be selected (`PlayerPrefs` working).
 
-1. You should land on `MainMenuPanel` — plain gray title + 4 buttons.
-2. Click **Customize** → `MainMenuPanel` hides, `CustomizePanel` shows, a
-   character model appears at `PreviewSpawnPoint`.
-3. Click a swatch → the model's Body color should change immediately
-   (not the Head).
-4. Click **`<`**/**`>`** → the model should swap to a different skin.
-5. Click **Back** → returns to `MainMenuPanel`.
-6. Click **Play** → loads `SampleScene`.
-7. Stop Play, press Play again, go straight to Customize — your last
-   skin/color choice should already be selected (that's the `PlayerPrefs`
-   save working).
+---
 
 ## Troubleshooting
 
-- **Nothing happens when I click a button**: check there's exactly one
-  `EventSystem` in the scene (Canvas creation should have added it
-  automatically — if you made multiple Canvases across attempts, you may
-  have duplicates; delete extras, keep one).
-- **Buttons don't stack/center correctly**: double-check `ButtonList` has
-  both **Vertical Layout Group** and **Content Size Fitter**, and that
-  its own Rect Transform anchor is middle-center.
-- **Swatches don't appear**: confirm `PlayerColorPalette`'s `Colors`
-  array actually has entries (empty array = no swatches to build), and
-  that `SwatchButtonTemplate` is disabled (unchecked) rather than
-  deleted — `CustomizationUI` needs it to exist to copy from.
-- **Model spawns T-posing instead of idling**: expected for now — none
-  of these preview skins have an Animator wired the way
-  `HomeownerAnimator` does (Stage 3d). Fine for a static preview; wire
-  one later if you want it to idle.
-- **"Play" button does nothing / errors**: confirm `SampleScene` is
-  actually spelled that way in Build Settings (case-sensitive) and is
-  checked/included in the list.
+- **Nothing happens when I click a button**: exactly one `EventSystem`
+  should exist in the scene.
+- **A button's click area feels smaller/offset from what's visible**:
+  the click-catcher is the invisible root Image, sized by the Content
+  Size Fitter around `CapLeft`+`Label`+`CapRight` — if `CapLeft`/
+  `CapRight`'s **Raycast Target** got left checked instead of unchecked
+  (step 5c), overlapping raycast targets can cause inconsistent click
+  behavior. Double-check both caps have Raycast Target **off**, only the
+  root Image has it **on**.
+- **Caps look stretched/blurry**: confirm the source sheet
+  (`07.png`)'s **Filter Mode** is **Point**, and that you resized
+  `CapLeft`/`CapRight` manually rather than via Set Native Size (native
+  8×26 is far too small to be usable directly).
+- **Button text and caps don't resize together when I change the label**:
+  confirm `MenuButton`'s own Content Size Fitter is set to Preferred Size
+  on **both** Horizontal and Vertical, and that the Horizontal Layout
+  Group's Child Force Expand is **unchecked** (checked would fight the
+  Content Size Fitter).
+- **Buttons don't stack/center correctly in `ButtonList`**: same
+  Vertical Layout Group + Content Size Fitter check as before, middle-
+  center anchor.
+- **Swatches don't appear**: `PlayerColorPalette`'s `Colors` array needs
+  entries, and `SwatchButtonTemplate` must be disabled, not deleted.
+- **Model spawns T-posing**: expected — none of the preview skins have an
+  Animator wired yet (Stage 3d's pattern). Fine for a static preview.
+- **"Play" does nothing / errors**: confirm `SampleScene` is spelled
+  exactly right (case-sensitive) in Build Settings and is checked.
+- **Background doesn't fully cover the screen, or covers other UI**:
+  check `Background`'s anchors are all stretched to `0,0,0,0`, and that
+  it's the **first** sibling under `Canvas` (topmost in the Hierarchy
+  list — later siblings draw on top).
 
 ## Notes / open follow-ups
 
 - No skin **unlocking** yet — every prefab in `Skin Prefabs` is pickable
-  immediately. Gating this behind meta-progression (per
-  [gameplay-design.md](gameplay-design.md)) is future work.
-- This preview system is unrelated to the actual multiplayer `Player`
-  prefab for now — nothing wires the chosen skin/color onto a real player
-  yet, since networking (Stage 4–5) doesn't exist. Future work: once
-  players are networked, spawn each player's chosen skin
-  (`PlayerCosmeticSelection.SkinIndex`) and call
-  `PlayerColorizer.ApplyBodyColor` with their palette color at spawn.
-- Every placeholder button/panel here is a plain Unity default look on
-  purpose — swap `Source Image` on each once real button art exists, no
-  logic changes needed.
+  immediately (future work, per gameplay-design.md's meta-progression).
+- This preview system isn't wired to the actual multiplayer `Player`
+  prefab yet — no networking exists (Stage 4–5). Future work: spawn each
+  networked player's chosen skin/color at spawn time using
+  `PlayerCosmeticSelection` + `PlayerColorizer`.
+- Still pending from main-menu-visual-design.md's asset checklist:
+  `button_startgame.png` (Lobby screen, not built yet in this doc pass),
+  `preview_frame.png` (needs the fall-through floor detail), and the
+  optional `panel_backdrop.png`. None of these change anything
+  structural here — they slot into the existing `MenuButton` prefab
+  (for Start Game, likely as a resized/recolored variant or a second
+  prefab) and the preview area whenever they're ready.
+- The Lobby screen (Invite Players / Game Settings / Customization /
+  Start Game) and the slide+dim panel transition animation aren't built
+  in this pass yet — this doc only covers Main Menu, Customize, and the
+  Settings stub with simple show/hide. Extend Part 8 onward once ready.
