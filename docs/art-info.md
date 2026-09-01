@@ -6,7 +6,8 @@ and `asset-sources.md` (consolidated here so there's one place to work
 out of).
 
 Cross-reference: build stages are defined in [plan.md](plan.md). Lawn/yard
-ground material: [lawn-shader-setup.md](lawn-shader-setup.md).
+ground material: [lawn-shader-setup.md](lawn-shader-setup.md). Full UI/menu
+element spec: [ui-design.md](ui-design.md).
 
 ---
 
@@ -122,9 +123,12 @@ list) is locked enough that the work won't get thrown away.
 
 - ~~Mood board / visual style~~ — done, see Style direction above.
 - ~~Color palette~~ — done, see Color palette above.
-- **HUD style pass** — money counter, quota bar, inventory readout. Mock up
-  against a screenshot of the current scene. Plugs directly into
-  [InventoryUI.cs](../Assets/Scripts/UI/InventoryUI.cs) once it looks right.
+- **HUD style pass** — full element-by-element spec (crosshair, money/
+  quota/timer treatment, carry slots, item icons, shop screen, menus, and
+  more) is in [ui-design.md](ui-design.md), organized by what's safe to
+  build now vs. later. Mock up against a screenshot of the current scene.
+  Plugs directly into [InventoryUI.cs](../Assets/Scripts/UI/InventoryUI.cs)
+  and [RoundUI.cs](../Assets/Scripts/UI/RoundUI.cs) once it looks right.
 - **Musical identity** — sketch the game's sonic palette (instrumentation,
   tempo, genre lean). Doesn't need to be a finished track yet.
 - **Logo / title treatment** — for the eventual title screen, no rush.

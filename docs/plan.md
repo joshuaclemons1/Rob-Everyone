@@ -30,15 +30,19 @@ Done so far:
 
 Full walkthroughs: [stage3d-character-art.md](stage3d-character-art.md),
 [stage3e-house-prefabs.md](stage3e-house-prefabs.md),
-[stage3f-house-pool.md](stage3f-house-pool.md). Style/asset reference
-(palette, sourced packs, remaining art to-do) is in
-[art-info.md](art-info.md).
+[stage3f-house-pool.md](stage3f-house-pool.md),
+[stage3g-map-layout.md](stage3g-map-layout.md) (slot layout + randomized
+house spawner, written ahead — do this once 3f is done),
+[stage3h-map-dressing.md](stage3h-map-dressing.md) (roads, fenced police
+compound, exit placement — do after 3g). Style/asset reference (palette,
+sourced packs, remaining art to-do) is in [art-info.md](art-info.md); UI/
+menu element spec is in [ui-design.md](ui-design.md).
 
 **Next steps:** finish Stage 3f (2–3 more house prefabs, each tested solo
-— door, loot, homeowner, walk back out), then Stage 3g: lay out slots
-matching the map sketch and write the script that randomly assigns one
-house prefab per slot. Work happens on `jclem's-branch`; only merge to
-`main` once tested and confirmed working.
+— door, loot, homeowner, walk back out), then Stage 3g (slot layout +
+random spawner), then Stage 3h (roads/compound/exit dressing) — that
+completes Stage 3 on real art. Work happens on `jclem's-branch`; only
+merge to `main` once tested and confirmed working.
 
 ## Strategy
 
