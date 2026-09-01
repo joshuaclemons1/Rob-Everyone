@@ -19,6 +19,7 @@ namespace RobEveryone.Round
         private bool roundActive;
 
         public int Quota => quota;
+        public float RoundDuration => roundDuration;
         public float TimeRemaining => timeRemaining;
         public bool RoundActive => roundActive;
 

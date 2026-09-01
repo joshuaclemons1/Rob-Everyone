@@ -157,7 +157,9 @@ Two scripts already added:
 3. Add component **Level Bar UI** to `QuotaBar`. Set its `Image` field to
    `QuotaBar`'s own Image component, and drag all 5 bar-frame sprites
    into `Level Sprites` **in order from empty to full** (index 0 = empty,
-   index 4 = full) — order matters, `EconomyBarsUI` assumes it.
+   last index = full) — order matters, `EconomyBarsUI` assumes it.
+   `LevelBarUI` works with any number of frames, not just 5 — see the
+   Timer bar below, which uses 6.
 4. Repeat for a second Image, `CashBar`, positioned directly below
    `QuotaBar` (same X, Y offset down by the bar's height) so they read as
    one stacked group.
@@ -171,6 +173,23 @@ Two scripts already added:
    frames as you loot toward the quota; `CashBar` should start empty and
    step up, capping near the top only if you personally collect
    everything spawned that round.
+
+## 4. Timer bar
+
+Same `LevelBarUI` component, reused with a 6-frame sprite set — starts
+full, steps down as the round timer runs out. Wired into `RoundUI.cs`
+(`timerBar` field) rather than `EconomyBarsUI`, since round time already
+lives there alongside `timerText`.
+
+1. Slice/import your 6 timer-bar frames the same way as the other bars.
+2. Add a third Image (`TimerBar`) to the Canvas, stacked with
+   `QuotaBar`/`CashBar`, **Set Native Size**.
+3. Add component **Level Bar UI**, wire its `Image` to itself, drag all 6
+   frames into `Level Sprites` in order (index 0 = empty, index 5 = full).
+4. On the `RoundUI` component (wherever it lives — `UIManager` most
+   likely), drag `TimerBar` into the new **Timer Bar** field.
+5. Press Play. `TimerBar` should start full and step down through all 6
+   frames as `RoundManager.TimeRemaining` counts down to 0.
 
 ## Notes
 

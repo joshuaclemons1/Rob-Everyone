@@ -12,6 +12,7 @@ namespace RobEveryone.UI
         [SerializeField] private TextMeshProUGUI quotaText;
         [SerializeField] private TextMeshProUGUI timerText;
         [SerializeField] private TextMeshProUGUI resultText;
+        [SerializeField] private LevelBarUI timerBar;
 
         private void OnEnable()
         {
@@ -32,13 +33,18 @@ namespace RobEveryone.UI
 
             if (quotaText != null)
             {
-                quotaText.text = $"Quota: ${roundManager.Quota}";
+                quotaText.text = $"${roundManager.Quota}";
             }
 
             if (timerText != null)
             {
                 int seconds = Mathf.Max(0, Mathf.CeilToInt(roundManager.TimeRemaining));
                 timerText.text = $"{seconds / 60}:{seconds % 60:00}";
+            }
+
+            if (timerBar != null && roundManager.RoundDuration > 0f)
+            {
+                timerBar.SetRatio(roundManager.TimeRemaining / roundManager.RoundDuration);
             }
         }
 
