@@ -156,16 +156,58 @@ recharge times, prices) are **not decided yet** — this is a placeholder
 structure (benefit+drawback per item, multiple items per tier) to build
 the real list against later, likely alongside Stage 6.
 
+## Detection & AI behavior
+
+- **No separate noise/sound-propagation system.** Sprint/crouch (see
+  Movement below) only modify the suspicion build rate **while a
+  Homeowner already has line-of-sight** via the existing vision cone —
+  there's no through-walls/no-line-of-sight noise radius. Keeps detection
+  as one system (the vision cone that's already built) rather than adding
+  a second one.
+- **Homeowners patrol.** Rather than all standing fixed in one spot,
+  Homeowners move between rooms on a patrol route inside their own house
+  — reusing the same `NavMeshAgent` patrol pattern `PoliceAI.cs` already
+  has, just applied to `HomeownerAI.cs` too. Makes routing around a
+  Homeowner an active read (where are they right now, not just which way
+  are they facing) instead of a single static vision cone to avoid.
+- **Police are dispatched per-alert, not a small fixed patrol count.**
+  When a Homeowner goes Alerted, the police station dispatches a new
+  responding officer for that specific alert (up to some cap on
+  simultaneous officers, to avoid the map getting flooded) — rather than
+  today's fixed 1-2 patrolling officers reacting to whichever alert fires.
+  Scales response naturally with how much chaos is actually happening
+  across the map at once, which matters once player count (and therefore
+  simultaneous alerts) scales toward 8.
+
+## World state (shared loot, exits, PvP theft)
+
+- **Loot is shared/contested**, not per-player. If one player empties a
+  house, it's empty for every other player too — first to grab an item
+  wins it. This is a real networking design decision (not just flavor):
+  once Mirror networking exists (Stage 4–5), house loot state needs to be
+  server-authoritative and synced, not simulated independently per client.
+- **The single exit stays a single, contested chokepoint** — intentionally
+  campable. A rival waiting near the exit to intercept/sabotage someone
+  about to cash out is a real, intended strategy, not an edge case to
+  design around.
+- **PvP sabotage can directly steal loot, not just stun.** Stunning a
+  rival (taser/bat) opens a window where you can take one item from
+  their **5 normal slots** — the Prison Wallet stays protected from this
+  too, same as it's protected from the police. This makes sabotage a real
+  theft mechanic, reinforcing "rob everyone" as literally including other
+  players, not just houses.
+
 ## Movement
 
 Beyond the current walk + mouse-look (`FirstPersonController.cs`):
 
-- **Sprint** — faster movement, but noisier/riskier — should make
-  Homeowner suspicion build faster (louder) as a real tradeoff, not a
-  strictly-better option.
-- **Crouch** — slower movement, but quieter/stealthier — should reduce
-  Homeowner suspicion build rate and/or detection range, giving a real
-  stealth option beyond just staying out of the vision cone entirely.
+- **Sprint** — faster movement, but builds Homeowner suspicion faster
+  while you're within their vision cone (see Detection above — this is a
+  vision-cone modifier, not a separate noise system) — a real tradeoff,
+  not a strictly-better option.
+- **Crouch** — slower movement, but builds suspicion more slowly (and/or
+  reduces detection range) while in a Homeowner's vision cone, giving a
+  real stealth option beyond just staying out of the cone entirely.
 - **Jump** — standard jump added.
 - **Movement-tech (bhop-style) advanced mobility** — similar to Source
   engine bunnyhopping: chaining jumps with air-strafing lets a player who
@@ -183,6 +225,40 @@ Beyond the current walk + mouse-look (`FirstPersonController.cs`):
   + central compound from the sketch, not a dynamically-scaling map).
   More players just means more competition over the same fixed pool of
   houses/loot — that contention *is* the chaos, not a bigger map.
+- **The sketch's exact numbers (~10 houses, 2 Good Houses, one compound
+  entrance) are rough guidance, not a locked spec.** Exact house count,
+  Good House count, and how many ways into the fenced compound stay open
+  until Stage 3g's actual slot layout, informed by how Stage 3f's house
+  pool and playtesting actually feel.
+
+## Session persistence & meta-progression
+
+Unlike a single sitting's endless-freeplay batches (which always start
+fresh at batch 1), **some things persist across separate play sessions**
+(closing and reopening the game later) — needs a save system:
+
+- **Cosmetic unlocks** — player skins/colors (ties into the Stage 5–6
+  player-skin plan) unlocked permanently through play, rather than
+  everyone picking from the same static list every session.
+- **Lifetime stats** — totals tracked across all sessions (total Cash ever
+  earned, times caught, houses robbed, etc.) — bragging-rights data, no
+  gameplay effect.
+- **Best batch/quota tier reached** — a permanent record of the highest
+  batch any player has survived to, as a long-term goal beyond one
+  sitting's freeplay.
+
+Exact save format/location and whether this is local-only or needs to
+sync with Steam (Steam Cloud, achievements) is not decided — revisit once
+Steamworks.NET is actually integrated (Stage 5).
+
+## Voice communication
+
+**In-game proximity voice chat** — voice only carries between nearby
+players in-world, so you might overhear a rival's reaction (or panic) if
+you're physically close to them. This is real added scope on top of the
+Mirror/Steamworks networking work (Stage 4–5), not a small add-on —
+budget time for it accordingly rather than assuming it's a checkbox
+feature.
 
 ## Shop phase
 
@@ -218,6 +294,13 @@ On top of the existing money/quota/timer:
 - Exact self-bail threshold (how many rounds before auto-release).
 - Exact trigger condition for the "rival's approximate status" HUD ping.
 - Whether the Hammer is PvP or environmental (or both).
+- Exact house count, Good House count, and compound entrance count for
+  the map layout (Stage 3g).
+- Cap on simultaneous dispatched police officers.
+- Save system format/location for meta-progression; whether it syncs with
+  Steam.
+- Full audio trigger list beyond the four confirmed categories (see
+  [art-info.md](art-info.md) for the current SFX/music to-do list).
 
 ## Gap vs. current code
 
@@ -228,8 +311,13 @@ This is a substantially different system from what's implemented today:
 - `RoundManager.cs` currently has a single fixed quota checked at the end
   of every individual round, with no batch concept, no persistence across
   rounds, and no shop/sell phase.
-- None of jail/bail, sabotage items, sprint/crouch/bhop movement, or the
-  ready-spot shop phase exist in code yet.
+- `HomeownerAI.cs` is currently stationary (Idle/Suspicious/Alerted with a
+  fixed-position vision cone) — no patrol movement yet.
+- `PoliceAI.cs` currently has a small fixed set of patrolling officers
+  reacting to whichever alert fires — no per-alert dispatch/pooling.
+- None of jail/bail, sabotage items, sprint/crouch/bhop movement, the
+  ready-spot shop phase, shared/networked loot state, PvP item theft,
+  meta-progression/save data, or voice chat exist in code yet.
 
 Per [plan.md](plan.md)'s build order, none of this should be started
 until the single-player core loop (Stage 3) and basic multiplayer (Stage

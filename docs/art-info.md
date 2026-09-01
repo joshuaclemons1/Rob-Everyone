@@ -155,11 +155,24 @@ list) is locked enough that the work won't get thrown away.
   palette above — lighting, signage).
 - **Exit / extraction point** — needs to be readable as "the goal" from a
   distance.
-- **SFX** — footsteps, item pickup, homeowner alert stinger, police siren,
-  player caught/jailed.
+- **SFX** — confirmed trigger list (see
+  [gameplay-design.md](gameplay-design.md) for the design context):
+  - A short stinger on each Homeowner state transition (Idle→Suspicious,
+    Suspicious→Alerted) — immediate audio feedback without needing to be
+    looking at the Homeowner.
+  - Police siren, spatial/directional, when Police enters Respond/Chase —
+    doubles as gameplay info ("police coming, roughly from where"), not
+    just flavor.
+  - Distinct footstep sounds per movement state (walk/sprint/crouch) —
+    since detection is vision-cone-only (no real noise-propagation
+    system, see gameplay-design.md's "Detection & AI behavior"), this is
+    player-feedback flavor, not an AI-detectable signal.
+  - Item pickup, player caught/jailed — as before.
 - **Ambient music states** — calm exploration loop and a tenser "you've
-  been spotted" loop, since the homeowner/police alert states are binary
-  triggers you can hook music changes to later.
+  been spotted" loop, **crossfading based on nearby Homeowner/Police alert
+  state** (confirmed trigger, not just a concept) — the binary state
+  transitions already in `HomeownerAI.cs`/`PoliceAI.cs` are what should
+  drive the crossfade.
 
 ### Needed for Stage 5–6 (Steam multiplayer, sabotage)
 
@@ -174,10 +187,16 @@ list) is locked enough that the work won't get thrown away.
 ### Needed for Stage 7 (meta-game)
 
 - **Pre-round shop UI** — full screen, needs the final loot/sabotage item
-  icon set locked first.
-- **Results/scoreboard screen** — end-of-round and end-of-game (5 rounds)
-  summary.
-- **Shop SFX** — purchase confirm, insufficient funds.
+  icon set locked first. Per gameplay-design.md, this is a **ready-up
+  space players physically walk into/out of**, not a menu with a Ready
+  button — needs a floor marker/zone that reads clearly as "stand here,"
+  plus the carry-slots readout (5 slots + Prison Wallet) and active
+  sabotage-item cooldowns from the HUD needs list.
+- **Batch-end summary** — there's no fixed end-of-game screen (endless
+  freeplay, no formal winner — see gameplay-design.md's "Win condition"),
+  but each 3-round batch boundary (quota step-up, new shop unlocks, any
+  surplus Cash wiped) is a real beat worth a UI moment.
+- **Shop SFX** — purchase confirm, insufficient funds, item sold.
 
 ### Later / polish (no fixed stage)
 

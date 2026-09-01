@@ -110,6 +110,14 @@ a fenced central compound with a police station and two "Good Houses" (higher
 loot, deliberately placed next to the police), and a single exit as the
 extraction choke point.
 
+These exact numbers (~10 houses, 2 Good Houses, one compound entrance) are
+**rough guidance, not a locked spec** — decide the real counts at Stage
+3g's slot layout, informed by how Stage 3f's house pool and playtesting
+actually feel. The single exit is deliberately kept as one contested
+chokepoint even at higher player counts (see
+[gameplay-design.md](gameplay-design.md)) — not something to "fix" into
+multiple exits without a specific reason to.
+
 Map size is fixed regardless of player count — the design target is 4–8
 players (see [gameplay-design.md](gameplay-design.md)), all sharing this
 same house pool rather than the map scaling up. More players competing
