@@ -2,7 +2,7 @@
 
 Setup and dev plan for the game. Full plan: `docs/plan.md`.
 
-## Getting set up (Josh and Zach, separately)
+## Getting set up (Chayton and Zach, separately)
 
 The Unity project already exists in this repo — you're cloning it, not
 creating a new one.
