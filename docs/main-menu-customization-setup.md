@@ -264,13 +264,27 @@ sized to its own label text.
 5. Inside `SwatchContainer`, right-click → **UI → Button** (plain Button,
    not the MenuButton prefab — swatches are just solid color squares, no
    bracket/label needed). Rename it `SwatchButtonTemplate`.
+   - **Delete its child `Text (Legacy)` object** — Unity's default Button
+     always creates one saying "Button," and it's not wanted here (a
+     swatch is just a colored square, no label). Skipping this step makes
+     every swatch show as a wall of "Button" text instead of a square.
    - Its **Image** → **Color** is overwritten per-swatch at runtime by
-     `CustomizationUI`, so its color here doesn't matter.
+     `CustomizationUI`, so its color here doesn't matter — but its
+     **Image Type** does: set it to **Simple**, not the default
+     **Sliced**. At a small size like 60×60, Sliced 9-slicing on Unity's
+     built-in `UISprite` collapses the stretchable middle down to nothing,
+     leaving only 4 disconnected corner fragments instead of a solid
+     square.
    - Width/Height → `60 x 60`.
    - **Disable it** (uncheck the checkbox next to its name at the top of
      the Inspector) — `CustomizationUI` instantiates copies of this;
      the template itself must stay hidden.
-6. `CustomizePanel` should start **hidden**: uncheck its own active
+6. On `SwatchContainer`'s **Horizontal Layout Group**, uncheck **Control
+   Child Size** (both Width and Height). This defaults to *checked* when
+   the component is added, which overrides each swatch's manually-set
+   60×60 size with a computed one instead — leave it unchecked so your
+   size actually sticks.
+7. `CustomizePanel` should start **hidden**: uncheck its own active
    checkbox.
 
 ## Part 9 — Add the 3D preview spot
@@ -279,9 +293,19 @@ Lives in actual 3D space, not inside the Canvas.
 
 1. Right-click empty Hierarchy space → **Create Empty**. Rename it
    `PreviewSpawnPoint`.
-2. Position it a few units in front of your **Main Camera** — e.g. camera
-   at `(0, 1, 0)` looking down `+Z`, spawn point at roughly `(0, 0, 3)`.
-   Adjust once you can see a model spawn there in Play mode.
+2. Get it in front of the camera **precisely**, without guessing
+   coordinates:
+   - Select **Main Camera** → right-click it (or **GameObject** menu) →
+     **Align View to Selected** — snaps your Scene view to match the
+     Main Camera's exact position/facing.
+   - Without touching Scene view navigation, select `PreviewSpawnPoint`
+     instead → **GameObject** menu → **Move To View**
+     (`Ctrl+Alt+F` / `Cmd+Option+F`) — moves it to wherever the Scene
+     view is now centered, which is directly in the Main Camera's line of
+     sight.
+   - Adjust distance afterward (nudge along whichever axis the camera
+     actually faces) if the preview ends up too close/far once you see it
+     in Play mode.
 3. Optional: add a flattened Cube under it as a simple pedestal so the
    character doesn't look like it's floating.
 4. Confirm there's a **Directional Light** in the scene so the preview
@@ -328,7 +352,19 @@ dropdown → pick the method.
 
 ### 11c. Customization UI component
 
-Add component **Customization UI** to `MenuManager`. Wire:
+Add component **Customization UI** to **`CustomizePanel`** — not
+`MenuManager`. This matters: `CustomizationUI`'s setup logic (spawning
+the preview, building swatches) runs in `OnEnable()`, which needs to fire
+each time the Customize screen actually opens. `MenuManager` is active
+for the entire scene lifetime, so putting it there means that logic only
+ever runs once, at scene load, while `CustomizePanel` (and everything
+nested inside it, including `SwatchContainer`) is still hidden — and a
+UI element instantiated while its ancestor is inactive never properly
+initializes. Putting the component directly on `CustomizePanel` means
+`OnEnable()` fires exactly when the panel becomes visible, which is what
+you actually want.
+
+Wire:
 
 - `Skin Prefabs` → a handful of skin `.fbx` files from
   `Assets/Art/Characters/Quaternius-UltimateAnimatedCharacterPack/FBX/`
@@ -339,9 +375,20 @@ Add component **Customization UI** to `MenuManager`. Wire:
 - `Swatch Container` → `SwatchContainer`
 - `Swatch Button Template` → `SwatchButtonTemplate`
 
+**Before testing, check every color in the palette's `Colors` array has
+Alpha set to 255 (or `1`)** — a freshly-created array entry defaults to
+fully transparent `(0,0,0,0)`, and pasting a 6-digit hex code only sets
+R/G/B, never touches Alpha. A palette full of 0-alpha colors will build
+correctly-sized, correctly-positioned, correctly-"colored" swatches that
+are just 100% invisible — everything about them will look right in the
+Inspector except that one easy-to-miss number.
+
 ### 11d. Previous/Next buttons
 
-- `PreviousButton` → On Click () → `MenuManager` →
+Since `Customization UI` now lives on `CustomizePanel` (not
+`MenuManager`), point these there too:
+
+- `PreviousButton` → On Click () → `CustomizePanel` →
   **Customization UI → PreviousSkin ()**
 - `NextButton` → same, **NextSkin ()**
 
@@ -382,8 +429,26 @@ Add component **Customization UI** to `MenuManager`. Wire:
 - **Buttons don't stack/center correctly in `ButtonList`**: same
   Vertical Layout Group + Content Size Fitter check as before, middle-
   center anchor.
-- **Swatches don't appear**: `PlayerColorPalette`'s `Colors` array needs
-  entries, and `SwatchButtonTemplate` must be disabled, not deleted.
+- **Swatches don't appear at all**: in rough order of likelihood —
+  1. `PlayerColorPalette`'s `Colors` array entries have **Alpha at 0**
+     (see the callout in 11c) — everything about the swatch will look
+     correct in the Inspector (right size, right position, "colored")
+     except this one number. This is the most likely cause if you can
+     select a swatch clone in Play mode, see reasonable Rect
+     Transform/Image values, and it's still invisible.
+  2. `SwatchButtonTemplate` still has its default child `Text (Legacy)`
+     object (delete it, step 5 of Part 8) — shows as a wall of "Button"
+     text instead of colored squares.
+  3. `SwatchButtonTemplate`'s **Image Type** is `Sliced` instead of
+     `Simple` — at 60×60 this collapses into 4 disconnected corner
+     fragments instead of a solid square.
+  4. `SwatchContainer`'s Horizontal Layout Group has **Control Child
+     Size** still checked, overriding your manual 60×60 size.
+  5. `Customization UI` is still on `MenuManager` instead of
+     `CustomizePanel` (see 11c) — its setup only ran once at scene load
+     while the panel was still hidden.
+  6. `PlayerColorPalette`'s `Colors` array is just empty (no entries at
+     all), or `SwatchButtonTemplate` was deleted instead of disabled.
 - **Model spawns T-posing**: expected — none of the preview skins have an
   Animator wired yet (Stage 3d's pattern). Fine for a static preview.
 - **"Play" does nothing / errors**: confirm `SampleScene` is spelled
