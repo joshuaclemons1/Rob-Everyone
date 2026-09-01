@@ -5,7 +5,8 @@ art/audio to-do list. Replaces the old `art-style.md`, `artist-todo.md`,
 and `asset-sources.md` (consolidated here so there's one place to work
 out of).
 
-Cross-reference: build stages are defined in [plan.md](plan.md).
+Cross-reference: build stages are defined in [plan.md](plan.md). Lawn/yard
+ground material: [lawn-shader-setup.md](lawn-shader-setup.md).
 
 ---
 
