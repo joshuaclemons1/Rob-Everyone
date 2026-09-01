@@ -180,9 +180,11 @@ list) is locked enough that the work won't get thrown away.
 
 ### Needed for Stage 5–6 (Steam multiplayer, sabotage)
 
-- **Player skins/colors** — players need to be visually distinguishable
-  from each other once there's more than one on screen. Likely reskins of
-  Quaternius characters already imported.
+- ~~Player skins/colors~~ — built ahead of schedule: a Body-color palette
+  picker + live preview, see
+  [main-menu-customization-setup.md](main-menu-customization-setup.md).
+  Not yet wired onto actual networked players (Stage 4–5 doesn't exist
+  yet), just the selection/persistence/preview system.
 - **Sabotage item icons + models** — taser, hammer, alarm clock, bat (per
   plan.md's Core Systems list).
 - **Sabotage SFX** — taser zap, hammer hit, alarm ring, bat swing, plus a

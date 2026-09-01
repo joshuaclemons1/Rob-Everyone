@@ -130,8 +130,12 @@ variety, but Tier 1/2 unblocks more actual gameplay testing sooner.
 - **Title screen** — logo treatment already on art-info.md's to-do list;
   pairs with a simple background composition (a stylized shot of the
   suburb, matching the locked palette).
-- **Main menu** — Play / Settings / Quit, simple vertical button list is
-  fine for a 2-person indie project, no need to over-design.
+- ~~Main menu~~ / ~~Cosmetic/skin select screen~~ — built ahead of
+  schedule, see
+  [main-menu-customization-setup.md](main-menu-customization-setup.md):
+  Play/Settings/Quit + a live-3D-preview skin/Body-color picker (skin
+  unlock-gating still not built, every configured skin is pickable for
+  now).
 - **Pause menu (in-round)** — Resume / Settings / Quit-to-menu.
 - **Settings menu** — sensitivity, volume (master/music/SFX at minimum,
   matching the confirmed SFX/music categories in art-info.md), keybind
@@ -140,8 +144,6 @@ variety, but Tier 1/2 unblocks more actual gameplay testing sooner.
   gameplay-design.md's player-count target), ready status per player,
   Steam invite button. Also needs a small "voice active" icon per player
   row once proximity voice chat is built.
-- **Cosmetic/skin select screen (Stage 5–6, meta-progression)** — grid of
-  unlocked vs. locked player skins.
 - **Lifetime stats screen (meta-progression)** — simple stat list (total
   Cash earned, times caught, best batch reached, etc.) — a single
   readable panel, not a complex dashboard.
