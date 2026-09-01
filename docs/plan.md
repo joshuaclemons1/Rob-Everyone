@@ -4,25 +4,41 @@ Full designed version with the map sketch and visual layout: https://claude.ai/c
 
 ## Where to pick up next
 
-Currently mid-**Stage 3** (full offline loop). Code side (quota/timer/exit,
-homeowner AI, police AI) is already merged on `jclem's-branch`.
+Currently mid-**Stage 3**, art-integration sub-stages (3d done, 3e done,
+mid-3f). Code side (quota/timer/exit, homeowner AI, police AI) has been
+done since Stage 3c.
 
-Art side: real assets have been sourced and imported, but **not yet placed
-in the scene**:
+Done so far:
 
-- Kenney City Kit (Suburban, Roads, Commercial) + Modular Buildings under
-  `Assets/Art/Environment/`
-- Quaternius Ultimate Animated Character Pack under
-  `Assets/Art/Characters/`
+- **Stage 3d** — Homeowner and Police reskinned with real Quaternius
+  characters (capsule collider kept, Mesh Renderer hidden on the swap
+  target). `HomeownerAnimator` (Idle-only) and `PoliceAnimator`
+  (Idle/Walk/Run Blend Tree, driven by `PoliceAI.cs` feeding
+  `agent.velocity.magnitude` into a `Speed` param each frame) exist under
+  `Assets/Art/Characters/Animators/`.
+- **Stage 3e** — `Real_House_01` built and proven: real Kenney building +
+  yard padding to the 25×25 plot size + Kenney Furniture Kit interior +
+  nested `Homeowner` + loot spot, all as one self-contained prefab at
+  `Assets/Prefabs/Houses/Real_House_01.prefab`. Also added
+  `DoorTeleporter` (`Assets/Scripts/World/DoorTeleporter.cs`) — a
+  paired-trigger doorway workaround for buildings without a real modeled
+  door gap, so building colliders never need hand-fitting.
+- **Stage 3f (in progress)** — repeat the Stage 3e pattern for 2–3 more
+  building variants to build an actual house pool (target: 3–4 total real
+  house prefabs) before Stage 3g's random spawner has something to pick
+  from.
 
-Full details (what each pack is for, the locked color palette, remaining
-art to-do by stage) are in [art-info.md](art-info.md).
+Full walkthroughs: [stage3d-character-art.md](stage3d-character-art.md),
+[stage3e-house-prefabs.md](stage3e-house-prefabs.md),
+[stage3f-house-pool.md](stage3f-house-pool.md). Style/asset reference
+(palette, sourced packs, remaining art to-do) is in
+[art-info.md](art-info.md).
 
-**Next steps:** open Unity, let it reimport `Assets/Art/`, then start
-swapping the Stage 3 placeholder/gray-box geometry for the real Kenney
-house pieces first (police station + character placement can follow).
-Remember: work happens on `jclem's-branch`; only merge to `main` once
-tested and confirmed working.
+**Next steps:** finish Stage 3f (2–3 more house prefabs, each tested solo
+— door, loot, homeowner, walk back out), then Stage 3g: lay out slots
+matching the map sketch and write the script that randomly assigns one
+house prefab per slot. Work happens on `jclem's-branch`; only merge to
+`main` once tested and confirmed working.
 
 ## Strategy
 
