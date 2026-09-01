@@ -21,6 +21,8 @@ namespace RobEveryone.AI
         [SerializeField] private Transform playerTarget;
         [SerializeField] private Transform eye;
         [SerializeField] private RoundManager roundManager;
+        [SerializeField] private Animator animator;
+        [SerializeField] private string animatorSpeedParam = "Speed";
 
         [SerializeField] private List<Transform> patrolPoints = new();
         [SerializeField] private float patrolSpeed = 3.5f;
@@ -73,6 +75,14 @@ namespace RobEveryone.AI
 
         private void Update()
         {
+            // Feed the real-time NavMeshAgent speed into the Animator every
+            // frame -- this alone drives Idle/Walk/Run through a Blend Tree,
+            // so no per-state animation code is needed for patrol vs. chase.
+            if (animator != null)
+            {
+                animator.SetFloat(animatorSpeedParam, agent.velocity.magnitude);
+            }
+
             switch (State)
             {
                 case PoliceState.Patrol:
