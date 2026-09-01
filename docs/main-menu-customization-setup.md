@@ -1,5 +1,12 @@
 # Main menu + player customization — Editor setup
 
+**Visual/animation design (sliding panels, title pulse, layout) is in
+[main-menu-visual-design.md](main-menu-visual-design.md)** — this doc is
+the functional Unity wiring (works with plain placeholder buttons); once
+the real art from that doc exists, Parts 5–8 below get re-skinned and the
+simple show/hide panel switching gets replaced with the slide+dim
+animation described there.
+
 Detailed, click-by-click version. This is out of the normal build order
 (menus/cosmetics were "Tier 3, lower urgency" in [ui-design.md](ui-design.md))
 but self-contained, so it doesn't block or get blocked by Stage 3's
