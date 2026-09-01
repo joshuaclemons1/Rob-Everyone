@@ -84,8 +84,8 @@ just the crosshair — worth confirming those still look right afterward.
 ## 2. Pixel UI kit
 
 The kit landed as **numbered sprite sheets**
-(`Assets/Art/Design/PSD/Assets/Pixel UI pack 3/00.png` through `07.png`,
-plus `All.png` as a full contact sheet) — each one packs multiple UI
+(`Assets/Art/UI/Pixel UI pack 3/00.png` through `07.png`, plus `All.png`
+as a full contact sheet) — each one packs multiple UI
 elements (buttons, panels, icons) into a single image, not individual
 files. These need **slicing** in Unity before you can drag out one
 button/panel at a time.
@@ -118,6 +118,59 @@ button/panel at a time.
    arrow) — each individual sliced piece now shows as its own sub-sprite
    you can drag directly into an Image's **Source Image** field, same as
    any other sprite.
+
+## 3. Cash & Quota bars (stacked, top-left)
+
+Two 5-frame pixel-art bars, stacked in the top-left. Both are wired
+against **today's** economy (`PlayerInventory.TotalValue`,
+`RoundManager.Quota`) — not the future Cash/Wallet/batch system from
+[gameplay-design.md](gameplay-design.md), which isn't built yet. Revisit
+this once that rework lands.
+
+- **Quota bar** — starts **full**, drains toward empty as you earn (i.e.
+  it reads as "how far you have left," not "how much you've done").
+- **Cash bar** — starts **empty**, fills toward the combined value of
+  every `PickupItem` present when the round starts (most players won't
+  fill it, since it's the *total* possible loot on the map, split between
+  everyone).
+
+Two scripts already added:
+
+- `Assets/Scripts/UI/LevelBarUI.cs` — generic reusable component, holds a
+  5-sprite array and swaps to whichever frame matches a 0–1 ratio you feed
+  it.
+- `Assets/Scripts/UI/EconomyBarsUI.cs` — computes both ratios each frame
+  and drives two `LevelBarUI`s. Also sums every `PickupItem.Value` in the
+  scene at `Start()` for the Cash bar's max (see the code comment on a
+  real ordering risk: once Stage 3g's random house spawner exists, this
+  needs to run *after* houses are spawned, not before).
+
+### Setup
+
+1. Slice your 5-frame bar sprites the same way as the pixel UI kit above
+   (Sprite Mode → Multiple, Point filter, Sprite Editor → Slice) if
+   they're a strip in one file, or import them as 5 separate Sprite (2D
+   and UI) files if they're already individual PNGs.
+2. In the Hierarchy, inside the **Canvas**, right-click → **UI → Image**,
+   rename it `QuotaBar`. Anchor it top-left (Anchor Preset: top-left),
+   position it where you want, **Set Native Size**.
+3. Add component **Level Bar UI** to `QuotaBar`. Set its `Image` field to
+   `QuotaBar`'s own Image component, and drag all 5 bar-frame sprites
+   into `Level Sprites` **in order from empty to full** (index 0 = empty,
+   index 4 = full) — order matters, `EconomyBarsUI` assumes it.
+4. Repeat for a second Image, `CashBar`, positioned directly below
+   `QuotaBar` (same X, Y offset down by the bar's height) so they read as
+   one stacked group.
+5. Add component **Economy Bars UI** to `UIManager` (or any persistent
+   object). Wire:
+   - `Round Manager` → the scene's `RoundManager`
+   - `Player Inventory` → `Player`
+   - `Quota Bar` → the `QuotaBar` object
+   - `Cash Bar` → the `CashBar` object
+6. Press Play. `QuotaBar` should start full and step down through its 5
+   frames as you loot toward the quota; `CashBar` should start empty and
+   step up, capping near the top only if you personally collect
+   everything spawned that round.
 
 ## Notes
 

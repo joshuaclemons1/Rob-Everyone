@@ -13,6 +13,7 @@ namespace RobEveryone.Items
         [SerializeField] private string itemName = "Watch";
         [SerializeField] private int value = 25;
 
+        public int Value => value;
         public string InteractionPrompt => $"Take {itemName} (${value})";
 
         public void Interact(GameObject interactor)
