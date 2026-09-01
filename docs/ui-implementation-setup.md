@@ -7,41 +7,79 @@ already used by `InventoryUI`/`RoundUI`.
 
 ## 1. Crosshair
 
-Script already added: `Assets/Scripts/UI/CrosshairUI.cs` — swaps between
-two sprites based on whether `Interactor.CurrentTarget` is non-null (i.e.
-looking at something with `E`-to-interact available).
+`Crosshair - Dot.png` is 20×20px. `Crosshair - Interact.png` is 118×74px
+— it bakes the dot **and** a hand icon into one wider image. Don't swap
+between these two on a single Image component: a fixed-size Image forced
+to display two very differently-sized/shaped sprites is exactly what
+squishes the art and shifts everything around. Instead, use **two
+separate Images**: the dot (always on, never changes) and a hand-only
+icon (toggled on/off next to it).
 
-1. Select **both** `Crosshair - Dot.png` and `Crosshair - Interact.png` in
-   the Project window. In the Inspector, confirm/set:
-   - **Texture Type**: Sprite (2D and UI)
-   - **Filter Mode**: Point (no filter) if these are meant to stay crisp
-     pixel-perfect at their native size; Bilinear if they're smooth
-     vector-style art rather than pixel art. (Point is usually right for
-     small precise crosshair dots either way — try it, switch if it looks
-     wrong.)
-   - Click **Apply** if you changed anything.
-2. In the Hierarchy, inside the existing **Canvas**, right-click → **UI →
-   Image**. Rename it `Crosshair`.
-3. On its **Rect Transform**: set the **Anchor Preset** to center
-   (Alt+Shift+click the center preset), **Pos X/Y** to `0, 0` — this pins
-   it to the exact center of the screen regardless of resolution.
-4. Set its **Width/Height** to match the crosshair PNGs' actual pixel
-   size (check the Inspector when the PNG is selected) so it doesn't get
-   stretched.
-5. Drag `Crosshair - Dot.png` into this Image component's **Source
-   Image** field as the default state.
-6. Add component **Crosshair UI** (`RobEveryone.UI`) to the `Crosshair`
-   object (or to `UIManager`, either works — just needs a reference to
-   this Image).
-7. Wire the `Crosshair UI` component's fields:
+### 1a. Split the hand out as its own asset
+
+In Photoshop, using `Assets/Art/Design/PSD/Rob-Everyone UI.psd`: hide the
+dot layer, export **just the hand** (Image → Trim, or export the
+selection only) as a new file, e.g. `Assets/Art/UI/Crosshair - Hand.png`.
+Trimmed to the hand's own bounding box, not the full 118×74 canvas —
+otherwise you'll hit the exact same size-mismatch problem one level down.
+
+### 1b. Fix the scale (the "way too big" issue)
+
+This is a **Canvas Scaler** problem, not an asset problem. By default a
+Canvas uses **Constant Pixel Size** — 20px is always 20 *actual screen
+pixels*, so art sized for a 4K canvas (3840×2160, where 20px is tiny
+relative to the screen) reads as oversized on any lower-resolution
+display, since it's still 20 real pixels but now a bigger fraction of a
+smaller screen.
+
+1. Select the **Canvas** in the Hierarchy → find its **Canvas Scaler**
+   component.
+2. Set **UI Scale Mode** → **Scale With Screen Size**.
+3. Set **Reference Resolution** → `3840 x 2160` (matches the 4K canvas
+   this was designed against).
+4. **Screen Match Mode** → Match Width Or Height, **Match** slider → `0.5`
+   as a starting point (favors neither width nor height scaling
+   specifically) — adjust toward `1` (Height) if the crosshair still
+   feels off on your actual monitor's aspect ratio.
+
+This affects every UI element on this Canvas (money/quota/timer too), not
+just the crosshair — worth confirming those still look right afterward.
+
+### 1c. Set up the two crosshair elements
+
+1. Select `Crosshair - Dot.png` and your new `Crosshair - Hand.png` in the
+   Project window. In the Inspector: **Texture Type** → Sprite (2D and
+   UI), **Filter Mode** → Point (no filter) for crisp small art, click
+   **Apply**.
+2. In the Hierarchy, inside the **Canvas**, right-click → **UI → Image**.
+   Rename it `Crosshair`.
+   - **Rect Transform**: Anchor Preset → center (Alt+Shift+click the
+     center preset), **Pos X/Y** → `0, 0`.
+   - **Source Image** → `Crosshair - Dot.png`.
+   - Click **Set Native Size** (button in the Image component) instead of
+     typing Width/Height by hand — guarantees it matches the sprite's
+     real 20×20 pixels exactly.
+   - This object's sprite/size never changes at runtime — it's done.
+3. Right-click the **Canvas** again → **UI → Image**. Rename it
+   `InteractHint`.
+   - **Source Image** → `Crosshair - Hand.png`, then **Set Native Size**.
+   - Position it **next to** the dot, not on top of it — e.g. Anchor
+     Preset center, then set **Pos X** to roughly half the dot's width
+     plus half the hand's width plus a small gap (something like
+     `10 + (hand width / 2) + 4`— eyeball it in the Scene view against the
+     centered dot, exact offset is a feel call).
+   - Leave it **active in the Hierarchy** for now (you'll see both at
+     once while setting position) — the script disables it at runtime.
+4. Add component **Crosshair UI** (`RobEveryone.UI`) — to either object,
+   or to `UIManager`.
+5. Wire its two fields:
    - `Interactor` → drag the `Player` object (for its `Interactor`
      component)
-   - `Crosshair Image` → drag the `Crosshair` Image object itself
-   - `Default Sprite` → `Crosshair - Dot.png`
-   - `Interact Sprite` → `Crosshair - Interact.png`
-8. Press Play. Crosshair should show the dot normally, and swap to the
-   interact sprite when looking at `Item_Watch`/any pickup within
-   `Interact Range`.
+   - `Interact Hint` → drag the `InteractHint` object itself
+6. Press Play. The dot should stay fixed at the correct 4K-relative size;
+   `InteractHint` should only appear next to it while looking at
+   `Item_Watch`/any pickup within `Interact Range`, without the dot ever
+   moving or resizing.
 
 ## 2. Pixel UI kit
 

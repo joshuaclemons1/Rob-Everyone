@@ -1,25 +1,23 @@
 using RobEveryone.Interaction;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace RobEveryone.UI
 {
-    // Swaps the crosshair sprite based on whether Interactor is currently
-    // looking at something interactable. Drag the Player's Interactor into
-    // `interactor`, the crosshair's own Image into `crosshairImage`, and
-    // the two sprites into `defaultSprite`/`interactSprite`.
+    // Toggles a separate "interact available" hint icon next to the
+    // crosshair dot -- the dot itself never changes sprite, size, or
+    // position, so there's nothing to glitch when interactability
+    // changes. Drag the Player's Interactor into `interactor` and the
+    // hint icon's GameObject into `interactHint`.
     public class CrosshairUI : MonoBehaviour
     {
         [SerializeField] private Interactor interactor;
-        [SerializeField] private Image crosshairImage;
-        [SerializeField] private Sprite defaultSprite;
-        [SerializeField] private Sprite interactSprite;
+        [SerializeField] private GameObject interactHint;
 
         private void Update()
         {
-            if (interactor == null || crosshairImage == null) return;
+            if (interactor == null || interactHint == null) return;
 
-            crosshairImage.sprite = interactor.CurrentTarget != null ? interactSprite : defaultSprite;
+            interactHint.SetActive(interactor.CurrentTarget != null);
         }
     }
 }
