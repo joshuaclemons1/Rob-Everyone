@@ -518,7 +518,7 @@ MonoBehaviour:
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 1
+  m_fontStyle: 2
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 256
   m_textAlignment: 65535
@@ -722,6 +722,7 @@ GameObject:
   - component: {fileID: 477954269}
   - component: {fileID: 477954271}
   - component: {fileID: 477954270}
+  - component: {fileID: 477954272}
   m_Layer: 5
   m_Name: TimerBar
   m_TagString: Untagged
@@ -768,7 +769,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 1823568639, guid: c96dff16b577342a5bd4cc93bc641b9e, type: 3}
+  m_Sprite: {fileID: 1289590931, guid: c96dff16b577342a5bd4cc93bc641b9e, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -786,6 +787,26 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 477954268}
   m_CullTransparentMesh: 1
+--- !u!114 &477954272
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 477954268}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bef283c3e5da44829947f2fe516d5286, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.UI.LevelBarUI
+  image: {fileID: 477954270}
+  levelSprites:
+  - {fileID: 1289590931, guid: c96dff16b577342a5bd4cc93bc641b9e, type: 3}
+  - {fileID: -310675942, guid: c96dff16b577342a5bd4cc93bc641b9e, type: 3}
+  - {fileID: 805222979, guid: c96dff16b577342a5bd4cc93bc641b9e, type: 3}
+  - {fileID: 1194850670, guid: c96dff16b577342a5bd4cc93bc641b9e, type: 3}
+  - {fileID: -1762052549, guid: c96dff16b577342a5bd4cc93bc641b9e, type: 3}
+  - {fileID: 1823568639, guid: c96dff16b577342a5bd4cc93bc641b9e, type: 3}
 --- !u!1 &556132043
 GameObject:
   m_ObjectHideFlags: 0
@@ -1484,6 +1505,7 @@ MonoBehaviour:
   quotaText: {fileID: 1127407902}
   timerText: {fileID: 1032978487}
   resultText: {fileID: 777152943}
+  timerBar: {fileID: 477954272}
 --- !u!114 &1049835427
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1687,7 +1709,7 @@ MonoBehaviour:
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 1
+  m_fontStyle: 2
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 256
   m_textAlignment: 65535
