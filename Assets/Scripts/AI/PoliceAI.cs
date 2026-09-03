@@ -52,6 +52,15 @@ namespace RobEveryone.AI
         private void Awake()
         {
             agent = GetComponent<NavMeshAgent>();
+
+            // See the matching comment in HomeownerAI.Awake -- same
+            // fallback, in case Police ever gets instantiated rather than
+            // hand-placed in the scene.
+            if (playerTarget == null)
+            {
+                PlayerInventory player = FindFirstObjectByType<PlayerInventory>();
+                if (player != null) playerTarget = player.transform;
+            }
         }
 
         private void OnEnable()

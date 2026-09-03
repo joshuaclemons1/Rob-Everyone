@@ -38,6 +38,19 @@ namespace RobEveryone.AI
         // player's last-known position at the moment of the call.
         public static event Action<Vector3> OnAlertRaised;
 
+        private void Awake()
+        {
+            // Houses spawned at runtime by HousePoolSpawner (Stage 3g) can't
+            // have this hand-dragged in the Inspector like the Stage 3a/3e
+            // scene-placed houses could -- fall back to finding the player
+            // automatically. Only one player exists pre-multiplayer (Stage 4).
+            if (playerTarget == null)
+            {
+                PlayerInventory player = FindFirstObjectByType<PlayerInventory>();
+                if (player != null) playerTarget = player.transform;
+            }
+        }
+
         private void Update()
         {
             if (State == HomeownerState.Alerted) return;
