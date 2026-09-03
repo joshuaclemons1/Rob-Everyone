@@ -15,6 +15,13 @@ namespace RobEveryone.World
         [SerializeField] private List<Transform> normalSlots = new();
         [SerializeField] private List<Transform> goodSlots = new();
 
+        // Every house prefab is a 25x25 plot (Stage 3e) -- since actual
+        // houses only exist once Start() spawns them at Play time, this
+        // draws a same-size placeholder box at each slot in the Scene view
+        // at all times (not just when selected), so roads/fences/etc. can
+        // be placed against a visible footprint without needing Play mode.
+        [SerializeField] private Vector3 housePlotSize = new(25f, 4f, 25f);
+
         private void Start()
         {
             SpawnAt(normalSlots, normalHousePrefabs);
@@ -31,6 +38,28 @@ namespace RobEveryone.World
 
                 GameObject prefab = pool[Random.Range(0, pool.Count)];
                 Instantiate(prefab, slot.position, slot.rotation);
+            }
+        }
+
+        private void OnDrawGizmos()
+        {
+            Gizmos.color = new Color(0.2f, 0.6f, 1f, 0.6f);
+            DrawSlotGizmos(normalSlots);
+
+            Gizmos.color = new Color(1f, 0.8f, 0.15f, 0.6f);
+            DrawSlotGizmos(goodSlots);
+        }
+
+        private void DrawSlotGizmos(List<Transform> slots)
+        {
+            foreach (Transform slot in slots)
+            {
+                if (slot == null) continue;
+
+                Matrix4x4 previousMatrix = Gizmos.matrix;
+                Gizmos.matrix = Matrix4x4.TRS(slot.position + Vector3.up * (housePlotSize.y * 0.5f), slot.rotation, Vector3.one);
+                Gizmos.DrawWireCube(Vector3.zero, housePlotSize);
+                Gizmos.matrix = previousMatrix;
             }
         }
     }
