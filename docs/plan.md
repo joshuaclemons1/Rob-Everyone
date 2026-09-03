@@ -4,9 +4,11 @@ Full designed version with the map sketch and visual layout: https://claude.ai/c
 
 ## Where to pick up next
 
-Currently mid-**Stage 3**, art-integration sub-stages (3d done, 3e done,
-mid-3f). Code side (quota/timer/exit, homeowner AI, police AI) has been
-done since Stage 3c.
+Currently mid-**Stage 3h** (roads/compound/exit dressing). Stages 3d–3g
+are done; the offline single-player loop (loot → quota → exit, homeowner
++ police AI, main menu/customization, movement polish) is playable
+end-to-end on real art already — what's left is compound polish, not
+missing systems.
 
 Done so far:
 
@@ -23,26 +25,47 @@ Done so far:
   `DoorTeleporter` (`Assets/Scripts/World/DoorTeleporter.cs`) — a
   paired-trigger doorway workaround for buildings without a real modeled
   door gap, so building colliders never need hand-fitting.
-- **Stage 3f (in progress)** — repeat the Stage 3e pattern for 2–3 more
-  building variants to build an actual house pool (target: 3–4 total real
-  house prefabs) before Stage 3g's random spawner has something to pick
-  from.
+- **Stage 3f** — house pool still just `Real_House_01` (Zach owns adding
+  more variants, not started yet) — everything downstream was built to
+  not require more than one prefab, so this isn't blocking anything.
+- **Stage 3g** — `HousePoolSpawner.cs` (`Assets/Scripts/World/`) randomly
+  assigns a prefab per slot on `Start()`; `HomeownerAI`/`PoliceAI` fall
+  back to auto-finding the player if `Player Target` isn't hand-wired, so
+  runtime-spawned houses work with zero manual Inspector wiring. Full
+  rectangular-ring layout (15 outer house slots + 2 Good House slots + a
+  3-building compound stack) matched to the team's actual map sketch, not
+  the earlier circular-arc placeholder. `OnDrawGizmos` on the spawner
+  draws a 25×25 wireframe box per slot at all times (not just Play mode),
+  since houses only exist once spawned at runtime.
+- **Stage 3h (in progress)** — road loop placed around the compound and
+  driveways connect it to the house ring. **Still open:** the fenced
+  compound itself needs more work — current fence pieces don't read well
+  and may need a different Kenney asset (or non-Kenney source); the
+  police station's interior needs jail-cell-like assets sourced for the
+  Jail & Bail system (gameplay-design.md) once that's built (Stage 7) —
+  none identified yet. Also note: both `Kenney-CityKitRoads` and
+  `Kenney-CityKitCommercial` needed the same FBX import Scale Factor fix
+  (`15`, matching `Kenney-CityKitSuburban`) already applied to every
+  other Kenney pack — worth checking any *new* Kenney pack import for the
+  same issue before assuming it "looks tiny" for some other reason.
 
 Full walkthroughs: [stage3d-character-art.md](stage3d-character-art.md),
 [stage3e-house-prefabs.md](stage3e-house-prefabs.md),
 [stage3f-house-pool.md](stage3f-house-pool.md),
-[stage3g-map-layout.md](stage3g-map-layout.md) (slot layout + randomized
-house spawner, written ahead — do this once 3f is done),
+[stage3g-map-layout.md](stage3g-map-layout.md),
 [stage3h-map-dressing.md](stage3h-map-dressing.md) (roads, fenced police
-compound, exit placement — do after 3g). Style/asset reference (palette,
-sourced packs, remaining art to-do) is in [art-info.md](art-info.md); UI/
-menu element spec is in [ui-design.md](ui-design.md).
+compound, exit placement). Style/asset reference (palette, sourced
+packs, remaining art to-do) is in [art-info.md](art-info.md); UI/menu
+element spec is in [ui-design.md](ui-design.md).
 
-**Next steps:** finish Stage 3f (2–3 more house prefabs, each tested solo
-— door, loot, homeowner, walk back out), then Stage 3g (slot layout +
-random spawner), then Stage 3h (roads/compound/exit dressing) — that
-completes Stage 3 on real art. Work happens on `jclem's-branch`; only
-merge to `main` once tested and confirmed working.
+**Next steps:** find better compound fence assets, source jail-cell
+props for the police station interior (needed later for Stage 7, fine to
+grab now while looking at compound assets generally), finish the
+compound fence + gates, relocate `Exit`, then playtest the whole loop on
+the real layout — that completes Stage 3 on real art. Work happens on
+`jclem's-branch`; merge to `main` once tested and confirmed working (the
+Stage 3g/3h work through this point has been playtested and confirmed —
+see commit history on `main` after this point).
 
 ## Strategy
 

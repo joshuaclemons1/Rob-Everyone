@@ -1,5 +1,15 @@
 # Stage 3h — Editor setup (roads, police compound, exit)
 
+**Status (2026-09-03):** Basic gameplay loop confirmed working on the
+real layout. Road loop + driveways are placed. **Still open:** the
+compound fence doesn't read well with the current pieces — may need a
+different fence asset (Kenney or otherwise). Also need to source
+jail-cell-like assets for the police station interior, for the Jail &
+Bail system (gameplay-design.md, built later at Stage 7) — none picked
+yet, worth grabbing while already asset-hunting for the compound.
+Picking back up: finish/replace the fence, find jail assets, then
+relocate `Exit` and do the full-loop playtest in section 4 below.
+
 With Stage 3g's slots spawning real houses randomly, this stage fills in
 everything between them — roads connecting the slots, the fenced central
 compound with the police station, and the exit — turning the layout into
