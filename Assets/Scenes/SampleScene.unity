@@ -6713,7 +6713,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Round.RoundManager
   playerInventory: {fileID: 18373792}
   quota: 30
-  roundDuration: 60
+  roundDuration: 180
 --- !u!4 &1902925825
 Transform:
   m_ObjectHideFlags: 0
