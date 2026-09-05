@@ -25,7 +25,7 @@ look visually distinct from `-a` and from each other):
    time.
 3. **Generate Colliders**, test the door, add a `DoorTeleporter` pair if
    needed (per the updated Stage 3e).
-4. Measure the footprint, pad to the 25×25 plot with yard pieces
+4. Measure the footprint, pad to the 40×40 plot with yard pieces
    (`driveway-*`, `fence-*`) from `CityKitSuburban`.
 5. Furnish the interior from `Kenney-FurnitureKit` — vary the furniture
    choices between houses too, not just the building shell, so the pool

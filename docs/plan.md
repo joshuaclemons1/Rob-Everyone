@@ -4,11 +4,15 @@ Full designed version with the map sketch and visual layout: https://claude.ai/c
 
 ## Where to pick up next
 
-Currently mid-**Stage 3h** (roads/compound/exit dressing). Stages 3d–3g
-are done; the offline single-player loop (loot → quota → exit, homeowner
-+ police AI, main menu/customization, movement polish) is playable
-end-to-end on real art already — what's left is compound polish, not
-missing systems.
+**Stage 3h is done** — full-loop playtest confirmed working on the real
+layout (roads, fenced compound, jail interior, exit), and the 2 Good
+House slots were repositioned to actually read as inside/adjacent to the
+finished compound. **Stage 3i** (skybox, background skyline, forest ring
++ world boundary, background hills) is done, scripts written and working.
+Currently on **Stage 3j** (traffic hazard — cars that drive the road loop
+and knock the player down) before moving to Stage 4 — see
+[stage3j-traffic-hazard.md](stage3j-traffic-hazard.md); scripts are
+written, Editor setup (prefabs, waypoints, spawn manager) not done yet.
 
 Done so far:
 
@@ -19,7 +23,7 @@ Done so far:
   `agent.velocity.magnitude` into a `Speed` param each frame) exist under
   `Assets/Art/Characters/Animators/`.
 - **Stage 3e** — `Real_House_01` built and proven: real Kenney building +
-  yard padding to the 25×25 plot size + Kenney Furniture Kit interior +
+  yard padding to the 40×40 plot size + Kenney Furniture Kit interior +
   nested `Homeowner` + loot spot, all as one self-contained prefab at
   `Assets/Prefabs/Houses/Real_House_01.prefab`. Also added
   `DoorTeleporter` (`Assets/Scripts/World/DoorTeleporter.cs`) — a
@@ -35,28 +39,42 @@ Done so far:
   rectangular-ring layout (15 outer house slots + 2 Good House slots + a
   3-building compound stack) matched to the team's actual map sketch, not
   the earlier circular-arc placeholder. `OnDrawGizmos` on the spawner
-  draws a 25×25 wireframe box per slot at all times (not just Play mode),
+  draws a 40×40 wireframe box per slot at all times (not just Play mode),
   since houses only exist once spawned at runtime.
-- **Stage 3h (in progress)** — road loop placed around the compound and
-  driveways connect it to the house ring. **Still open:** the fenced
-  compound itself needs more work — current fence pieces don't read well
-  and may need a different Kenney asset (or non-Kenney source); the
-  police station's interior needs jail-cell-like assets sourced for the
-  Jail & Bail system (gameplay-design.md) once that's built (Stage 7) —
-  none identified yet. Also note: both `Kenney-CityKitRoads` and
-  `Kenney-CityKitCommercial` needed the same FBX import Scale Factor fix
-  (`15`, matching `Kenney-CityKitSuburban`) already applied to every
-  other Kenney pack — worth checking any *new* Kenney pack import for the
-  same issue before assuming it "looks tiny" for some other reason.
+- **Stage 3h** — road loop placed around the compound and driveways
+  connect it to the house ring. Compound fence replaced with a real
+  chain-link/barbed-wire/gate kit (perimeter placed); police station
+  placed with an essential interior (3 jail cells + 2 desks); `Exit`
+  repositioned away from the compound; 2 Good House slots repositioned to
+  read as inside/adjacent to the finished compound. Full-loop playtest
+  confirmed working — Stage 3 is feature-complete on real art. Note: both
+  `Kenney-CityKitRoads` and `Kenney-CityKitCommercial` needed the same FBX
+  import Scale Factor fix (`15`, matching `Kenney-CityKitSuburban`)
+  already applied to every other Kenney pack — worth checking any *new*
+  Kenney pack import (Industrial, Car Kit) for the same issue before
+  assuming it "looks tiny" for some other reason.
+- **Stage 3i** — skybox, background skyline, forest ring (doubles as the
+  map's world boundary — see `ForestRingSpawner.cs`), and background
+  hills. Done, see [stage3i-skybox-skyline.md](stage3i-skybox-skyline.md).
+- **Stage 3j (in progress)** — traffic hazard: cars drive one lap of the
+  road loop and knock the player down (pure knockback + stun, not a
+  round-ending catch). Scripts written (`CarDriver.cs`,
+  `CarSpawnManager.cs`, `CarImpactReceiver.cs`); Editor setup (car
+  prefabs, waypoint loop, spawn manager, player component) not done yet
+  — see [stage3j-traffic-hazard.md](stage3j-traffic-hazard.md).
 
 Full walkthroughs: [stage3d-character-art.md](stage3d-character-art.md),
 [stage3e-house-prefabs.md](stage3e-house-prefabs.md),
 [stage3f-house-pool.md](stage3f-house-pool.md),
 [stage3g-map-layout.md](stage3g-map-layout.md),
 [stage3h-map-dressing.md](stage3h-map-dressing.md) (roads, fenced police
-compound, exit placement). Style/asset reference (palette, sourced
-packs, remaining art to-do) is in [art-info.md](art-info.md); UI/menu
-element spec is in [ui-design.md](ui-design.md).
+compound, exit placement),
+[stage3i-skybox-skyline.md](stage3i-skybox-skyline.md) (skybox, skyline,
+forest/hills),
+[stage3j-traffic-hazard.md](stage3j-traffic-hazard.md) (traffic hazard
+cars). Style/asset reference (palette, sourced packs, remaining art
+to-do) is in [art-info.md](art-info.md); UI/menu element spec is in
+[ui-design.md](ui-design.md).
 
 **Next steps:** find better compound fence assets, source jail-cell
 props for the police station interior (needed later for Stage 7, fine to

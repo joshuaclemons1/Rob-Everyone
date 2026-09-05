@@ -7,9 +7,9 @@ where `House_01`'s blockout currently sits. Once this one works end to end,
 we repeat it 2–3 more times (Stage 3f) and then build the random-placement
 spawner (Stage 3g). Don't build those yet — get one house fully right first.
 
-Plot size target: **25×25**, matching `House_01`'s existing footprint, so
-this can be swapped in without touching `RoundManager`, `Exit`, or anything
-else already placed.
+Plot size target: **40×40** (updated from the original 25×25 to give houses
+more breathing room), so this can be swapped in without touching
+`RoundManager`, `Exit`, or anything else already placed.
 
 ## 0. Quick check before starting: does furniture render correctly?
 
@@ -77,8 +77,8 @@ Using pieces from `Assets/Art/Environment/Kenney-CityKitSuburban/FBX/`
 (`driveway-long`/`driveway-short`, `fence-1x2` through `fence-3x3`):
 
 1. Compare the building's footprint (measured in step 1.5) against the
-   25×25 target. Whatever's left over is yard.
-2. Add a flat ground piece under the whole 25×25 plot for the yard area —
+   40×40 target. Whatever's left over is yard.
+2. Add a flat ground piece under the whole 40×40 plot for the yard area —
    reuse the same technique as your original `Ground` object (a flattened
    Cube, or a Plane), sized to fill the plot, sitting at the same height as
    the building's own floor level so there's no seam.

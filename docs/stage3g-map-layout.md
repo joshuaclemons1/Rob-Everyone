@@ -24,11 +24,10 @@ fixed number to hit.
    `Slot_02`, etc. — these are just position/rotation markers, no
    components needed yet.
 3. Arrange them roughly in the sketch's ring layout around where the
-   fenced compound will sit (Stage 3h). Each real house prefab is a 25×25
-   plot (from Stage 3e) — space slots at least 25–30 units apart center to
-   center so houses don't overlap, with enough gap between them to walk
-   around (the original Stage 3a blockout used ~40-unit spacing as a
-   comfortable reference).
+   fenced compound will sit (Stage 3h). Each real house prefab is a 40×40
+   plot (from Stage 3e, updated from the original 25×25) — space slots at
+   least 40–50 units apart center to center so houses don't overlap, with
+   enough gap between them to walk around.
 4. Set each slot's rotation to face however you want that house's door to
    orient — the spawned prefab will inherit this.
 5. Mark **2 of these slots** (however you decide, e.g. `Slot_01` and

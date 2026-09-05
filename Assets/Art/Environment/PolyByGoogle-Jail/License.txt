@@ -1,0 +1,7 @@
+"Jail" by Poly by Google
+Source: https://poly.pizza/m/bF8mr05ofaY
+License: CC-BY 3.0 (https://creativecommons.org/licenses/by/3.0/)
+
+Unlike the CC0 Kenney/Quaternius packs elsewhere in Assets/Art, this asset
+requires attribution. Credit "Jail by Poly by Google" (via Poly Pizza) in
+the game's credits screen before shipping.

@@ -1,14 +1,20 @@
 # Stage 3h — Editor setup (roads, police compound, exit)
 
-**Status (2026-09-03):** Basic gameplay loop confirmed working on the
-real layout. Road loop + driveways are placed. **Still open:** the
-compound fence doesn't read well with the current pieces — may need a
-different fence asset (Kenney or otherwise). Also need to source
-jail-cell-like assets for the police station interior, for the Jail &
-Bail system (gameplay-design.md, built later at Stage 7) — none picked
-yet, worth grabbing while already asset-hunting for the compound.
-Picking back up: finish/replace the fence, find jail assets, then
-relocate `Exit` and do the full-loop playtest in section 4 below.
+**Status (2026-09-04):** Road loop + driveways placed. Compound fence
+replaced with a real modular chain-link/barbed-wire/gate kit (TampaJoey's
+Chain Link Fence Pack, CC-BY — see `art-info.md`) — perimeter is placed
+(`Fence_Straight`/`Barbwire_*`/two `Gate6` instances) around the
+compound. Police station placed with an essential interior: 3 jail cells
+(`Jail_1277`, Poly by Google, CC-BY) + 2 `PoliceDesk`s — intentionally not
+over-furnished since the Jail & Bail system itself isn't built until
+Stage 7. `Exit` already repositioned away from the compound (z: 110,
+opposite side from the compound's z: -78 to -110).
+**Still open:** double-check the 2 Good House slots actually read as
+"adjacent to/inside" the compound now that the fence is a real perimeter
+rather than the placeholder it was when those slots were first placed
+(Stage 3g) — then do the full-loop playtest in section 4 below. That
+playtest is the last thing standing between here and Stage 3 being
+feature-complete on real art.
 
 With Stage 3g's slots spawning real houses randomly, this stage fills in
 everything between them — roads connecting the slots, the fenced central
@@ -27,7 +33,7 @@ Using `Assets/Art/Environment/Kenney-CityKitRoads/FBX/`:
    all the slots — doesn't need to be a fully modeled street grid, just
    enough to make walking between houses read as "a neighborhood," not
    scattered buildings on grass.
-3. Keep the same 25×25-plot-based spacing from Stage 3g in mind — road
+3. Keep the same 40×40-plot-based spacing from Stage 3g in mind — road
    pieces should fit the gaps you already left between slots, not force
    you to re-space houses.
 

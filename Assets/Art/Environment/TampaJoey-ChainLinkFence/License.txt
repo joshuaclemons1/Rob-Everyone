@@ -1,0 +1,7 @@
+"Chain Link Fence Pack (low poly, game ready)" by TampaJoey
+Source: https://sketchfab.com/3d-models/chain-link-fence-pack-low-poly-game-ready-777e50cd6e5d4db99d70bf7b20370f7a
+License: CC-BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
+
+Unlike the CC0 Kenney/Quaternius packs elsewhere in Assets/Art, this asset
+requires attribution. Credit "Chain Link Fence Pack by TampaJoey" (via
+Sketchfab) in the game's credits screen before shipping.

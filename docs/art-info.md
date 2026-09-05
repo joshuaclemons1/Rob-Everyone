@@ -70,21 +70,30 @@ colors mean.
 
 ## Sourced assets (imported)
 
-All CC0 (public domain — no attribution required, fully commercial-safe).
-Binaries route through Git LFS (`.gitattributes`, set up already) — if a
-pull brings down LFS pointer text instead of real files, run
-`git lfs install` once, then `git lfs pull`.
+Mostly CC0 (public domain — no attribution required, fully commercial-safe);
+one exception is called out below. Binaries route through Git LFS
+(`.gitattributes`, set up already) — if a pull brings down LFS pointer text
+instead of real files, run `git lfs install` once, then `git lfs pull`.
 
-| Pack | Use | In repo | Source |
-|---|---|---|---|
-| Kenney City Kit (Suburban) | House exteriors — the "reuse 2–3 shells" kit for the map's house ring | `Assets/Art/Environment/Kenney-CityKitSuburban/` | [kenney.nl/assets/city-kit-suburban](https://kenney.nl/assets/city-kit-suburban) |
-| Kenney Modular Buildings | Kitbash pieces for custom variants (e.g. a visually distinct "Good House") | `Assets/Art/Environment/Kenney-ModularBuildings/` | [kenney.nl/assets/modular-buildings](https://kenney.nl/assets/modular-buildings) |
-| Kenney City Kit (Roads) | Streets/sidewalks connecting the houses | `Assets/Art/Environment/Kenney-CityKitRoads/` | [kenney.nl/assets/city-kit-roads](https://kenney.nl/assets/city-kit-roads) |
-| Kenney City Kit (Commercial) | Police station / fenced compound | `Assets/Art/Environment/Kenney-CityKitCommercial/` | [kenney.nl/assets/city-kit-commercial](https://kenney.nl/assets/city-kit-commercial) |
-| Quaternius Ultimate Animated Character Pack | Homeowners, police, (later) player skins — 50+ animated low-poly characters, pick/reskin per role | `Assets/Art/Characters/Quaternius-UltimateAnimatedCharacterPack/` | [quaternius.com/packs/ultimatedanimatedcharacter.html](https://quaternius.com/packs/ultimatedanimatedcharacter.html) |
+| Pack | Use | In repo | Source | License |
+|---|---|---|---|---|
+| Kenney City Kit (Suburban) | House exteriors — the "reuse 2–3 shells" kit for the map's house ring | `Assets/Art/Environment/Kenney-CityKitSuburban/` | [kenney.nl/assets/city-kit-suburban](https://kenney.nl/assets/city-kit-suburban) | CC0 |
+| Kenney Modular Buildings | Kitbash pieces for custom variants (e.g. a visually distinct "Good House") | `Assets/Art/Environment/Kenney-ModularBuildings/` | [kenney.nl/assets/modular-buildings](https://kenney.nl/assets/modular-buildings) | CC0 |
+| Kenney City Kit (Roads) | Streets/sidewalks connecting the houses | `Assets/Art/Environment/Kenney-CityKitRoads/` | [kenney.nl/assets/city-kit-roads](https://kenney.nl/assets/city-kit-roads) | CC0 |
+| Kenney City Kit (Commercial) | Police station / fenced compound | `Assets/Art/Environment/Kenney-CityKitCommercial/` | [kenney.nl/assets/city-kit-commercial](https://kenney.nl/assets/city-kit-commercial) | CC0 |
+| Kenney City Kit (Industrial) | Police compound dressing (buildings/tanks/containers) — sourced looking for a better compound-fence read; **doesn't actually include fence/chain-link pieces**, still need those separately | `Assets/Art/Environment/Kenney-CityKitIndustrial/` | [kenney.nl/assets/city-kit-industrial](https://kenney.nl/assets/city-kit-industrial) | CC0 |
+| Kenney Car Kit | Parked cars for driveways now; road traffic later. Includes a `police.fbx` and `tractor-police.fbx` — worth a look for the compound too | `Assets/Art/Environment/Kenney-CarKit/` | [kenney.nl/assets/car-kit](https://kenney.nl/assets/car-kit) | CC0 |
+| Kenney Skyboxes | 5 panoramic (equirectangular, 4096×2048) sky textures — day/morning/night/alien/space — for the eventual time-of-day system (`art-info.md`'s Lighting section). Not wired up anywhere yet | `Assets/Art/Environment/Kenney-Skyboxes/` | [kenney.nl/assets/skyboxes](https://kenney.nl/assets/skyboxes) | CC0 |
+| Quaternius Ultimate Animated Character Pack | Homeowners, police, (later) player skins — 50+ animated low-poly characters, pick/reskin per role | `Assets/Art/Characters/Quaternius-UltimateAnimatedCharacterPack/` | [quaternius.com/packs/ultimatedanimatedcharacter.html](https://quaternius.com/packs/ultimatedanimatedcharacter.html) | CC0 |
+| "Jail" by Poly by Google | Police station jail cell — single low-poly cell model (flat-colored materials, no textures) | `Assets/Art/Environment/PolyByGoogle-Jail/` | [poly.pizza/m/bF8mr05ofaY](https://poly.pizza/m/bF8mr05ofaY) | **CC-BY 3.0 — needs credit in the eventual credits screen**, see the folder's `License.txt` |
+| Concrete030 (ambientCG) | Compound/parking-lot ground material — Color/Normal/Roughness/AO PBR set, 2K | `Assets/Art/Environment/Textures/Concrete030/` | [ambientcg.com/view?id=Concrete030](https://ambientcg.com/view?id=Concrete030) | CC0 |
+| Chain Link Fence Pack (TampaJoey) | Compound perimeter fence — replaces the CityKitSuburban picket fence that didn't read as a security boundary. Real modeled geometry (short wall, curb base, residential variant) with an optional barbed-wire attachment and signs. Superseded the Quaternius "Metal Fence" model (removed — its FBX was missing the alpha-cutout texture the mesh depends on for its chain-link holes, so it rendered as a solid gray plane instead) | `Assets/Art/Environment/TampaJoey-ChainLinkFence/` | [sketchfab.com — Chain Link Fence Pack](https://sketchfab.com/3d-models/chain-link-fence-pack-low-poly-game-ready-777e50cd6e5d4db99d70bf7b20370f7a) | **CC-BY 4.0 — needs credit in the eventual credits screen**, see the folder's `License.txt` |
 
-Only FBX + Textures were kept from each pack (each also ships redundant
-OBJ/glTF/Blend copies); each folder still has its `License.txt`.
+Only FBX + Textures were kept from each Kenney pack (each also ships
+redundant OBJ/glTF/Blend copies); each folder still has its `License.txt`.
+The Poly Pizza jail model only ships as OBJ (+ .mtl, no separate texture
+files — its materials are flat colors), kept under an `OBJ/` subfolder
+instead.
 
 None of these are placed in the scene yet — imported to the repo only.
 **That's the starting point for next session:** open Unity, let it
@@ -172,6 +181,9 @@ list) is locked enough that the work won't get thrown away.
     system, see gameplay-design.md's "Detection & AI behavior"), this is
     player-feedback flavor, not an AI-detectable signal.
   - Item pickup, player caught/jailed — as before.
+  - Car horn + a short driver "yelling at the player" line, on impact
+    (`CarDriver.cs`, Stage 3j traffic hazard) — fields already exist on
+    the component, just need clips dropped in.
 - **Ambient music states** — calm exploration loop and a tenser "you've
   been spotted" loop, **crossfading based on nearby Homeowner/Police alert
   state** (confirmed trigger, not just a concept) — the binary state

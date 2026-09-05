@@ -15,12 +15,13 @@ namespace RobEveryone.World
         [SerializeField] private List<Transform> normalSlots = new();
         [SerializeField] private List<Transform> goodSlots = new();
 
-        // Every house prefab is a 25x25 plot (Stage 3e) -- since actual
-        // houses only exist once Start() spawns them at Play time, this
-        // draws a same-size placeholder box at each slot in the Scene view
-        // at all times (not just when selected), so roads/fences/etc. can
-        // be placed against a visible footprint without needing Play mode.
-        [SerializeField] private Vector3 housePlotSize = new(25f, 4f, 25f);
+        // Every house prefab is a 40x40 plot (Stage 3e, updated from the
+        // original 25x25) -- since actual houses only exist once Start()
+        // spawns them at Play time, this draws a same-size placeholder box
+        // at each slot in the Scene view at all times (not just when
+        // selected), so roads/fences/etc. can be placed against a visible
+        // footprint without needing Play mode.
+        [SerializeField] private Vector3 housePlotSize = new(40f, 4f, 40f);
 
         private void Start()
         {
