@@ -690,13 +690,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 536fa3651dd31451098fb112cdd41a1a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.UI.CustomizationUI
-  skinPrefabs:
-  - {fileID: 919132149155446097, guid: a6bffe0ba8f2b46e79ea2ed67516f5f2, type: 3}
-  - {fileID: 919132149155446097, guid: 4db5639bae1f54e5fb6e0ec0a41ac3b0, type: 3}
-  - {fileID: 919132149155446097, guid: 6ae27894de3274d0b8472fe4b259c665, type: 3}
-  - {fileID: 919132149155446097, guid: 4807e189d627044658c4faa78921d3d7, type: 3}
-  - {fileID: 919132149155446097, guid: b30bd7ea3f74e440abedaad2fe0b6f18, type: 3}
-  - {fileID: 919132149155446097, guid: 7f1675cf6dcc2421685861439b4fca2f, type: 3}
+  skinRoster: {fileID: 11400000, guid: 3c1530e97fff4b7bb2052ea0582e939e, type: 2}
   palette: {fileID: 11400000, guid: 9937d1164956e40c293a381f5235a1ce, type: 2}
   previewSpawnPoint: {fileID: 1940232969}
   swatchContainer: {fileID: 1719695864}

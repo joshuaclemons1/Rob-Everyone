@@ -366,8 +366,15 @@ you actually want.
 
 Wire:
 
-- `Skin Prefabs` → a handful of skin `.fbx` files from
-  `Assets/Art/Characters/Quaternius-UltimateAnimatedCharacterPack/FBX/`
+- `Skin Roster` → a `PlayerSkinRoster` asset (Project window → right-click
+  → **Create → Rob Everyone → Player Skin Roster** if you haven't made one
+  yet) holding a handful of skin `.fbx`/prefabs from
+  `Assets/Art/Characters/Quaternius-UltimateAnimatedCharacterPack/FBX/` in
+  its own `Skin Prefabs` list. Pulled out into its own shared asset (was a
+  direct array on this component) so gameplay's `PlayerSkinSpawner` reads
+  the exact same list instead of keeping a second copy in sync by hand —
+  see [stage3j-traffic-hazard.md](stage3j-traffic-hazard.md)'s ragdoll
+  section for why.
 - `Palette` → your `PlayerColorPalette` asset (Project window → right-
   click → **Create → Rob Everyone → Player Color Palette** if you
   haven't made one yet)

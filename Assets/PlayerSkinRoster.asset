@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 357e5e4713754f0198ac48879b1498d1, type: 3}
+  m_Name: PlayerSkinRoster
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Customization.PlayerSkinRoster
+  skinPrefabs:
+  - {fileID: 919132149155446097, guid: a6bffe0ba8f2b46e79ea2ed67516f5f2, type: 3}
+  - {fileID: 919132149155446097, guid: 4db5639bae1f54e5fb6e0ec0a41ac3b0, type: 3}
+  - {fileID: 919132149155446097, guid: 6ae27894de3274d0b8472fe4b259c665, type: 3}
+  - {fileID: 919132149155446097, guid: 4807e189d627044658c4faa78921d3d7, type: 3}
+  - {fileID: 919132149155446097, guid: b30bd7ea3f74e440abedaad2fe0b6f18, type: 3}
+  - {fileID: 919132149155446097, guid: 7f1675cf6dcc2421685861439b4fca2f, type: 3}

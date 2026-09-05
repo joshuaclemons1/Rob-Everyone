@@ -58,10 +58,25 @@ Done so far:
   hills. Done, see [stage3i-skybox-skyline.md](stage3i-skybox-skyline.md).
 - **Stage 3j (in progress)** — traffic hazard: cars drive one lap of the
   road loop and knock the player down (pure knockback + stun, not a
-  round-ending catch). Scripts written (`CarDriver.cs`,
-  `CarSpawnManager.cs`, `CarImpactReceiver.cs`); Editor setup (car
-  prefabs, waypoint loop, spawn manager, player component) not done yet
-  — see [stage3j-traffic-hazard.md](stage3j-traffic-hazard.md).
+  round-ending catch) via a real per-limb ragdoll (Unity's Ragdoll
+  Wizard). Built for future multiplayer/character-selection compatibility
+  without adding any actual networking yet: the ragdoll shows whichever
+  skin `PlayerCosmeticSelection` (the existing main-menu system) has
+  picked (`PlayerSkinSpawner`, reading a new shared `PlayerSkinRoster`
+  asset that `CustomizationUI`'s menu preview also reads from now), and
+  is hidden from the owner's own camera via Culling Mask rather than
+  `SetActive` — so a future networked player can still be seen by others.
+  Scripts written (`CarDriver.cs`, `CarSpawnManager.cs`, `PlayerRagdoll.cs`,
+  `PlayerSkinSpawner.cs`, `RagdollHips.cs`); Editor setup (car prefabs,
+  waypoint loop, spawn manager, player components) in progress — see
+  [stage3j-traffic-hazard.md](stage3j-traffic-hazard.md). The 6 selectable
+  skins are raw FBX (not prefabs) sharing an identical rig, so rather than
+  running the Ragdoll Wizard by hand 6 times, `RagdollBatchTool.cs`
+  (`Assets/Scripts/Editor/`) builds it on one template skin (manual, via
+  the Wizard) and copies that setup — including remapping each joint's
+  bone-to-bone connections correctly, which plain copy-paste wouldn't —
+  onto the rest, auto-wrapping any FBX targets into real prefabs along
+  the way.
 
 Full walkthroughs: [stage3d-character-art.md](stage3d-character-art.md),
 [stage3e-house-prefabs.md](stage3e-house-prefabs.md),

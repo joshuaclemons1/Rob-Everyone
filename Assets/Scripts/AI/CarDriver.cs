@@ -23,7 +23,11 @@ namespace RobEveryone.AI
         [SerializeField] private AudioClip yellClip;
 
         [SerializeField] private float impactForce = 12f;
-        [SerializeField] private float impactUpwardBias = 2f;
+        // Small on purpose -- this used to dominate the shove direction
+        // (2) and made every hit look like it just popped the player
+        // straight up in place. It's only meant to help the knockdown
+        // topple, not compete with the actual horizontal shove.
+        [SerializeField] private float impactUpwardBias = 0.4f;
 
         private List<Transform> waypoints;
         private Transform originPoint;
@@ -102,11 +106,18 @@ namespace RobEveryone.AI
             if (hornClip != null) audioSource.PlayOneShot(hornClip);
             if (yellClip != null) audioSource.PlayOneShot(yellClip);
 
-            CarImpactReceiver receiver = player.GetComponentInParent<CarImpactReceiver>();
+            PlayerRagdoll receiver = player.GetComponentInParent<PlayerRagdoll>();
             if (receiver != null)
             {
-                Vector3 direction = (transform.forward + Vector3.up * impactUpwardBias).normalized;
-                receiver.ApplyImpact(direction, impactForce);
+                // Away from the car, not the car's own forward -- a
+                // side-swipe should shove the player sideways, not forward
+                // just because that's the way the car happens to be
+                // pointed. Flattened to horizontal so the upward bias below
+                // is the only thing controlling how much "pop" there is.
+                Vector3 toPlayer = receiver.transform.position - transform.position;
+                toPlayer.y = 0f;
+                Vector3 shoveDirection = (toPlayer.normalized + Vector3.up * impactUpwardBias).normalized;
+                receiver.ApplyImpact(shoveDirection, impactForce);
             }
         }
     }

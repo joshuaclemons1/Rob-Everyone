@@ -11,7 +11,7 @@ namespace RobEveryone.UI
     // instance that updates immediately on either change.
     public class CustomizationUI : MonoBehaviour
     {
-        [SerializeField] private GameObject[] skinPrefabs;
+        [SerializeField] private PlayerSkinRoster skinRoster;
         [SerializeField] private PlayerColorPalette palette;
         [SerializeField] private Transform previewSpawnPoint;
         [SerializeField] private Transform swatchContainer;
@@ -32,9 +32,9 @@ namespace RobEveryone.UI
 
         private void ChangeSkin(int delta)
         {
-            if (skinPrefabs.Length == 0) return;
+            if (skinRoster == null || skinRoster.Count == 0) return;
 
-            int next = (PlayerCosmeticSelection.SkinIndex + delta + skinPrefabs.Length) % skinPrefabs.Length;
+            int next = (PlayerCosmeticSelection.SkinIndex + delta + skinRoster.Count) % skinRoster.Count;
             PlayerCosmeticSelection.SkinIndex = next;
             Refresh();
         }
@@ -75,13 +75,14 @@ namespace RobEveryone.UI
 
         private void SpawnPreview()
         {
-            if (skinPrefabs.Length == 0 || previewSpawnPoint == null) return;
+            if (skinRoster == null || skinRoster.Count == 0 || previewSpawnPoint == null) return;
 
-            int skinIndex = Mathf.Clamp(PlayerCosmeticSelection.SkinIndex, 0, skinPrefabs.Length - 1);
+            GameObject skinPrefab = skinRoster.GetSkin(PlayerCosmeticSelection.SkinIndex);
+            if (skinPrefab == null) return;
 
             if (previewInstance != null) Destroy(previewInstance);
 
-            previewInstance = Instantiate(skinPrefabs[skinIndex], previewSpawnPoint.position, previewSpawnPoint.rotation, previewSpawnPoint);
+            previewInstance = Instantiate(skinPrefab, previewSpawnPoint.position, previewSpawnPoint.rotation, previewSpawnPoint);
             previewColorizer = previewInstance.GetComponent<PlayerColorizer>();
             if (previewColorizer == null) previewColorizer = previewInstance.AddComponent<PlayerColorizer>();
         }
