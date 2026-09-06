@@ -59,6 +59,13 @@ namespace RobEveryone.Player
         private Vector3[] restLocalPositions;
         private Quaternion[] restLocalRotations;
         private Rigidbody hipsRigidbody;
+        // Disabled for the duration of a stun and re-enabled afterward --
+        // PlayerAnimationDriver drives this the rest of the time, and a
+        // driven Animator fights ragdoll physics exactly like the old,
+        // permanently-on Animator used to (Animator.Update() overwriting a
+        // bone's physics-computed Transform every frame with wherever the
+        // locomotion clip says it should be).
+        private Animator animator;
         // Fixed direction+distance (rotated by the yaw at impact), not an
         // absolute position -- re-added to the target's *current* position
         // every frame in UpdateThirdPersonView, so the camera keeps a
@@ -99,6 +106,7 @@ namespace RobEveryone.Player
             }
 
             hipsRigidbody = hips.Rigidbody;
+            animator = skin.GetComponentInChildren<Animator>(true);
             ragdollBodies = skin.GetComponentsInChildren<Rigidbody>(true);
             restLocalPositions = new Vector3[ragdollBodies.Length];
             restLocalRotations = new Quaternion[ragdollBodies.Length];
@@ -110,6 +118,7 @@ namespace RobEveryone.Player
             }
 
             FindBridgeBones(skin.transform);
+            BuildHierarchyPatches(skin.transform, hipsRigidbody.transform);
             IgnoreSelfCollisions();
         }
 
@@ -203,18 +212,14 @@ namespace RobEveryone.Player
                 // would otherwise shift child's own computed world
                 // position too (world = parent * local), which then feeds
                 // back into next frame's Lerp target, compounding without
-                // bound. The exact same bug as Bone/Body reaching Hips,
-                // just one bone shorter -- found only after it kept
-                // launching the ragdoll off the map even with self
-                // collision disabled and the Bone/Body fix already in.
-                // Re-parenting child directly onto parent (world position
-                // preserved) removes bone from being anyone's ancestor,
-                // which makes driving it by script safe.
-                if (child.parent == bone)
-                {
-                    child.SetParent(parent, true);
-                }
-
+                // bound. The actual re-parenting that avoids this (moving
+                // child directly onto parent, bypassing bone) is handled
+                // by BuildHierarchyPatches/ApplyRagdollHierarchy instead of
+                // here, since it has to be temporary -- reversed the
+                // moment the ragdoll ends -- rather than permanent, or a
+                // future Generic-rig walk/run/jump animation clip
+                // targeting these bones by hierarchy path would silently
+                // fail to bind.
                 bones.Add(bone);
                 parents.Add(parent);
                 children.Add(child);
@@ -248,6 +253,155 @@ namespace RobEveryone.Player
             }
         }
 
+        // Bundles a single temporary re-parent: what bone moves, where it
+        // goes while ragdolling, and everything needed to put it back
+        // exactly where the FBX authored it (original parent plus its
+        // original local pose relative to that parent) once the ragdoll
+        // ends. This rig imports as Generic, not Humanoid (confirmed via
+        // the FBX import settings) -- Generic clips bind animation curves
+        // by exact hierarchy *path*, not by bone name or an avatar
+        // mapping, so any of this left permanently reparented (an earlier
+        // version of these fixes did exactly that) would silently break
+        // whichever future walk/run/jump clips target these bones by
+        // their original path.
+        private struct HierarchyPatch
+        {
+            public Transform bone;
+            public Transform ragdollParent;
+            public Transform originalParent;
+            public Vector3 originalLocalPosition;
+            public Quaternion originalLocalRotation;
+        }
+
+        // Applied in this exact order when the ragdoll starts, reversed
+        // in exact reverse order when it ends -- several of these steps
+        // only avoid creating a parent/child cycle *because* of what an
+        // earlier step already did (e.g. Body can't safely fold onto Hips
+        // until Hips has already been pulled out from under Body), so
+        // both directions have to walk the list in a specific order, not
+        // just "whichever bone happens to need fixing."
+        private HierarchyPatch[] hierarchyPatches;
+
+        private void BuildHierarchyPatches(Transform skinRoot, Transform hips)
+        {
+            var patches = new System.Collections.Generic.List<HierarchyPatch>();
+
+            void Patch(Transform bone, Transform ragdollParent)
+            {
+                if (bone == null || ragdollParent == null) return;
+                patches.Add(new HierarchyPatch
+                {
+                    bone = bone,
+                    ragdollParent = ragdollParent,
+                    originalParent = bone.parent,
+                    originalLocalPosition = bone.localPosition,
+                    originalLocalRotation = bone.localRotation,
+                });
+            }
+
+            // Foot.L/R and PoleTarget.L/R (an IK pole-target pair used to
+            // aim knee-bend direction) ship parented to the skeleton's
+            // static "Bone" group instead of the moving shin bone --
+            // without this, they sit frozen at the spawn point while the
+            // leg flies off, stretching the mesh between them.
+            Transform lowerLegL = FindDescendant(skinRoot, "LowerLeg.L");
+            Transform lowerLegR = FindDescendant(skinRoot, "LowerLeg.R");
+            Patch(FindDescendant(skinRoot, "Foot.L"), lowerLegL);
+            Patch(FindDescendant(skinRoot, "Foot.R"), lowerLegR);
+            Patch(FindDescendant(skinRoot, "PoleTarget.L"), lowerLegL);
+            Patch(FindDescendant(skinRoot, "PoleTarget.R"), lowerLegR);
+
+            // The skeleton's root "Bone"/"Body" group objects are Hips's
+            // ancestors, but are *also* directly skinned mesh bones --
+            // any vertices weighted to them stay frozen at the spawn
+            // point otherwise (neither has a Rigidbody, and neither is
+            // downstream of one). Hips (and whatever else Body was
+            // parenting, e.g. UpperLeg.L/R) has to come out from under
+            // Body first -- a non-kinematic Rigidbody doesn't care who
+            // its Transform parent is, so this is free -- before Body and
+            // Bone can safely fold onto Hips without creating a
+            // parent/child cycle (Body was Hips's ancestor to begin
+            // with).
+            Transform boneGroup = FindDescendant(skinRoot, "Bone");
+            Transform skeletonBody = boneGroup != null ? boneGroup.Find("Body") : null;
+            if (boneGroup != null && skeletonBody != null && hips.parent == skeletonBody)
+            {
+                Transform armature = boneGroup.parent;
+
+                for (int i = skeletonBody.childCount - 1; i >= 0; i--)
+                {
+                    Transform child = skeletonBody.GetChild(i);
+                    if (child == hips) continue;
+                    Patch(child, hips);
+                }
+
+                Patch(hips, armature);
+                Patch(skeletonBody, hips);
+                Patch(boneGroup, hips);
+            }
+
+            // Abdomen/Neck/Shoulder.L/R are passive bones sandwiched
+            // between two jointed bones with no physics of their own --
+            // UpdateBridgeBones drives them each frame so the mesh
+            // doesn't tear at the waist/neck/shoulder seam. That only
+            // works once Torso/Head/UpperArm.L/R are pulled out from
+            // being that passive bone's *descendant* first -- driving an
+            // ancestor's transform by script otherwise shifts its own
+            // child's computed world position too (world = parent *
+            // local), compounding into runaway drift every frame (this
+            // is what was launching the ragdoll off the map even at a
+            // tiny impact force).
+            foreach (var (boneName, parentName, childName) in BridgeBoneNames)
+            {
+                Transform bone = FindDescendant(skinRoot, boneName);
+                Transform parent = FindDescendant(skinRoot, parentName);
+                Transform child = FindDescendant(skinRoot, childName);
+                if (bone == null || parent == null || child == null) continue;
+                if (child.parent != bone) continue;
+
+                Patch(child, parent);
+            }
+
+            hierarchyPatches = patches.ToArray();
+        }
+
+        private void ApplyRagdollHierarchy()
+        {
+            if (hierarchyPatches == null) return;
+
+            for (int i = 0; i < hierarchyPatches.Length; i++)
+            {
+                hierarchyPatches[i].bone.SetParent(hierarchyPatches[i].ragdollParent, true);
+            }
+        }
+
+        // Must run before anything else in EndRagdoll reads a patched
+        // bone's rest pose (e.g. the ragdollBodies loop's localPosition
+        // reset) -- those values were captured relative to each bone's
+        // *original* parent, so the parent has to already be back in
+        // place before they're reapplied.
+        private void RestoreOriginalHierarchy()
+        {
+            if (hierarchyPatches == null) return;
+
+            for (int i = hierarchyPatches.Length - 1; i >= 0; i--)
+            {
+                HierarchyPatch patch = hierarchyPatches[i];
+                patch.bone.SetParent(patch.originalParent, false);
+                patch.bone.localPosition = patch.originalLocalPosition;
+                patch.bone.localRotation = patch.originalLocalRotation;
+            }
+        }
+
+        private static Transform FindDescendant(Transform root, string name)
+        {
+            foreach (Transform candidate in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (candidate.name == name) return candidate;
+            }
+            return null;
+        }
+
         public void ApplyImpact(Vector3 direction, float force)
         {
             if (isStunned || hipsRigidbody == null) return;
@@ -260,6 +414,7 @@ namespace RobEveryone.Player
 
             firstPersonController.enabled = false;
             characterController.enabled = false;
+            if (animator != null) animator.enabled = false;
 
             // Captured once, before the ragdoll starts moving -- keeps the
             // third-person camera's facing stable even though the hips
@@ -283,12 +438,19 @@ namespace RobEveryone.Player
 
             characterController.enabled = true;
             firstPersonController.enabled = true;
+            if (animator != null) animator.enabled = true;
 
             isStunned = false;
         }
 
         private void BeginRagdoll(Vector3 direction, float force)
         {
+            // Restructure the hierarchy first, while everything is still
+            // standing still and kinematic -- see BuildHierarchyPatches
+            // for why several bones need a different Transform parent
+            // while ragdolling than the FBX originally authored.
+            ApplyRagdollHierarchy();
+
             for (int i = 0; i < ragdollBodies.Length; i++)
             {
                 ragdollBodies[i].isKinematic = false;
@@ -316,6 +478,13 @@ namespace RobEveryone.Player
 
             // Re-level pitch/roll -- keep facing, just stand back up.
             transform.rotation = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
+
+            // Must happen after reading hipsRigidbody.position above (Hips
+            // is itself one of the patched bones -- restoring it snaps its
+            // local pose back to rest) and before the loops below, whose
+            // cached rest values are relative to each bone's *original*
+            // parent.
+            RestoreOriginalHierarchy();
 
             for (int i = 0; i < ragdollBodies.Length; i++)
             {
@@ -397,35 +566,6 @@ namespace RobEveryone.Player
             cameraTransform.localRotation = cameraOriginalLocalRotation;
 
             if (playerCamera != null) playerCamera.cullingMask = cameraOriginalCullingMask;
-        }
-
-        // TEMPORARY diagnostic -- draws the actual skeleton the mesh is
-        // skinned to (every bone in the SkinnedMeshRenderer's own bones[]
-        // array, connected to its real Transform.parent) directly in the
-        // Scene view. Pause mid-stretch and look at this overlay: if the
-        // drawn skeleton itself is scattered into the same stretched shape
-        // as the rendered mesh, the bones really are flying apart (a
-        // physics/joint problem). If the skeleton looks compact and normal
-        // while only the rendered mesh stretches, the bones are fine and
-        // this is a skinning/rendering-level bug instead. Safe to delete
-        // once the cause is found -- OnDrawGizmos only runs in the Editor.
-        private void OnDrawGizmos()
-        {
-            if (skinSpawner == null || skinSpawner.SkinInstance == null) return;
-
-            SkinnedMeshRenderer renderer = skinSpawner.SkinInstance.GetComponentInChildren<SkinnedMeshRenderer>(true);
-            if (renderer == null || renderer.bones == null) return;
-
-            Gizmos.color = Color.cyan;
-            foreach (Transform bone in renderer.bones)
-            {
-                if (bone == null) continue;
-                Gizmos.DrawWireSphere(bone.position, 0.03f);
-                if (bone.parent != null)
-                {
-                    Gizmos.DrawLine(bone.position, bone.parent.position);
-                }
-            }
         }
     }
 }

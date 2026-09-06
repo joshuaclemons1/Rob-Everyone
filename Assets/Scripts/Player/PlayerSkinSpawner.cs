@@ -17,6 +17,12 @@ namespace RobEveryone.Player
         [SerializeField] private PlayerSkinRoster skinRoster;
         [SerializeField] private PlayerColorPalette palette;
         [SerializeField] private LayerMask skinLayer;
+        // Shared across every skin -- only BaseCharacter.fbx actually has
+        // baked-in clips (Idle/Walk/Run/Jump/etc.), the other 51 are bare
+        // meshes on the *identical* Generic rig topology, so one
+        // Animator Controller referencing BaseCharacter's clips binds and
+        // plays correctly on any of them by hierarchy path.
+        [SerializeField] private RuntimeAnimatorController playerAnimatorController;
 
         public GameObject SkinInstance { get; private set; }
         // PlayerRagdoll needs this to toggle PlayerCamera's Culling Mask
@@ -47,8 +53,7 @@ namespace RobEveryone.Player
 
             SetLayerRecursively(SkinInstance.transform);
             WidenSkinnedMeshBounds(SkinInstance.transform);
-            DisableAnimator(SkinInstance.transform);
-            ReattachOrphanedBones(SkinInstance.transform);
+            ConfigureAnimator(SkinInstance.transform);
 
             PlayerColorizer colorizer = SkinInstance.GetComponent<PlayerColorizer>();
             if (colorizer == null) colorizer = SkinInstance.AddComponent<PlayerColorizer>();
@@ -82,126 +87,39 @@ namespace RobEveryone.Player
             }
         }
 
-        // This rig's Foot.L/Foot.R/PoleTarget.L/PoleTarget.R (an IK
-        // pole-target pair, used to aim knee-bend direction) ship as
-        // siblings of the actual skeleton root ("Body"), all hanging off a
-        // shared, never-moving "Bone" group object -- not as children of
-        // LowerLeg like a normal foot bone would be. None of them have a
-        // Rigidbody of their own, so nothing was ever moving them: during a
-        // ragdoll they just sat frozen exactly where they spawned while the
-        // physics-driven leg flew off, stretching the mesh between the
-        // frozen foot vertices and the flying shin. Re-parenting them under
-        // the matching LowerLeg bone (world position preserved) makes them
-        // inherit its motion the way any other passive child bone should.
-        // Confirmed via direct prefab inspection to be the same broken
-        // parenting on every skin in the pack, not a one-off.
-        private static void ReattachOrphanedBones(Transform skinRoot)
-        {
-            ReattachToLeg(skinRoot, "Foot.L", "LowerLeg.L");
-            ReattachToLeg(skinRoot, "Foot.R", "LowerLeg.R");
-            ReattachToLeg(skinRoot, "PoleTarget.L", "LowerLeg.L");
-            ReattachToLeg(skinRoot, "PoleTarget.R", "LowerLeg.R");
-            ReattachSkeletonRootToHips(skinRoot);
-        }
-
-        // "Bone" and its own child named "Body" (the skeleton root group --
-        // not the separate, top-level "Body" GameObject that holds the
-        // SkinnedMeshRenderer itself; the two just happen to share a name)
-        // sit *above* Hips in the hierarchy as its static, never-moving
-        // ancestors. The mesh is skinned directly to both of them, not just
-        // to Hips (confirmed via the SkinnedMeshRenderer's own bone list),
-        // so with neither having a Rigidbody, and neither downstream of
-        // one, any vertices weighted to them stayed frozen exactly at the
-        // spawn/impact point while everything hanging off Hips flew away,
-        // stretching the mesh all the way back to the stationary Player
-        // root.
-        //
-        // Driving Bone/Body's transform to chase Hips every frame (an
-        // earlier attempt at this fix) looked right but wasn't: Hips (and
-        // its Body-parented siblings, e.g. UpperLeg.L/R) are *children* of
-        // Body, so moving Body to Hips's current world position each frame
-        // doesn't just relocate Body -- it also shifts Hips's own computed
-        // world position by whatever Hips's local offset from Body happens
-        // to be (world = parent * local), and since that shifted position
-        // is what gets read back out next frame, the same offset gets
-        // added again on top of itself every single frame. That unbounded
-        // compounding drift is what was launching the ragdoll far outside
-        // the map even from a tiny impact force -- it was never about the
-        // force at all.
-        //
-        // The real fix has to break the ancestor relationship structurally,
-        // once, instead of fighting it every frame: pull Hips (and
-        // whatever else Body was parenting, e.g. UpperLeg.L/R) out from
-        // under Body entirely first -- a non-kinematic Rigidbody doesn't
-        // care who its Transform parent is, so this is free -- which
-        // leaves Body with nothing left underneath it, and only then is it
-        // safe to fold Body (and Bone above it) onto Hips like any other
-        // passive child bone, the same fix as Foot/PoleTarget just with
-        // this extra untangling step first.
-        private static void ReattachSkeletonRootToHips(Transform skinRoot)
-        {
-            Transform boneGroup = FindDescendant(skinRoot, "Bone");
-            Transform hips = FindDescendant(skinRoot, "Hips");
-            if (boneGroup == null || hips == null) return;
-
-            Transform skeletonBody = boneGroup.Find("Body");
-            if (skeletonBody == null || hips.parent != skeletonBody) return;
-
-            Transform armature = boneGroup.parent;
-
-            // Move every other child Body was parenting (e.g.
-            // UpperLeg.L/R) onto Hips first, so nothing gets orphaned once
-            // Body stops being their parent.
-            for (int i = skeletonBody.childCount - 1; i >= 0; i--)
-            {
-                Transform child = skeletonBody.GetChild(i);
-                if (child == hips) continue;
-                child.SetParent(hips, true);
-            }
-
-            // Detach Hips from Body onto Bone's own parent -- not onto
-            // Bone itself, which would just recreate the same
-            // ancestor-cycle problem one level up.
-            hips.SetParent(armature, true);
-
-            // Body and Bone now have no physics descendants left -- safe
-            // to fold them onto Hips like any other passive child bone.
-            skeletonBody.SetParent(hips, true);
-            boneGroup.SetParent(hips, true);
-        }
-
-        private static void ReattachToLeg(Transform skinRoot, string boneName, string newParentName)
-        {
-            Transform bone = FindDescendant(skinRoot, boneName);
-            Transform newParent = FindDescendant(skinRoot, newParentName);
-            if (bone == null || newParent == null || bone.parent == newParent) return;
-
-            bone.SetParent(newParent, true);
-        }
-
-        private static Transform FindDescendant(Transform root, string name)
-        {
-            foreach (Transform candidate in root.GetComponentsInChildren<Transform>(true))
-            {
-                if (candidate.name == name) return candidate;
-            }
-            return null;
-        }
-
-        // Quaternius FBX imports come with an Animator/Avatar for their
-        // built-in animation clips -- nothing in this project drives
-        // player-model animation yet, so left enabled it just fights the
-        // ragdoll: physics correctly moves/computes velocity on a bone, but
-        // Animator.Update() then overwrites that same Transform back to
-        // wherever its (unused) clip says it should be, every single
-        // frame. That's what was actually causing both the "no momentum"
-        // and the stretching -- physics was working the whole time, the
-        // rendered result just kept getting overwritten before it showed.
-        private static void DisableAnimator(Transform root)
+        // Quaternius FBX imports come with an Animator/Avatar of their own,
+        // but only pointed at whatever (if anything) that specific
+        // character's own prefab happened to have configured -- assigning
+        // the shared playerAnimatorController here means every skin plays
+        // the same Idle/Walk/Run/Jump state machine regardless of which of
+        // the 52 was picked, instead of needing it hand-configured 52
+        // times. Left enabled now that PlayerAnimationDriver actually
+        // drives it -- an earlier version of this project disabled the
+        // Animator entirely, back when nothing did, since a driverless
+        // Animator just fights ragdoll physics (Animator.Update()
+        // overwriting a bone's physics-computed Transform every frame).
+        // PlayerRagdoll disables this same component for the duration of
+        // a stun for exactly that reason.
+        private void ConfigureAnimator(Transform root)
         {
             foreach (Animator animator in root.GetComponentsInChildren<Animator>(true))
             {
-                animator.enabled = false;
+                if (playerAnimatorController != null) animator.runtimeAnimatorController = playerAnimatorController;
+
+                // Animator's default culling skips writing bone poses
+                // entirely once it decides nothing is rendering this
+                // Animator's mesh to any Camera -- and the owner's own
+                // Camera deliberately excludes this exact layer (that's
+                // the whole "you don't see your own body" mechanism), so
+                // with no other camera in the scene rendering it yet
+                // (multiplayer observers are Stage 4+), Unity would
+                // otherwise conclude this Animator is never visible and
+                // stop posing it -- the state machine keeps "running"
+                // regardless, which is why it can still show a state
+                // looping in the Animator window while every bone stays
+                // frozen at bind pose. AlwaysAnimate forces posing
+                // regardless of camera visibility.
+                animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
             }
         }
 

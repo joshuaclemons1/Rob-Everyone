@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -19,6 +20,11 @@ namespace RobEveryone.Player
         [SerializeField] private float gravity = -9.81f;
         [SerializeField] private float jumpHeight = 1.2f;
         [SerializeField, Range(0.3f, 1f)] private float crouchHeightRatio = 0.55f;
+        // See DelayedLaunch's own comment -- CharacterController.isGrounded
+        // lags a frame or more behind an actual launch, so IsJumpPending
+        // needs to stay true a little past the real jump for the Animator
+        // lie to hold through that gap.
+        [SerializeField] private float groundedLiePadding = 0.15f;
 
         [SerializeField] private float groundAcceleration = 60f;
 
@@ -44,6 +50,49 @@ namespace RobEveryone.Player
 
         public bool IsSprinting { get; private set; }
         public bool IsCrouching { get; private set; }
+        // Horizontal-only, matching what the animator cares about (a
+        // straight-up jump shouldn't blend into a run just because
+        // verticalVelocity is large) -- PlayerAnimationDriver reads this
+        // each frame to blend Idle/Walk/Run.
+        public float HorizontalSpeed => horizontalVelocity.magnitude;
+        public bool IsGrounded => controller.isGrounded;
+        // True from the moment a jump is triggered until the real launch
+        // velocity actually applies (see jumpPending below) --
+        // PlayerAnimationDriver reports Grounded as false to the Animator
+        // for this whole window, even though the character is physically
+        // still touching the ground during the anticipation squat.
+        // Without that, the Jump state's own Grounded-gated exit
+        // transitions (back to Idle/Walk/Run) fire immediately during the
+        // squat itself, since nothing else distinguishes "still
+        // squatting, haven't left yet" from "already landed" -- both are
+        // genuinely Grounded=true.
+        public bool IsJumpPending => jumpPending;
+        // Time from launch to the peak of the arc (v=0), assuming flat
+        // ground -- PlayerAnimationDriver doubles this for the full
+        // up-then-down cycle length, to rescale the Jump clip's playback
+        // speed so its authored poses land at the same point in the real
+        // physics arc regardless of how jumpHeight/gravity are tuned,
+        // instead of playing at a fixed 1x speed that only happens to
+        // match one specific set of values.
+        public float JumpApexTime => Mathf.Sqrt(jumpHeight * -2f * gravity) / -gravity;
+        // Fired the instant a jump is triggered, not polled -- a jump is a
+        // single-frame event (the space press), not a state, so a bool
+        // property would need its own separate "have I already told the
+        // animator about this jump" bookkeeping. PlayerAnimationDriver just
+        // subscribes and fires the Jump trigger straight from this.
+        public event System.Action Jumped;
+
+        // True once Jumped has fired for the current press and until the
+        // actual upward velocity has been applied -- guards against a
+        // second space press mid-anticipation (see ScheduleJumpLaunch)
+        // re-triggering an overlapping jump before the first one has even
+        // left the ground.
+        private bool jumpPending;
+        // Set by ScheduleJumpLaunch during the *same* Jumped dispatch it
+        // was called from -- if nothing sets it (e.g. no
+        // PlayerAnimationDriver is attached), HandleMove falls back to
+        // launching immediately, so jumping still works standalone.
+        private bool jumpScheduled;
 
         private void Awake()
         {
@@ -99,6 +148,57 @@ namespace RobEveryone.Player
             cameraTransform.localPosition = camPos;
         }
 
+        // Called by PlayerAnimationDriver, synchronously from within its
+        // own Jumped handler, once it knows how long the jump clip's
+        // anticipation/squat portion will actually take to play at
+        // whatever speed it's using -- keeps the character's feet on the
+        // ground until that finishes, instead of leaving the ground on
+        // the very first frame while the animation is still mid-squat.
+        // Always routes through the coroutine (even for delay <= 0) so
+        // the post-launch grounded-lie padding below applies uniformly
+        // regardless of whether a delay was actually needed.
+        public void ScheduleJumpLaunch(float delay)
+        {
+            jumpScheduled = true;
+            StartCoroutine(DelayedLaunch(delay));
+        }
+
+        private IEnumerator DelayedLaunch(float delay)
+        {
+            if (delay > 0f) yield return new WaitForSeconds(delay);
+
+            // A car impact mid-anticipation disables this component for
+            // the ragdoll stun -- the coroutine itself keeps running
+            // regardless (Unity doesn't pause coroutines just because
+            // their component is disabled), so without this check a
+            // pending jump would silently apply a stale launch velocity
+            // the moment the player regains control after the stun ends.
+            // jumpPending still has to be cleared here even though the
+            // launch itself is being skipped -- otherwise it stays stuck
+            // true forever, and PlayerAnimationDriver reports
+            // Grounded=false to the Animator permanently from then on.
+            if (!enabled)
+            {
+                jumpPending = false;
+                yield break;
+            }
+
+            verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+
+            // CharacterController.isGrounded only updates on the *next*
+            // Move() call -- for at least a frame after the line above,
+            // sometimes more depending on exactly how this coroutine's
+            // resumption lines up against HandleMove's own Update, it can
+            // still report stale "grounded" data even though the launch
+            // velocity has already been applied. Keep lying about
+            // Grounded for a short cushion past the real launch so the
+            // Jump state's exit transitions can't fire on that stale
+            // read, same bug as the squat itself just shifted later.
+            if (groundedLiePadding > 0f) yield return new WaitForSeconds(groundedLiePadding);
+
+            jumpPending = false;
+        }
+
         private void HandleMove()
         {
             if (Keyboard.current == null) return;
@@ -123,9 +223,17 @@ namespace RobEveryone.Player
                 Vector3 targetVelocity = wishDir * targetSpeed;
                 horizontalVelocity = Vector3.MoveTowards(horizontalVelocity, targetVelocity, groundAcceleration * Time.deltaTime);
 
-                if (Keyboard.current.spaceKey.wasPressedThisFrame)
+                if (!jumpPending && Keyboard.current.spaceKey.wasPressedThisFrame)
                 {
-                    verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+                    jumpPending = true;
+                    jumpScheduled = false;
+                    Jumped?.Invoke();
+
+                    // No listener scheduled a delayed launch (e.g. no
+                    // PlayerAnimationDriver is attached to sync it against
+                    // an anticipation animation) -- jump immediately
+                    // rather than silently doing nothing.
+                    if (!jumpScheduled) ScheduleJumpLaunch(0f);
                 }
             }
             else
