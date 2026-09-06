@@ -69,14 +69,33 @@ Done so far:
   Scripts written (`CarDriver.cs`, `CarSpawnManager.cs`, `PlayerRagdoll.cs`,
   `PlayerSkinSpawner.cs`, `RagdollHips.cs`); Editor setup (car prefabs,
   waypoint loop, spawn manager, player components) in progress — see
-  [stage3j-traffic-hazard.md](stage3j-traffic-hazard.md). The 6 selectable
-  skins are raw FBX (not prefabs) sharing an identical rig, so rather than
-  running the Ragdoll Wizard by hand 6 times, `RagdollBatchTool.cs`
+  [stage3j-traffic-hazard.md](stage3j-traffic-hazard.md). `PlayerSkinRoster`
+  now covers **all 52 files** in `Quaternius-UltimateAnimatedCharacterPack`
+  (a few looked like accessory props/non-humanoid animals at a glance,
+  but share the same rig and ragdoll fine, so nothing was excluded). All
+  52 are raw FBX (not prefabs) sharing an identical rig, so rather than
+  running the Ragdoll Wizard by hand 52 times, `RagdollBatchTool.cs`
   (`Assets/Scripts/Editor/`) builds it on one template skin (manual, via
   the Wizard) and copies that setup — including remapping each joint's
   bone-to-bone connections correctly, which plain copy-paste wouldn't —
   onto the rest, auto-wrapping any FBX targets into real prefabs along
-  the way.
+  the way. Template built manually on the `BaseCharacter` skin — 11
+  bones (pelvis, spine, head, 2 thighs, 2 shins, 2 upper arms, 2
+  forearms), which is the Ragdoll Wizard's actual complete output, not a
+  gap (feet/elbows are sizing references for the shin/forearm, not
+  separate bodies — this was briefly misdiagnosed as broken, it isn't).
+  The tool grew a **Force** option (redo an already-processed target) and
+  a selection-order fix (explicit drag-in Template field, was
+  `Selection.activeGameObject`) along the way regardless. **Done:** all 52
+  skins batch-copied and organized into
+  `Assets/Prefabs/PlayerSkins/_Ragdoll/`; `PlayerSkinRoster` updated to
+  point at all 52 (the `BaseCharacter` entry points at the original
+  hand-built template, not the redundant `BaseCharacter_Ragdoll.prefab`
+  the batch tool also produced — that duplicate is harmless, delete
+  whenever). Remaining: actually playtest a handful of the 52 (not just
+  one) before trusting the batch results, and eventually wire the
+  character-selection UI to something other than the placeholder
+  first-skin default.
 
 Full walkthroughs: [stage3d-character-art.md](stage3d-character-art.md),
 [stage3e-house-prefabs.md](stage3e-house-prefabs.md),

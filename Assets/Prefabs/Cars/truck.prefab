@@ -619,10 +619,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 501026b88af32fb40a6a11e8f6887ecc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.AI.CarDriver
-  moveSpeed: 8
+  moveSpeed: 10
   turnSpeed: 120
   waypointArrivalDistance: 1.5
   hornClip: {fileID: 0}
   yellClip: {fileID: 0}
-  impactForce: 12
-  impactUpwardBias: 2
+  impactForce: 500
+  impactUpwardBias: 0.7

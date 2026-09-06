@@ -22,12 +22,15 @@ namespace RobEveryone.Player
     // moment you're supposed to see your own ragdoll would be the one
     // moment the camera is still hiding it.
     //
-    // The camera detaches for the stun and holds a fixed-angle third-person
-    // view tracking the ragdoll's hips (found via the RagdollHips marker,
-    // not a hardcoded bone name, since the 6 selectable skins don't
-    // necessarily share bone names) -- the angle itself is locked to the
-    // yaw captured *at the moment of impact*, not updated live, so the
-    // physics can't spin the camera around.
+    // The camera detaches for the stun and follows the ragdoll's hips
+    // (found via the RagdollHips marker, not a hardcoded bone name, since
+    // the selectable skins don't necessarily share bone names) with a
+    // damped lag rather than instant tracking -- a perfectly-centering
+    // camera cancels out any visible sign of real travel, since the
+    // character stays glued to the same spot in frame while the camera
+    // does all the moving with it. The facing/offset direction itself is
+    // locked to the yaw captured *at the moment of impact*, not updated
+    // live, so the physics can't spin the camera around.
     [RequireComponent(typeof(FirstPersonController))]
     [RequireComponent(typeof(CharacterController))]
     [RequireComponent(typeof(PlayerSkinSpawner))]
@@ -39,6 +42,12 @@ namespace RobEveryone.Player
         [SerializeField] private Transform cameraTransform;
         [SerializeField] private Vector3 thirdPersonOffset = new(0f, 2.5f, -5f);
         [SerializeField] private float lookAtHeightOffset = 0.5f;
+        // How quickly the camera catches up to the character -- lower
+        // reads as more "static" (real travel stays clearly visible,
+        // camera feels detached), higher reads as more "locked on" (feels
+        // alive/dynamic, but starts canceling out visible travel the
+        // closer it gets to instant). This is deliberately not instant.
+        [SerializeField] private float cameraFollowSpeed = 3f;
 
         private FirstPersonController firstPersonController;
         private CharacterController characterController;
@@ -50,6 +59,11 @@ namespace RobEveryone.Player
         private Vector3[] restLocalPositions;
         private Quaternion[] restLocalRotations;
         private Rigidbody hipsRigidbody;
+        // Fixed direction+distance (rotated by the yaw at impact), not an
+        // absolute position -- re-added to the target's *current* position
+        // every frame in UpdateThirdPersonView, so the camera keeps a
+        // stable facing/distance while still following.
+        private Vector3 fixedCameraOffset;
 
         private Transform cameraOriginalParent;
         private Vector3 cameraOriginalLocalPosition;
@@ -94,6 +108,144 @@ namespace RobEveryone.Player
                 restLocalRotations[i] = ragdollBodies[i].transform.localRotation;
                 ragdollBodies[i].isKinematic = true;
             }
+
+            FindBridgeBones(skin.transform);
+            IgnoreSelfCollisions();
+        }
+
+        // CharacterJoint.enableCollision (false by default, and never set
+        // otherwise here) only suppresses collision between two bones that
+        // are *directly* jointed to each other -- it does nothing for
+        // non-adjacent pairs, e.g. the left arm swinging into the torso, or
+        // into the right arm. Under a hard impact, limbs flailing within
+        // even normal joint limits can still intersect each other's
+        // capsule colliders, and each overlap triggers a depenetration
+        // push -- repeated every physics step, that compounds into
+        // exactly the kind of escalating, coherent "spaz then launch"
+        // motion this was producing, without ever showing individual
+        // joints tearing apart from each other. Self-collision between a
+        // single ragdoll's own body parts is essentially never wanted
+        // anyway, so this is switched off unconditionally rather than
+        // trying to selectively fix collider sizes per skin.
+        private void IgnoreSelfCollisions()
+        {
+            Collider[] colliders = new Collider[ragdollBodies.Length];
+            for (int i = 0; i < ragdollBodies.Length; i++)
+            {
+                colliders[i] = ragdollBodies[i].GetComponent<Collider>();
+            }
+
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                if (colliders[i] == null) continue;
+                for (int j = i + 1; j < colliders.Length; j++)
+                {
+                    if (colliders[j] == null) continue;
+                    Physics.IgnoreCollision(colliders[i], colliders[j], true);
+                }
+            }
+        }
+
+        // This rig's skeleton alternates physics bones with plain
+        // pass-through bones at every joint -- Hips(RB) -> Abdomen(no RB) ->
+        // Torso(RB), Torso(RB) -> Neck(no RB) -> Head(RB), and likewise
+        // Torso -> Shoulder.L/R (no RB) -> UpperArm.L/R (RB). The Ragdoll
+        // Wizard only gives physics to Hips/Spine/Head/limbs, so these
+        // "helper" bones have no Rigidbody of their own -- they just stay
+        // rigidly glued to their *parent's* orientation forever, while the
+        // joint-driven bone on their other side swings independently under
+        // impact. Since both are skinned to the same mesh region (the
+        // waist/neck/shoulder seam), a hard hit can swing one side far from
+        // the other, stretching the mesh between them. There's no
+        // Rigidbody/joint to fix here -- these bones need to be driven by
+        // script instead, each frame, to sit between their two physics
+        // neighbors rather than rigidly following only one of them.
+        private static readonly (string bone, string parent, string child)[] BridgeBoneNames =
+        {
+            ("Abdomen", "Hips", "Torso"),
+            ("Neck", "Torso", "Head"),
+            ("Shoulder.L", "Torso", "UpperArm.L"),
+            ("Shoulder.R", "Torso", "UpperArm.R"),
+        };
+
+        private Transform[] bridgeBones;
+        private Transform[] bridgeParents;
+        private Transform[] bridgeChildren;
+        private Vector3[] bridgeRestLocalPositions;
+        private Quaternion[] bridgeRestLocalRotations;
+
+        private void FindBridgeBones(Transform skinRoot)
+        {
+            Transform[] allTransforms = skinRoot.GetComponentsInChildren<Transform>(true);
+            Transform Find(string name)
+            {
+                foreach (Transform t in allTransforms)
+                {
+                    if (t.name == name) return t;
+                }
+                return null;
+            }
+
+            var bones = new System.Collections.Generic.List<Transform>();
+            var parents = new System.Collections.Generic.List<Transform>();
+            var children = new System.Collections.Generic.List<Transform>();
+
+            foreach (var (boneName, parentName, childName) in BridgeBoneNames)
+            {
+                Transform bone = Find(boneName);
+                Transform parent = Find(parentName);
+                Transform child = Find(childName);
+                if (bone == null || parent == null || child == null) continue;
+
+                // "bone" (e.g. Abdomen) is the Transform *ancestor* of
+                // "child" (e.g. Torso) here, not just a nearby sibling --
+                // driving bone's position/rotation by script every frame
+                // would otherwise shift child's own computed world
+                // position too (world = parent * local), which then feeds
+                // back into next frame's Lerp target, compounding without
+                // bound. The exact same bug as Bone/Body reaching Hips,
+                // just one bone shorter -- found only after it kept
+                // launching the ragdoll off the map even with self
+                // collision disabled and the Bone/Body fix already in.
+                // Re-parenting child directly onto parent (world position
+                // preserved) removes bone from being anyone's ancestor,
+                // which makes driving it by script safe.
+                if (child.parent == bone)
+                {
+                    child.SetParent(parent, true);
+                }
+
+                bones.Add(bone);
+                parents.Add(parent);
+                children.Add(child);
+            }
+
+            bridgeBones = bones.ToArray();
+            bridgeParents = parents.ToArray();
+            bridgeChildren = children.ToArray();
+            bridgeRestLocalPositions = new Vector3[bridgeBones.Length];
+            bridgeRestLocalRotations = new Quaternion[bridgeBones.Length];
+            for (int i = 0; i < bridgeBones.Length; i++)
+            {
+                bridgeRestLocalPositions[i] = bridgeBones[i].localPosition;
+                bridgeRestLocalRotations[i] = bridgeBones[i].localRotation;
+            }
+        }
+
+        // Called every frame during the stun -- see FindBridgeBones for why
+        // these specific bones need to be manually placed rather than left
+        // to physics or normal Transform parenting.
+        private void UpdateBridgeBones()
+        {
+            if (bridgeBones == null) return;
+
+            for (int i = 0; i < bridgeBones.Length; i++)
+            {
+                if (bridgeBones[i] == null) continue;
+
+                bridgeBones[i].position = Vector3.Lerp(bridgeParents[i].position, bridgeChildren[i].position, 0.5f);
+                bridgeBones[i].rotation = Quaternion.Slerp(bridgeParents[i].rotation, bridgeChildren[i].rotation, 0.5f);
+            }
         }
 
         public void ApplyImpact(Vector3 direction, float force)
@@ -115,12 +267,13 @@ namespace RobEveryone.Player
             Quaternion rigYaw = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
 
             BeginRagdoll(direction, force);
-            BeginThirdPersonView();
+            BeginThirdPersonView(rigYaw);
 
             float elapsed = 0f;
             while (elapsed < stunDuration)
             {
-                UpdateThirdPersonView(rigYaw);
+                UpdateThirdPersonView();
+                UpdateBridgeBones();
                 elapsed += Time.deltaTime;
                 yield return null;
             }
@@ -172,9 +325,19 @@ namespace RobEveryone.Player
                 ragdollBodies[i].transform.localRotation = restLocalRotations[i];
                 ragdollBodies[i].isKinematic = true;
             }
+
+            if (bridgeBones != null)
+            {
+                for (int i = 0; i < bridgeBones.Length; i++)
+                {
+                    if (bridgeBones[i] == null) continue;
+                    bridgeBones[i].localPosition = bridgeRestLocalPositions[i];
+                    bridgeBones[i].localRotation = bridgeRestLocalRotations[i];
+                }
+            }
         }
 
-        private void BeginThirdPersonView()
+        private void BeginThirdPersonView(Quaternion rigYaw)
         {
             if (cameraTransform == null) return;
 
@@ -182,7 +345,17 @@ namespace RobEveryone.Player
             cameraOriginalLocalPosition = cameraTransform.localPosition;
             cameraOriginalLocalRotation = cameraTransform.localRotation;
 
+            // Rotated once, at the moment of impact -- kept fixed for the
+            // whole stun so the camera holds a stable facing/distance
+            // rather than re-orbiting as the ragdoll tumbles and rotates.
+            fixedCameraOffset = rigYaw * thirdPersonOffset;
+
             cameraTransform.SetParent(null, true);
+
+            // Start exactly at the ideal framing (no lerp yet) -- the
+            // follow-lag in UpdateThirdPersonView only needs to kick in
+            // once the target actually starts moving away from here.
+            cameraTransform.position = hipsRigidbody.position + fixedCameraOffset;
 
             // Turn the skin layer back ON for this camera, just for the
             // cutaway -- otherwise the same Culling Mask that hides your
@@ -195,17 +368,24 @@ namespace RobEveryone.Player
             }
         }
 
-        private void UpdateThirdPersonView(Quaternion rigYaw)
+        private void UpdateThirdPersonView()
         {
             if (cameraTransform == null) return;
 
-            Vector3 trackedPosition = hipsRigidbody.position;
+            // Chases the target's current offset position, but with
+            // exponential lag (not a perfect every-frame snap) -- an
+            // instant-tracking camera cancels out any visible sign of real
+            // travel, since the character stays glued to the same spot in
+            // frame while the camera does all the moving with it. Lagging
+            // behind means the camera still visibly follows (doesn't feel
+            // static), but the character can be seen actually pulling away
+            // from/across frame as it travels, rather than staying frozen
+            // in the same spot on screen the whole time.
+            Vector3 desiredPosition = hipsRigidbody.position + fixedCameraOffset;
+            cameraTransform.position = Vector3.Lerp(cameraTransform.position, desiredPosition, cameraFollowSpeed * Time.deltaTime);
 
-            Vector3 desiredPosition = trackedPosition + rigYaw * thirdPersonOffset;
-            cameraTransform.position = desiredPosition;
-
-            Vector3 lookTarget = trackedPosition + Vector3.up * lookAtHeightOffset;
-            cameraTransform.rotation = Quaternion.LookRotation((lookTarget - desiredPosition).normalized, Vector3.up);
+            Vector3 lookTarget = hipsRigidbody.position + Vector3.up * lookAtHeightOffset;
+            cameraTransform.rotation = Quaternion.LookRotation((lookTarget - cameraTransform.position).normalized, Vector3.up);
         }
 
         private void EndThirdPersonView()
@@ -217,6 +397,35 @@ namespace RobEveryone.Player
             cameraTransform.localRotation = cameraOriginalLocalRotation;
 
             if (playerCamera != null) playerCamera.cullingMask = cameraOriginalCullingMask;
+        }
+
+        // TEMPORARY diagnostic -- draws the actual skeleton the mesh is
+        // skinned to (every bone in the SkinnedMeshRenderer's own bones[]
+        // array, connected to its real Transform.parent) directly in the
+        // Scene view. Pause mid-stretch and look at this overlay: if the
+        // drawn skeleton itself is scattered into the same stretched shape
+        // as the rendered mesh, the bones really are flying apart (a
+        // physics/joint problem). If the skeleton looks compact and normal
+        // while only the rendered mesh stretches, the bones are fine and
+        // this is a skinning/rendering-level bug instead. Safe to delete
+        // once the cause is found -- OnDrawGizmos only runs in the Editor.
+        private void OnDrawGizmos()
+        {
+            if (skinSpawner == null || skinSpawner.SkinInstance == null) return;
+
+            SkinnedMeshRenderer renderer = skinSpawner.SkinInstance.GetComponentInChildren<SkinnedMeshRenderer>(true);
+            if (renderer == null || renderer.bones == null) return;
+
+            Gizmos.color = Color.cyan;
+            foreach (Transform bone in renderer.bones)
+            {
+                if (bone == null) continue;
+                Gizmos.DrawWireSphere(bone.position, 0.03f);
+                if (bone.parent != null)
+                {
+                    Gizmos.DrawLine(bone.position, bone.parent.position);
+                }
+            }
         }
     }
 }

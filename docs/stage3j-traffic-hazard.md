@@ -129,13 +129,20 @@ all share identical bone names.
 
 ### 4b. Build the ragdoll once, then batch-copy it to the rest
 
-The 6 skins are currently raw `.fbx` assets, not prefabs — Unity's Ragdoll
+`PlayerSkinRoster` now covers **all 52 files** in
+`Quaternius-UltimateAnimatedCharacterPack/FBX/`, `BaseCharacter` included
+— even `Chef_Hat`/`Cowboy_Hair`/`Ninja_Male_Hair`/`VikingHelmet`
+(originally assumed to be accessory props, not standalone characters) and
+`Cow`/`Pug` (assumed non-humanoid) turned out to share the same rig and
+ragdoll correctly, so there was no real reason to exclude them.
+
+All 52 are currently raw `.fbx` assets, not prefabs — Unity's Ragdoll
 Wizard can't add components directly to an FBX (it's a read-only "Model"
-prefab; anything added would vanish on the next reimport). And since all
-6 share the same rig, doing the Wizard's manual bone-assignment 6 times
-over would just be repeating identical work — so there's a batch tool
-(`Assets/Scripts/Editor/RagdollBatchTool.cs`) that builds the rest from
-one done-by-hand template.
+prefab; anything added would vanish on the next reimport). And since they
+all share the same rig, doing the Wizard's manual bone-assignment 52
+times over would just be repeating identical work — so there's a batch
+tool (`Assets/Scripts/Editor/RagdollBatchTool.cs`) that builds the rest
+from one done-by-hand template.
 
 **Step 1 — wrap the template skin as a real prefab, then ragdoll it by
 hand** (the *only* one you do manually):
@@ -145,11 +152,36 @@ hand** (the *only* one you do manually):
    `Assets/Prefabs/PlayerSkins/`) to save it as a proper `.prefab`. Delete
    the scene instance afterward.
 2. Double-click that new prefab to open it in **Prefab Edit Mode**.
-   Expand its bone hierarchy (Hips/Pelvis, Spine, Head, limbs).
-3. Menu: **GameObject → 3D Object → Ragdoll...** Assign each slot (Pelvis,
-   Left/Right Hips, Knee, Foot, Arm, Elbow, Middle Spine, Head) by
-   dragging the matching bone Transform in. Leave **Total Mass**/
-   **Strength** at defaults. Click **Create**.
+   Expand its bone hierarchy — it's
+   `Hips → Abdomen → Torso → Neck → Head`, with `Shoulder.L/.R` branching
+   off `Torso` into the arms, and the legs hanging directly off `Hips`.
+3. Menu: **GameObject → 3D Object → Ragdoll...** Assign each slot using
+   this rig's actual bone names:
+
+   | Wizard slot | Bone |
+   |---|---|
+   | Pelvis | `Hips` |
+   | Left Hips | `UpperLeg.L` |
+   | Left Knee | `LowerLeg.L` |
+   | Left Foot | `Foot.L` |
+   | Right Hips | `UpperLeg.R` |
+   | Right Knee | `LowerLeg.R` |
+   | Right Foot | `Foot.R` |
+   | Left Arm | `UpperArm.L` |
+   | Left Elbow | `LowerArm.L` |
+   | Right Arm | `UpperArm.R` |
+   | Right Elbow | `LowerArm.R` |
+   | Middle Spine | `Torso` |
+   | Head | `Head` |
+
+   Leave everything else alone — `Abdomen` (the wizard only takes one
+   spine bone, so it just passively follows `Hips`/`Torso`), `Fist.L`/
+   `Fist.R` (hands — the basic wizard doesn't ragdoll hands separately,
+   they'll just follow `LowerArm.L`/`.R` rigidly, which is normal),
+   `PoleTarget.L`/`.R` (IK helper bones, not real body parts — don't
+   assign these anywhere), and every bone ending in `_end` (tip/length
+   markers, not real bones) all get skipped entirely. Leave **Total
+   Mass**/**Strength** at defaults. Click **Create**.
 4. Select every bone the wizard just added a **Rigidbody** to and check
    **Is Kinematic** on each — this has to be the prefab's baked default,
    otherwise the *menu preview* of this same prefab would immediately
@@ -158,23 +190,68 @@ hand** (the *only* one you do manually):
    (`Assets/Scripts/Player/RagdollHips.cs`).
 6. Exit Prefab Edit Mode and save. This one is now the **template**.
 
-**Step 2 — batch-copy it onto the other 5:**
+**Step 2 — batch-copy it onto the other 51:**
 
-1. In the Project window, select the other 5 skin FBX files (they can
-   stay as raw FBX — the tool wraps them into prefabs automatically),
-   then **ctrl/cmd-click the template prefab last**, so it's the active
-   (highlighted) selection.
-2. Menu: **Assets → Rob Everyone → Copy Ragdoll To Selected Skins**.
-3. Check the Console. For each of the 5, it logs either the new wrapped
-   prefab path it created, or a warning naming exactly which bone it
-   couldn't match — it never fails silently.
-4. For any that got auto-wrapped into a new prefab, update
-   `PlayerSkinRoster`'s list to point at that new prefab instead of the
-   original FBX (the tool doesn't touch the roster itself).
-5. **Actually test each one** — select it, check its bones got a
+Since all 52 are meant to be playable eventually, do all of them now
+rather than validating with just one or two first.
+
+**Note on bone count:** the Ragdoll Wizard's standard output is **11
+bodies** — Hips (pelvis), Torso (spine), Head, `UpperLeg.L`/`.R`,
+`LowerLeg.L`/`.R`, `UpperArm.L`/`.R`, `LowerArm.L`/`.R`. Feet and elbows
+are wizard *slots* used to size/orient the shin and forearm capsules —
+they don't get a separate physics body of their own, the same way there's
+no independent "hand" piece either. If you filled in all 13 slots in the
+dialog (including Left/Right Foot) and the result still shows 11 bones
+with no separate foot entry, that's correct, complete output, not a bug —
+don't chase this further.
+
+**What did go wrong** (already fixed): the tool used to infer the
+template from "whichever object you clicked last"
+(`Selection.activeGameObject`) — too fragile once the template prefab
+lives in a different folder than the targets, since switching folders
+vs. clicking in the content list changes what Unity considers "active"
+in ways that are easy to get wrong. The tool is now a window with an
+explicit drag-in slot for the template instead.
+
+1. Menu: **Assets → Rob Everyone → Ragdoll Batch Tool**. This opens a
+   window — leave it open alongside the Project window.
+2. Drag your template prefab (`Assets/Prefabs/PlayerSkins/BaseCharacter.prefab`)
+   into the window's **Template** field. The **Template bones with
+   Rigidbody** list should read 11 — that's the correct, complete count
+   per the note above, not a shortfall.
+3. In the Project window, open the `FBX` folder, click the first file,
+   **ctrl/cmd+A** (or shift-click top to bottom) to select everything —
+   all 52, `BaseCharacter.fbx` included this time, since selecting it
+   here alongside everything else is harmless (it's not the active
+   template, that's the separate field from step 2) and some of these
+   may already be `_Ragdoll.prefab` wrappers from the first pass rather
+   than raw `.fbx` — the tool handles either.
+4. Check **Force** (removes and redoes any target that already has a
+   ragdoll) *only if* you're intentionally redoing everyone for another
+   reason (e.g. the template itself changed). If the first pass's 11-bone
+   results were already correct, you may not need to redo most of these
+   at all — the only genuinely new work is the 6 skins that weren't in
+   the roster before (`Chef_Hat`, `Cowboy_Hair`, `Ninja_Male_Hair`,
+   `VikingHelmet`, `Cow`, `Pug`), which still need their first pass.
+5. Click **Copy Ragdoll To Targets**.
+6. Check the Console. For each one, it logs either the (re)wrapped prefab
+   path, or a warning naming exactly which bone it couldn't match — it
+   never fails silently.
+7. ~~Update `PlayerSkinRoster`'s list...~~ — **done.** All 52 entries in
+   `Assets/PlayerSkinRoster.asset` now point at the actual
+   `_Ragdoll.prefab` files (currently organized into
+   `Assets/Prefabs/PlayerSkins/_Ragdoll/`, after you moved them there),
+   except `BaseCharacter`, which points at your original hand-built
+   `Assets/Prefabs/PlayerSkins/BaseCharacter.prefab` rather than the
+   redundant `BaseCharacter_Ragdoll.prefab` the batch tool also created
+   when `BaseCharacter.fbx` got included in the 52-item selection (that
+   duplicate is harmless clutter — safe to delete whenever, not required).
+8. **Actually test a handful, not just one** — 51 prefabs going through
+   an untested batch process is a lot to trust blindly. Pick a few
+   varied ones (not just the first alphabetically), check their bones got a
    Rigidbody/Collider/CharacterJoint and `Is Kinematic` is on, and try it
    in Play mode. This tool is new and untested against your actual
-   models; don't assume all 5 came out perfect without checking.
+   models; don't assume all 51 came out perfect without checking.
 
 ### 4c. Wire up the two player components
 

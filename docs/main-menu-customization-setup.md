@@ -368,9 +368,13 @@ Wire:
 
 - `Skin Roster` → a `PlayerSkinRoster` asset (Project window → right-click
   → **Create → Rob Everyone → Player Skin Roster** if you haven't made one
-  yet) holding a handful of skin `.fbx`/prefabs from
-  `Assets/Art/Characters/Quaternius-UltimateAnimatedCharacterPack/FBX/` in
-  its own `Skin Prefabs` list. Pulled out into its own shared asset (was a
+  yet) holding its own `Skin Prefabs` list — currently all 52 files in
+  `Assets/Art/Characters/Quaternius-UltimateAnimatedCharacterPack/FBX/`,
+  `BaseCharacter` included (a few looked like accessory props or
+  non-humanoid animals at a glance, but they share the same rig and
+  ragdoll correctly, so there was no reason to exclude them — see
+  [stage3j-traffic-hazard.md](stage3j-traffic-hazard.md)).
+  Pulled out into its own shared asset (was a
   direct array on this component) so gameplay's `PlayerSkinSpawner` reads
   the exact same list instead of keeping a second copy in sync by hand —
   see [stage3j-traffic-hazard.md](stage3j-traffic-hazard.md)'s ragdoll

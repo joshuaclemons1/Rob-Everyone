@@ -22,12 +22,12 @@ namespace RobEveryone.AI
         [SerializeField] private AudioClip hornClip;
         [SerializeField] private AudioClip yellClip;
 
-        [SerializeField] private float impactForce = 12f;
+        [SerializeField] private float impactForce = 60f;
         // Small on purpose -- this used to dominate the shove direction
         // (2) and made every hit look like it just popped the player
         // straight up in place. It's only meant to help the knockdown
         // topple, not compete with the actual horizontal shove.
-        [SerializeField] private float impactUpwardBias = 0.4f;
+        [SerializeField] private float impactUpwardBias = 0.7f;
 
         private List<Transform> waypoints;
         private Transform originPoint;

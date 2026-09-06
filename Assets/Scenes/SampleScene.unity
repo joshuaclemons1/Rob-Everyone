@@ -290,6 +290,7 @@ GameObject:
   - component: {fileID: 18373794}
   - component: {fileID: 18373793}
   - component: {fileID: 18373792}
+  - component: {fileID: 18373796}
   - component: {fileID: 18373795}
   m_Layer: 8
   m_Name: Player
@@ -332,7 +333,7 @@ Transform:
   m_GameObject: {fileID: 18373788}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 1, z: -0, w: 0.00000034272668}
-  m_LocalPosition: {x: 26.74999, y: 2.85, z: 107.49999}
+  m_LocalPosition: {x: 37.5, y: 1, z: 92.75}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -400,24 +401,31 @@ MonoBehaviour:
   m_GameObject: {fileID: 18373788}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ead6f9365d308b742be0675e1082931b, type: 3}
+  m_Script: {fileID: 11500000, guid: 521251d4a76f473fb070948d565ee8ab, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Player.CarImpactReceiver
-  stunDuration: 4
-  playerModelRoot: {fileID: 0}
-  hipsRigidbody: {fileID: 0}
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Player.PlayerRagdoll
+  stunDuration: 6
   cameraTransform: {fileID: 2085126502}
   thirdPersonOffset: {x: 0, y: 2.5, z: -5}
   lookAtHeightOffset: 0.5
-  firstPersonController: {fileID: 0}
-  characterController: {fileID: 0}
-  ragdollBodies: []
-  restLocalPositions: []
-  restLocalRotations: []
-  cameraOriginalParent: {fileID: 0}
-  cameraOriginalLocalPosition: {x: 0, y: 0, z: 0}
-  cameraOriginalLocalRotation: {x: 0, y: 0, z: 0, w: 0}
-  isStunned: 0
+  cameraFollowSpeed: 3
+--- !u!114 &18373796
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 18373788}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 615caf2d430e4e4b85308f7d6bc73ec6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Player.PlayerSkinSpawner
+  skinRoster: {fileID: 11400000, guid: 3c1530e97fff4b7bb2052ea0582e939e, type: 2}
+  palette: {fileID: 11400000, guid: 9937d1164956e40c293a381f5235a1ce, type: 2}
+  skinLayer:
+    serializedVersion: 2
+    m_Bits: 512
 --- !u!1001 &30051301
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -23327,7 +23335,7 @@ MonoBehaviour:
   originPoint: {fileID: 205998221}
   maxConcurrentCars: 2
   spawnCheckInterval: 20
-  spawnChance: 0.5
+  spawnChance: 0.9
 --- !u!4 &1808652745
 Transform:
   m_ObjectHideFlags: 0
