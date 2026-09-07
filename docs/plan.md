@@ -9,10 +9,33 @@ layout (roads, fenced compound, jail interior, exit), and the 2 Good
 House slots were repositioned to actually read as inside/adjacent to the
 finished compound. **Stage 3i** (skybox, background skyline, forest ring
 + world boundary, background hills) is done, scripts written and working.
-Currently on **Stage 3j** (traffic hazard — cars that drive the road loop
-and knock the player down) before moving to Stage 4 — see
-[stage3j-traffic-hazard.md](stage3j-traffic-hazard.md); scripts are
-written, Editor setup (prefabs, waypoints, spawn manager) not done yet.
+**Stage 3j is done** — traffic hazard (cars that drive the road loop and
+knock the player down via ragdoll) is playtested and working. See
+[stage3j-traffic-hazard.md](stage3j-traffic-hazard.md).
+
+Also jumped ahead to a scoped-down **Stage 7** (v1 Shop/Lobby phase) out
+of build order, since the core loop (loot → quota → exit) was confirmed
+working solo but had no restart path — a round ending just froze on a
+result banner with no way to play again. **Done and playtested** — see
+[stage7-shop-lobby-setup.md](stage7-shop-lobby-setup.md): full loop
+confirmed working (reach exit / timer out / caught → Lobby scene loads →
+sell loot at Sell Station → Cash bar/text update → stand on Ready Spot →
+5s countdown → gameplay scene reloads with fresh timer/quota).
+
+**Stage 7b** builds out two more pieces of the real design on top of
+that: a real **3-round batch economy** (quota grows ×1.5 per batch, Cash
+surplus above quota wiped at the batch boundary, rounds 1-2 show
+cumulative progress and only round 3 shows a pass/fail verdict) and a
+real **5-slot hotbar inventory** (Minecraft-style, bottom-center,
+selectable via number keys 1-5 or scroll wheel, replacing the old
+unlimited carried-items list) — see
+[stage7b-batch-economy-hotbar-setup.md](stage7b-batch-economy-hotbar-setup.md).
+Scripts written, Editor setup (hotbar UI in both scenes,
+`GameFlowManager`'s new quota growth field) not done yet. Still
+deliberately scoped down from the full gameplay-design.md system — no
+sabotage purchases, no real Jail & Bail rescue, no personal
+sabotage-spending quota add-on — those depend on multiplayer/sabotage
+items existing first.
 
 Done so far:
 
@@ -106,9 +129,13 @@ compound, exit placement),
 [stage3i-skybox-skyline.md](stage3i-skybox-skyline.md) (skybox, skyline,
 forest/hills),
 [stage3j-traffic-hazard.md](stage3j-traffic-hazard.md) (traffic hazard
-cars). Style/asset reference (palette, sourced packs, remaining art
-to-do) is in [art-info.md](art-info.md); UI/menu element spec is in
-[ui-design.md](ui-design.md).
+cars), [stage7-shop-lobby-setup.md](stage7-shop-lobby-setup.md) (v1
+Shop/Lobby phase, built ahead of order),
+[stage7b-batch-economy-hotbar-setup.md](stage7b-batch-economy-hotbar-setup.md)
+(3-round batch economy, 5-slot hotbar inventory). Style/asset reference
+(palette, sourced packs, remaining art to-do) is in
+[art-info.md](art-info.md);
+UI/menu element spec is in [ui-design.md](ui-design.md).
 
 **Next steps:** find better compound fence assets, source jail-cell
 props for the police station interior (needed later for Stage 7, fine to

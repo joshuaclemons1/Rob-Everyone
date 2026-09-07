@@ -11,10 +11,11 @@ namespace RobEveryone.UI
     // the round starts).
     //
     // Wired against today's single-total economy (PlayerInventory.TotalValue,
-    // RoundManager.Quota) -- gameplay-design.md's Cash/Wallet/batch-quota
-    // rework isn't implemented yet, so "Cash" here just means the current
-    // running total, not the future banked-vs-carried split. Revisit this
-    // script's math once that rework lands.
+    // RoundManager.Quota) -- a real, persistent PlayerInventory.Cash now
+    // exists (see the Lobby's SellStation), but there's still no natural
+    // denominator for it without gameplay-design.md's batch/tier system,
+    // so this bar stays a TotalValue-based proxy for now, not real Cash.
+    // Revisit this script's math once batches land.
     public class EconomyBarsUI : MonoBehaviour
     {
         [SerializeField] private RoundManager roundManager;
@@ -23,6 +24,15 @@ namespace RobEveryone.UI
         [SerializeField] private LevelBarUI cashBar;
 
         private int maxPossibleValue;
+
+        private void Awake()
+        {
+            // Leave playerInventory unassigned for an instance living in a
+            // scene the Player doesn't exist in at edit time (e.g. a
+            // shared prefab also placed in the Lobby) -- same fallback
+            // InventoryUI uses.
+            if (playerInventory == null) playerInventory = FindFirstObjectByType<PlayerInventory>();
+        }
 
         private void Start()
         {

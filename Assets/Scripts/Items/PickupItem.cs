@@ -4,25 +4,36 @@ using UnityEngine;
 
 namespace RobEveryone.Items
 {
-    // Placeholder loot. Stage 3 will replace the plain (name, value) pair
-    // here with a shared ItemDefinition ScriptableObject and per-house loot
-    // tables, but a single dumb pickup is all Stage 2 needs.
     [RequireComponent(typeof(Collider))]
     public class PickupItem : MonoBehaviour, IInteractable
     {
-        [SerializeField] private string itemName = "Watch";
-        [SerializeField] private int value = 25;
+        [SerializeField] private ItemDefinition item;
 
-        public int Value => value;
-        public string InteractionPrompt => $"Take {itemName} (${value})";
+        public int Value => item != null ? item.Value : 0;
+        public string InteractionPrompt => item != null ? $"Take {item.ItemName} (${item.Value})" : "Take item";
+
+        // Called by LootSpawnPoint right after it instantiates this
+        // item's model at runtime, since a randomly-rolled pickup can't
+        // have `item` wired in the Inspector ahead of time the way a
+        // hand-placed one can.
+        public void Initialize(ItemDefinition definition)
+        {
+            item = definition;
+        }
 
         public void Interact(GameObject interactor)
         {
+            if (item == null) return;
+
             PlayerInventory inventory = interactor.GetComponent<PlayerInventory>();
             if (inventory == null) return;
 
-            inventory.AddItem(itemName, value);
-            gameObject.SetActive(false);
+            // Only removed from the world if a slot actually had room --
+            // a full 5-slot inventory just leaves it where it is.
+            if (inventory.AddItem(item))
+            {
+                gameObject.SetActive(false);
+            }
         }
     }
 }

@@ -1,14 +1,21 @@
 using System;
+using RobEveryone.Core;
 using RobEveryone.Inventory;
 using UnityEngine;
 
 namespace RobEveryone.Round
 {
-    public enum RoundResult { QuotaMet, QuotaNotMet, Caught }
+    // Just how the round ended -- quota met/not-met is no longer a
+    // per-round concept (see GameFlowManager's batch tracking), so this
+    // only distinguishes a normal end (exit/timer) from being Caught.
+    public enum RoundResult { RoundComplete, Caught }
 
-    // Owns the round's quota and countdown timer. Ends the round when the
+    // Owns this round's quota and countdown timer. Ends the round when the
     // timer runs out, when ExitPoint reports the player reached the exit, or
-    // when PoliceAI reports a catch.
+    // when PoliceAI reports a catch. Deliberately not persistent -- a fresh
+    // instance exists each time the gameplay scene loads, syncing its quota
+    // from GameFlowManager.CurrentQuota (which *is* persistent) so a 3-round
+    // batch's quota survives the Lobby round-trip between rounds.
     public class RoundManager : MonoBehaviour
     {
         [SerializeField] private PlayerInventory playerInventory;
@@ -28,6 +35,7 @@ namespace RobEveryone.Round
 
         private void Start()
         {
+            if (GameFlowManager.Instance != null) quota = GameFlowManager.Instance.CurrentQuota;
             StartRound();
         }
 
@@ -44,6 +52,12 @@ namespace RobEveryone.Round
 
         public void StartRound()
         {
+            // Discards whatever carried loot (not Cash) survived from the
+            // previous round -- unsold loot at ready-up is simply lost,
+            // a deliberate consequence of Cash being the persistent value
+            // now instead of TotalValue.
+            if (playerInventory != null) playerInventory.ResetInventory();
+
             timeRemaining = roundDuration;
             roundActive = true;
             OnRoundStarted?.Invoke();
@@ -65,8 +79,7 @@ namespace RobEveryone.Round
         private void EndRound()
         {
             roundActive = false;
-            bool metQuota = playerInventory != null && playerInventory.TotalValue >= quota;
-            OnRoundEnded?.Invoke(metQuota ? RoundResult.QuotaMet : RoundResult.QuotaNotMet);
+            OnRoundEnded?.Invoke(RoundResult.RoundComplete);
         }
     }
 }
