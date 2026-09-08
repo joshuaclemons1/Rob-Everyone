@@ -14,8 +14,22 @@ skybox/traffic hazard) is feature-complete and playtested. Also jumped
 ahead of the build order into a scoped-down Stage 7 (v1 Shop/Lobby loop,
 batch economy, hotbar inventory) since the core loop had no restart path
 — see completed.md for why that's fine and what's still deliberately
-missing from the full Stage 7 design. Stage 4 (multiplayer) hasn't
-started.
+missing from the full Stage 7 design.
+
+**Stage 4/5 (multiplayer) — code written, Editor setup + testing not
+done yet.** Chose full system sync (not the minimal "just player
+presence + loot" slice) -- every system (player movement/animation/skin,
+loot/inventory, Homeowner/Police AI, traffic hazard cars, the round/
+batch economy) was converted to Mirror (Stage 4, localhost) with
+Steamworks.NET/FizzySteamworks (Stage 5) layered on top. This is the
+single biggest, riskiest change made to the codebase so far -- see
+[stage4-multiplayer-mirror.md](stages/stage4-multiplayer-mirror.md) and
+[stage5-steam-multiplayer.md](stages/stage5-steam-multiplayer.md), each
+broken into small Parts with a 🔴 Rest Point to actually test after every
+one, specifically so problems surface incrementally instead of all at
+once at the end. **Nothing in Stage 4/5 has been opened in the Editor or
+compiled yet** -- go through Part 0 onward yourself and report back
+per-Part, same as every other stage in this project.
 
 Full stage-by-stage how-to walkthroughs (procedural reference, not status
 — check completed.md/todo.md for what's actually done):
@@ -31,18 +45,21 @@ Full stage-by-stage how-to walkthroughs (procedural reference, not status
 [stage3i-skybox-skyline.md](stages/stage3i-skybox-skyline.md),
 [stage3j-traffic-hazard.md](stages/stage3j-traffic-hazard.md),
 [stage7-shop-lobby-setup.md](stages/stage7-shop-lobby-setup.md),
-[stage7b-batch-economy-hotbar-setup.md](stages/stage7b-batch-economy-hotbar-setup.md).
+[stage7b-batch-economy-hotbar-setup.md](stages/stage7b-batch-economy-hotbar-setup.md),
+[stage4-multiplayer-mirror.md](stages/stage4-multiplayer-mirror.md),
+[stage5-steam-multiplayer.md](stages/stage5-steam-multiplayer.md).
 Style/asset reference (palette, sourced packs, remaining art to-do) is in
 [art-info.md](art-info.md); UI/menu element spec is in
 [ui-design.md](stages/ui-design.md); main menu build docs are
 [main-menu-visual-design.md](stages/main-menu-visual-design.md) and
 [main-menu-customization-setup.md](stages/main-menu-customization-setup.md).
 
-**Next steps**: see [todo.md](todo.md)'s "Verify / playtest" section
-first (Stage 7b, `Real_House_02`, and the ragdoll batch results all need
-confirmation, not more building) — then whatever else from that list
-looks most valuable next. Work happens on `jclem's-branch`; merge to
-`main` once tested and confirmed working.
+**Next steps**: work through stage4-multiplayer-mirror.md Part 0 onward.
+The older [todo.md](todo.md) "Verify / playtest" items (Stage 7b,
+`Real_House_02`, the ragdoll batch results) are all still open too and
+worth doing whenever there's a natural pause in the Stage 4/5 push, but
+don't block it. Work happens on `jclem's-branch`; merge to `main` once
+tested and confirmed working.
 
 ## Strategy
 

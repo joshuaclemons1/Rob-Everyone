@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Mirror;
 using RobEveryone.Inventory;
 using RobEveryone.Player;
 using RobEveryone.Round;
@@ -12,13 +13,21 @@ namespace RobEveryone.AI
     // Patrol -> Respond -> Chase -> Catch. Responds to any HomeownerAI going
     // Alerted via the static HomeownerAI.OnAlertRaised event -- no manual
     // wiring needed between homeowners and police. Once responding, uses its
-    // own vision check to actually spot the player and start a real chase.
-    // Catching the player freezes them and ends the round immediately, since
-    // caught players earn nothing for the round.
+    // own vision check to actually spot a player and start a real chase.
+    // Catching freezes just that one player (see FirstPersonController's
+    // IsFrozen SyncVar) rather than ending the round for everyone.
+    //
+    // Networking (Stage 4): Police is a single hand-placed scene object
+    // (not spawned per-player), so it just needs a NetworkIdentity added
+    // in the Inspector -- Mirror auto-spawns scene-placed identities when
+    // the server starts, no NetworkServer.Spawn call needed here. All the
+    // actual AI logic (isServer-gated) now checks every connected player
+    // (PlayerInventory.AllPlayers) instead of one hardcoded target, and
+    // State is a SyncVar so every client's Animator/Speed feed and Scene
+    // gizmo stay correct without re-deriving the state machine themselves.
     [RequireComponent(typeof(NavMeshAgent))]
-    public class PoliceAI : MonoBehaviour
+    public class PoliceAI : NetworkBehaviour
     {
-        [SerializeField] private Transform playerTarget;
         [SerializeField] private Transform eye;
         [SerializeField] private RoundManager roundManager;
         [SerializeField] private Animator animator;
@@ -43,24 +52,17 @@ namespace RobEveryone.AI
         private float timeSinceSeenPlayer;
         private float searchTimer;
         private float searchBaseYaw;
+        // Whoever's currently being chased/responded to -- picked fresh
+        // each time a chase starts (EnterChase/HandleAlertRaised), since
+        // with multiple players it's no longer a fixed single target.
+        private Transform chaseTarget;
 
-        // [field: SerializeField] so State shows up (read-only, updates live)
-        // in the Inspector during Play mode -- select Police while testing
-        // to watch it transition between states in real time.
-        [field: SerializeField] public PoliceState State { get; private set; } = PoliceState.Patrol;
+        [SyncVar]
+        public PoliceState State { get; private set; } = PoliceState.Patrol;
 
         private void Awake()
         {
             agent = GetComponent<NavMeshAgent>();
-
-            // See the matching comment in HomeownerAI.Awake -- same
-            // fallback, in case Police ever gets instantiated rather than
-            // hand-placed in the scene.
-            if (playerTarget == null)
-            {
-                PlayerInventory player = FindFirstObjectByType<PlayerInventory>();
-                if (player != null) playerTarget = player.transform;
-            }
         }
 
         private void OnEnable()
@@ -73,7 +75,7 @@ namespace RobEveryone.AI
             HomeownerAI.OnAlertRaised -= HandleAlertRaised;
         }
 
-        private void Start()
+        public override void OnStartServer()
         {
             agent.speed = patrolSpeed;
             if (patrolPoints.Count > 0)
@@ -85,12 +87,16 @@ namespace RobEveryone.AI
         private void Update()
         {
             // Feed the real-time NavMeshAgent speed into the Animator every
-            // frame -- this alone drives Idle/Walk/Run through a Blend Tree,
-            // so no per-state animation code is needed for patrol vs. chase.
+            // frame, on every client -- a NavMeshAgent's own movement is
+            // synced to clients via the same NetworkTransform pattern as
+            // everything else that moves, so agent.velocity reads
+            // correctly everywhere, not just on the server.
             if (animator != null)
             {
                 animator.SetFloat(animatorSpeedParam, agent.velocity.magnitude);
             }
+
+            if (!isServer) return;
 
             switch (State)
             {
@@ -111,6 +117,7 @@ namespace RobEveryone.AI
 
         private void HandleAlertRaised(Vector3 lastKnownPosition)
         {
+            if (!isServer) return;
             if (State == PoliceState.Chase) return;
 
             State = PoliceState.Respond;
@@ -120,9 +127,10 @@ namespace RobEveryone.AI
 
         private void UpdatePatrol()
         {
-            if (CanSeePlayer())
+            Transform seen = FindVisiblePlayer();
+            if (seen != null)
             {
-                EnterChase();
+                EnterChase(seen);
                 return;
             }
 
@@ -137,9 +145,10 @@ namespace RobEveryone.AI
 
         private void UpdateRespond()
         {
-            if (CanSeePlayer())
+            Transform seen = FindVisiblePlayer();
+            if (seen != null)
             {
-                EnterChase();
+                EnterChase(seen);
                 return;
             }
 
@@ -157,9 +166,10 @@ namespace RobEveryone.AI
 
         private void UpdateSearching()
         {
-            if (CanSeePlayer())
+            Transform seen = FindVisiblePlayer();
+            if (seen != null)
             {
-                EnterChase();
+                EnterChase(seen);
                 return;
             }
 
@@ -183,26 +193,29 @@ namespace RobEveryone.AI
 
         private void UpdateChase()
         {
-            if (playerTarget == null) return;
+            if (chaseTarget == null)
+            {
+                State = PoliceState.Patrol;
+                return;
+            }
 
-            // Path toward the player's live position every frame, regardless
-            // of whether CanSeePlayer() currently succeeds -- gating the
-            // destination on visibility created a feedback loop where losing
-            // the cone for even one frame (e.g. while NavMeshAgent's
-            // rotation is still catching up to a fresh path) left Police
-            // facing the wrong way with nothing to correct it.
-            agent.SetDestination(playerTarget.position);
+            // Path toward the target's live position every frame, regardless
+            // of whether they're still visible this exact frame -- gating
+            // the destination on visibility created a feedback loop where
+            // losing the cone for even one frame left Police facing the
+            // wrong way with nothing to correct it.
+            agent.SetDestination(chaseTarget.position);
 
             // Catching is pure proximity, not gated on the vision cone --
             // standing on top of someone is a catch regardless of exactly
             // which way Police is facing at that instant.
-            if (Vector3.Distance(transform.position, playerTarget.position) <= catchDistance)
+            if (Vector3.Distance(transform.position, chaseTarget.position) <= catchDistance)
             {
-                CatchPlayer();
+                CatchPlayer(chaseTarget);
                 return;
             }
 
-            if (CanSeePlayer())
+            if (CanSee(chaseTarget))
             {
                 timeSinceSeenPlayer = 0f;
                 return;
@@ -215,18 +228,32 @@ namespace RobEveryone.AI
             }
         }
 
-        private void EnterChase()
+        private void EnterChase(Transform target)
         {
+            chaseTarget = target;
             State = PoliceState.Chase;
             agent.speed = chaseSpeed;
             timeSinceSeenPlayer = 0f;
         }
 
-        private bool CanSeePlayer()
+        // Checks every connected player rather than one hardcoded target --
+        // returns the first one currently visible. Called every frame
+        // Police isn't already chasing someone specific.
+        private Transform FindVisiblePlayer()
         {
-            if (playerTarget == null || eye == null) return false;
+            foreach (PlayerInventory player in PlayerInventory.AllPlayers)
+            {
+                if (player == null) continue;
+                if (CanSee(player.transform)) return player.transform;
+            }
+            return null;
+        }
 
-            Vector3 toPlayer = playerTarget.position - eye.position;
+        private bool CanSee(Transform target)
+        {
+            if (target == null || eye == null) return false;
+
+            Vector3 toPlayer = target.position - eye.position;
             float distance = toPlayer.magnitude;
             if (distance > viewDistance) return false;
 
@@ -250,19 +277,20 @@ namespace RobEveryone.AI
             return true;
         }
 
-        private void CatchPlayer()
+        [Server]
+        private void CatchPlayer(Transform target)
         {
-            FirstPersonController controller = playerTarget.GetComponentInParent<FirstPersonController>();
-            if (controller != null)
+            PlayerInventory caught = target.GetComponentInParent<PlayerInventory>();
+            FirstPersonController controller = target.GetComponentInParent<FirstPersonController>();
+            if (controller != null) controller.IsFrozen = true; // SyncVar -- freezes input on that player's own client
+
+            if (roundManager != null && caught != null)
             {
-                controller.enabled = false;
+                roundManager.NotifyPlayerCaught(caught);
             }
 
-            if (roundManager != null)
-            {
-                roundManager.NotifyPlayerCaught();
-            }
-
+            chaseTarget = null;
+            State = PoliceState.Respond;
             agent.ResetPath();
         }
 

@@ -1,3 +1,4 @@
+using Mirror;
 using UnityEngine;
 
 namespace RobEveryone.Items
@@ -14,11 +15,21 @@ namespace RobEveryone.Items
     // own lossy (inherited) scale so that holds true even under a house
     // whose room/floor geometry was stretched non-uniformly to fit its
     // footprint, which would otherwise distort anything parented under it.
-    public class LootSpawnPoint : MonoBehaviour
+    //
+    // Networking (Stage 4): server-only (OnStartServer instead of Start)
+    // -- every client needs to see the *same* rolled item, not each
+    // independently gamble their own. Every ItemDefinition's
+    // WorldModelPrefab needs a NetworkIdentity component *on the prefab
+    // asset itself* (Mirror doesn't support adding NetworkIdentity at
+    // runtime after Instantiate -- unlike PickupItem/Collider below,
+    // which are fine as a runtime fallback) and to be registered as a
+    // Spawnable Prefab on the NetworkManager, the same way house/car
+    // prefabs are (see stage4-multiplayer-mirror.md Part 5).
+    public class LootSpawnPoint : NetworkBehaviour
     {
         [SerializeField] private LootTable lootTable;
 
-        private void Start()
+        public override void OnStartServer()
         {
             Spawn();
         }
@@ -49,9 +60,17 @@ namespace RobEveryone.Items
                 instance.AddComponent<BoxCollider>();
             }
 
+            if (instance.GetComponent<NetworkIdentity>() == null)
+            {
+                Debug.LogError($"{item.ItemName}'s World Model Prefab has no NetworkIdentity -- add one to the prefab asset itself, adding it at runtime here isn't supported by Mirror.", instance);
+                return;
+            }
+
             PickupItem pickup = instance.GetComponent<PickupItem>();
             if (pickup == null) pickup = instance.AddComponent<PickupItem>();
             pickup.Initialize(item);
+
+            NetworkServer.Spawn(instance);
         }
     }
 }

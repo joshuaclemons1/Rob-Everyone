@@ -1,3 +1,4 @@
+using Mirror;
 using RobEveryone.Inventory;
 using UnityEngine;
 
@@ -10,6 +11,15 @@ namespace RobEveryone.World
     // stay exactly as imported, with zero custom collision shaping needed.
     // Place one of these at the outside threshold pointing inward, and a
     // matching one just inside pointing back out, for a working round trip.
+    //
+    // Networking (Stage 4): every client has its own local copy of every
+    // player, so without the isOwned check below, a bystander's client
+    // would also locally fire this trigger (and teleport its own,
+    // non-authoritative copy of someone else's player) the instant that
+    // player's synced position crosses the threshold -- harmless in that
+    // NetworkTransform corrects it back right away, but wasted work and a
+    // visible flicker. Only the owning client's own copy should actually
+    // move itself, same reasoning as FirstPersonController's own guard.
     [RequireComponent(typeof(Collider))]
     public class DoorTeleporter : MonoBehaviour
     {
@@ -23,6 +33,9 @@ namespace RobEveryone.World
             if (destination == null) return;
             if (Time.time - lastTeleportTime < cooldown) return;
             if (other.GetComponentInParent<PlayerInventory>() == null) return;
+
+            NetworkIdentity identity = other.GetComponentInParent<NetworkIdentity>();
+            if (identity != null && !identity.isOwned) return;
 
             CharacterController controller = other.GetComponentInParent<CharacterController>();
             if (controller == null) return;

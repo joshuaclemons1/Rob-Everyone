@@ -9,6 +9,12 @@ namespace RobEveryone.Inventory
     // FirstPersonController's existing pattern of reading
     // Keyboard.current/Mouse.current directly (no Input Actions asset in
     // this project yet).
+    //
+    // Networking (Stage 4): selection is server-authoritative (Selected
+    // Slot is a SyncVar on PlayerInventory), so this sends Commands
+    // instead of calling SelectSlot directly -- and only the owner
+    // should ever be reading their own keyboard/scroll for this, not a
+    // remote player's copy.
     [RequireComponent(typeof(PlayerInventory))]
     public class HotbarController : MonoBehaviour
     {
@@ -21,13 +27,15 @@ namespace RobEveryone.Inventory
 
         private void Update()
         {
+            if (!inventory.isOwned) return;
+
             if (Keyboard.current != null)
             {
                 for (int i = 0; i < PlayerInventory.SlotCount; i++)
                 {
                     if (Keyboard.current[Key.Digit1 + i].wasPressedThisFrame)
                     {
-                        inventory.SelectSlot(i);
+                        inventory.CmdSelectSlot(i);
                     }
                 }
             }
@@ -35,8 +43,8 @@ namespace RobEveryone.Inventory
             if (Mouse.current != null)
             {
                 float scroll = Mouse.current.scroll.ReadValue().y;
-                if (scroll > 0f) inventory.SelectRelative(-1);
-                else if (scroll < 0f) inventory.SelectRelative(1);
+                if (scroll > 0f) inventory.CmdSelectRelative(-1);
+                else if (scroll < 0f) inventory.CmdSelectRelative(1);
             }
         }
     }

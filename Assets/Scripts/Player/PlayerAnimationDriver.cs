@@ -1,3 +1,4 @@
+using Mirror;
 using UnityEngine;
 
 namespace RobEveryone.Player
@@ -9,9 +10,9 @@ namespace RobEveryone.Player
     // PlayerRagdoll's bones do (found fresh each spawn, since the selected
     // skin/Animator differ per playthrough) -- see PlayerSkinSpawner for
     // why the Animator drives that shared, always-visible skin rather than
-    // some owner-only rig: a future networked observer needs to see the
-    // *same* walk/run/jump animation this local player sees, not a
-    // separate first-person-only puppet.
+    // some owner-only rig: a networked observer needs to see the *same*
+    // walk/run/jump animation this local player sees, not a separate
+    // first-person-only puppet.
     //
     // PlayerRagdoll disables this same Animator component for the
     // duration of a stun and re-enables it afterward -- without that, a
@@ -19,9 +20,20 @@ namespace RobEveryone.Player
     // every frame by whatever this driver's parameters say the idle/walk
     // pose should be, the exact bug DisableAnimator was originally written
     // to prevent back when the Animator had nothing driving it at all.
+    //
+    // Networking (Stage 4): the skin/Animator instance is spawned fresh
+    // per-player at runtime (PlayerSkinSpawner), so there's no fixed
+    // Animator reference to hand Mirror's stock NetworkAnimator component
+    // in the Inspector -- this drives the sync by hand instead. The
+    // continuous Speed/Grounded blend uses SyncVars with this
+    // component's Sync Direction set to Client To Server in the
+    // Inspector (owner writes them directly, matching how NetworkTransform
+    // already treats this same client-authoritative movement); the
+    // one-shot Jump trigger uses a Command+ClientRpc round trip instead,
+    // since a SyncVar can only replicate *state*, not a fire-once event.
     [RequireComponent(typeof(FirstPersonController))]
     [RequireComponent(typeof(PlayerSkinSpawner))]
-    public class PlayerAnimationDriver : MonoBehaviour
+    public class PlayerAnimationDriver : NetworkBehaviour
     {
         // Drag the same Jump clip used in the Animator Controller's Jump
         // state here too -- its authored length is what HandleJumped
@@ -48,6 +60,16 @@ namespace RobEveryone.Player
         private PlayerSkinSpawner skinSpawner;
         private Animator animator;
 
+        // Client-authoritative (Sync Direction: Client To Server on this
+        // component in the Inspector) -- the owner writes these directly
+        // every frame in Update, same as NetworkTransform already does
+        // for this player's position. Non-owner copies read them in
+        // ApplyRemoteAnimatorState instead of touching
+        // firstPersonController at all (that controller's Update doesn't
+        // even run on a non-owned copy -- see its own isOwned guard).
+        [SyncVar(hook = nameof(OnSyncedSpeedChanged))] private float syncedSpeed;
+        [SyncVar(hook = nameof(OnSyncedGroundedChanged))] private bool syncedGrounded;
+
         private void Awake()
         {
             firstPersonController = GetComponent<FirstPersonController>();
@@ -63,7 +85,7 @@ namespace RobEveryone.Player
             animator = skinSpawner.SkinInstance.GetComponentInChildren<Animator>(true);
             if (animator == null) return;
 
-            firstPersonController.Jumped += HandleJumped;
+            if (isOwned) firstPersonController.Jumped += HandleJumped;
         }
 
         private void OnDestroy()
@@ -74,6 +96,7 @@ namespace RobEveryone.Player
         private void Update()
         {
             if (animator == null || !animator.enabled) return;
+            if (!isOwned) return; // non-owner copies are driven by the SyncVar hooks below instead
 
             animator.SetFloat(SpeedParam, firstPersonController.HorizontalSpeed);
 
@@ -84,39 +107,80 @@ namespace RobEveryone.Player
             // from an actual landing unless we hide it from them too.
             bool grounded = firstPersonController.IsGrounded && !firstPersonController.IsJumpPending;
             animator.SetBool(GroundedParam, grounded);
+
+            // Client-authoritative writes -- only meaningful because this
+            // component's Sync Direction is set to Client To Server in
+            // the Inspector; a plain [SyncVar] would silently be ignored
+            // coming from a non-server caller otherwise.
+            syncedSpeed = firstPersonController.HorizontalSpeed;
+            syncedGrounded = grounded;
+        }
+
+        private void OnSyncedSpeedChanged(float _, float newValue)
+        {
+            if (isOwned || animator == null) return;
+            animator.SetFloat(SpeedParam, newValue);
+        }
+
+        private void OnSyncedGroundedChanged(bool _, bool newValue)
+        {
+            if (isOwned || animator == null) return;
+            animator.SetBool(GroundedParam, newValue);
         }
 
         private void HandleJumped()
         {
             if (animator == null || !animator.enabled) return;
 
-            // Only the *airborne* portion of the clip (after the squat)
-            // needs to match realAirTime -- scaling the squat along with
-            // it was the bug in the first version of this: it compressed
-            // the anticipation pose too, but the actual upward velocity
-            // was still applying on the very first frame, so the
-            // character left the ground before the squat had time to
-            // read as a squat at all. Delaying the real launch (below)
-            // until the squat's own real-time duration has elapsed is
-            // what actually fixes that.
-            float delay = 0f;
-            if (jumpClip != null)
-            {
-                float realAirTime = firstPersonController.JumpApexTime * 2f;
-                float airborneFraction = 1f - jumpAnticipationFraction;
-                if (realAirTime > 0f && airborneFraction > 0f)
-                {
-                    float speedMultiplier = (airborneFraction * jumpClip.length) / realAirTime;
-                    if (speedMultiplier > 0f)
-                    {
-                        animator.SetFloat(JumpSpeedParam, speedMultiplier);
-                        delay = (jumpAnticipationFraction * jumpClip.length) / speedMultiplier;
-                    }
-                }
-            }
+            float delay = ComputeJumpTiming(out float speedMultiplier);
 
+            animator.SetFloat(JumpSpeedParam, speedMultiplier);
             animator.SetTrigger(JumpParam);
             firstPersonController.ScheduleJumpLaunch(delay);
+
+            // Tell the server, which relays to every *other* client
+            // (includeOwner: false -- this client already triggered its
+            // own copy above, an Rpc echo back to itself would double it
+            // up a frame later).
+            CmdNotifyJumped(speedMultiplier);
+        }
+
+        // Split out of HandleJumped so both the locally-triggering owner
+        // and the RPC-driven remote copies compute the exact same delay
+        // from the exact same speedMultiplier, rather than each side
+        // deriving it independently and risking drift.
+        private float ComputeJumpTiming(out float speedMultiplier)
+        {
+            speedMultiplier = 1f;
+            if (jumpClip == null) return 0f;
+
+            float realAirTime = firstPersonController.JumpApexTime * 2f;
+            float airborneFraction = 1f - jumpAnticipationFraction;
+            if (realAirTime <= 0f || airborneFraction <= 0f) return 0f;
+
+            speedMultiplier = (airborneFraction * jumpClip.length) / realAirTime;
+            if (speedMultiplier <= 0f)
+            {
+                speedMultiplier = 1f;
+                return 0f;
+            }
+
+            return (jumpAnticipationFraction * jumpClip.length) / speedMultiplier;
+        }
+
+        [Command]
+        private void CmdNotifyJumped(float speedMultiplier)
+        {
+            RpcPlayJump(speedMultiplier);
+        }
+
+        [ClientRpc(includeOwner = false)]
+        private void RpcPlayJump(float speedMultiplier)
+        {
+            if (animator == null) return;
+
+            animator.SetFloat(JumpSpeedParam, speedMultiplier);
+            animator.SetTrigger(JumpParam);
         }
     }
 }

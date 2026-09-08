@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Mirror;
 using UnityEngine;
 
 namespace RobEveryone.World
@@ -8,7 +9,19 @@ namespace RobEveryone.World
     // map (Stage 3g). Normal and Good House slots draw from separate pools
     // so the slots meant to hold higher-value houses actually get one,
     // rather than every slot picking from the same combined list.
-    public class HousePoolSpawner : MonoBehaviour
+    //
+    // Networking (Stage 4): server-only (OnStartServer instead of Start)
+    // and NetworkServer.Spawn instead of a plain Instantiate -- every
+    // connected client needs to see the *same* randomly-chosen house in
+    // each slot, not each independently roll their own. Every house
+    // prefab needs a NetworkIdentity at its root and to be registered as
+    // a Spawnable Prefab on the NetworkManager (see
+    // stage4-multiplayer-mirror.md Part 5) -- the nested Homeowner/
+    // LootSpawnPoint inside each house don't need their own
+    // NetworkIdentity, they ride along under the house's single one as
+    // long as they're still its children when this Instantiate call
+    // creates the house.
+    public class HousePoolSpawner : NetworkBehaviour
     {
         [SerializeField] private List<GameObject> normalHousePrefabs = new();
         [SerializeField] private List<GameObject> goodHousePrefabs = new();
@@ -23,7 +36,7 @@ namespace RobEveryone.World
         // footprint without needing Play mode.
         [SerializeField] private Vector3 housePlotSize = new(40f, 4f, 40f);
 
-        private void Start()
+        public override void OnStartServer()
         {
             SpawnAt(normalSlots, normalHousePrefabs);
             SpawnAt(goodSlots, goodHousePrefabs);
@@ -38,7 +51,8 @@ namespace RobEveryone.World
                 if (slot == null) continue;
 
                 GameObject prefab = pool[Random.Range(0, pool.Count)];
-                Instantiate(prefab, slot.position, slot.rotation);
+                GameObject instance = Instantiate(prefab, slot.position, slot.rotation);
+                NetworkServer.Spawn(instance);
             }
         }
 

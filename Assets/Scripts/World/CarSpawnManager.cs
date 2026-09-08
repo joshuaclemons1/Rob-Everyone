@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Mirror;
 using RobEveryone.AI;
 using UnityEngine;
 
@@ -11,7 +12,18 @@ namespace RobEveryone.World
     // patrolling forever" -- per design, sometimes there should be zero
     // cars at all, so the road isn't a guaranteed hazard every single time
     // a player crosses it.
-    public class CarSpawnManager : MonoBehaviour
+    //
+    // Networking (Stage 4): server-only spawner (NetworkBehaviour +
+    // isServer guard) -- every client needs to see the *same* cars on the
+    // *same* laps, not each roll its own independent traffic, so this
+    // can't run on every client the way it did single-player.
+    // NetworkServer.Spawn (instead of a plain Instantiate) is what makes
+    // the resulting car visible to already-connected clients at all --
+    // Mirror doesn't automatically network a GameObject just because it
+    // has NetworkBehaviour components, spawning has to be requested
+    // explicitly. Car prefabs need registering as Spawnable Prefabs on
+    // the NetworkManager (see stage4-multiplayer-mirror.md Part 7).
+    public class CarSpawnManager : NetworkBehaviour
     {
         [SerializeField] private List<GameObject> carPrefabs = new();
         [SerializeField] private List<Transform> lapWaypoints = new();
@@ -23,7 +35,7 @@ namespace RobEveryone.World
 
         private readonly List<CarDriver> activeCars = new();
 
-        private void Start()
+        public override void OnStartServer()
         {
             StartCoroutine(SpawnLoop());
         }
@@ -57,6 +69,7 @@ namespace RobEveryone.World
 
             driver.Init(lapWaypoints, originPoint, this);
             activeCars.Add(driver);
+            NetworkServer.Spawn(instance);
         }
 
         public void NotifyCarDespawned(CarDriver driver)

@@ -1,3 +1,4 @@
+using Mirror;
 using RobEveryone.Customization;
 using UnityEngine;
 
@@ -7,12 +8,16 @@ namespace RobEveryone.Player
     // menu (PlayerCosmeticSelection) as a child of this Transform at
     // gameplay start -- reads the same PlayerSkinRoster/PlayerColorPalette
     // assets CustomizationUI's menu preview uses, so there's one shared
-    // list rather than gameplay hardcoding a specific character. This is
-    // also the seam a future networked spawn hooks into: a remote player's
-    // spawn would read the *owning* player's synced skin/color choice and
-    // call the same instantiate-plus-colorize logic, rather than needing a
-    // different code path.
-    public class PlayerSkinSpawner : MonoBehaviour
+    // list rather than gameplay hardcoding a specific character.
+    //
+    // Networking (Stage 4): PlayerCosmeticSelection is a local PlayerPrefs
+    // read -- only the *owner* actually knows their own choice. The
+    // owner spawns its own skin immediately (no need to wait on a round
+    // trip just to see yourself correctly) and also tells the server via
+    // Command; the server stores it in SyncVars, which is what every
+    // *other* client's copy of this same object reads via the hooks below
+    // to spawn the correct skin for a player that isn't them.
+    public class PlayerSkinSpawner : NetworkBehaviour
     {
         [SerializeField] private PlayerSkinRoster skinRoster;
         [SerializeField] private PlayerColorPalette palette;
@@ -24,17 +29,51 @@ namespace RobEveryone.Player
         // plays correctly on any of them by hierarchy path.
         [SerializeField] private RuntimeAnimatorController playerAnimatorController;
 
+        [SyncVar(hook = nameof(OnCosmeticsChanged))] private int syncedSkinIndex = -1;
+        [SyncVar(hook = nameof(OnCosmeticsChanged))] private int syncedColorIndex = -1;
+
         public GameObject SkinInstance { get; private set; }
         // PlayerRagdoll needs this to toggle PlayerCamera's Culling Mask
         // during the stun -- kept as the single source of truth here
         // rather than a second, separately-configured field there.
         public LayerMask SkinLayer => skinLayer;
 
-        private void Awake()
+        public override void OnStartLocalPlayer()
         {
+            int skinIndex = PlayerCosmeticSelection.SkinIndex;
+            int colorIndex = PlayerCosmeticSelection.ColorIndex;
+
+            SpawnSkin(skinIndex, colorIndex);
+            CmdSetCosmetics(skinIndex, colorIndex);
+        }
+
+        [Command]
+        private void CmdSetCosmetics(int skinIndex, int colorIndex)
+        {
+            syncedSkinIndex = skinIndex;
+            syncedColorIndex = colorIndex;
+        }
+
+        // Fires on every non-owner client once the server-held values
+        // arrive (including late joiners, who get the current SyncVar
+        // value immediately on spawn -- no separate "catch up" logic
+        // needed). Ignored on the owner's own client, which already
+        // spawned itself synchronously in OnStartLocalPlayer above rather
+        // than waiting on a round trip to see its own choice.
+        private void OnCosmeticsChanged(int _, int _2)
+        {
+            if (isOwned) return;
+            if (syncedSkinIndex < 0 || syncedColorIndex < 0) return;
+
+            SpawnSkin(syncedSkinIndex, syncedColorIndex);
+        }
+
+        private void SpawnSkin(int skinIndex, int colorIndex)
+        {
+            if (SkinInstance != null) return; // already spawned -- both hooks can fire once each, guard against a double-spawn
             if (skinRoster == null || skinRoster.Count == 0) return;
 
-            GameObject prefab = skinRoster.GetSkin(PlayerCosmeticSelection.SkinIndex);
+            GameObject prefab = skinRoster.GetSkin(skinIndex);
             if (prefab == null) return;
 
             SkinInstance = Instantiate(prefab, transform.position, transform.rotation, transform);
@@ -58,9 +97,8 @@ namespace RobEveryone.Player
             PlayerColorizer colorizer = SkinInstance.GetComponent<PlayerColorizer>();
             if (colorizer == null) colorizer = SkinInstance.AddComponent<PlayerColorizer>();
 
-            if (palette != null && palette.Colors.Count > 0)
+            if (palette != null && palette.Colors.Count > 0 && colorIndex >= 0 && colorIndex < palette.Colors.Count)
             {
-                int colorIndex = Mathf.Clamp(PlayerCosmeticSelection.ColorIndex, 0, palette.Colors.Count - 1);
                 colorizer.ApplyBodyColor(palette.Colors[colorIndex]);
             }
         }

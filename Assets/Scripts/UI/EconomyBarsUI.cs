@@ -19,20 +19,11 @@ namespace RobEveryone.UI
     public class EconomyBarsUI : MonoBehaviour
     {
         [SerializeField] private RoundManager roundManager;
-        [SerializeField] private PlayerInventory playerInventory;
         [SerializeField] private LevelBarUI quotaBar;
         [SerializeField] private LevelBarUI cashBar;
 
+        private PlayerInventory playerInventory;
         private int maxPossibleValue;
-
-        private void Awake()
-        {
-            // Leave playerInventory unassigned for an instance living in a
-            // scene the Player doesn't exist in at edit time (e.g. a
-            // shared prefab also placed in the Lobby) -- same fallback
-            // InventoryUI uses.
-            if (playerInventory == null) playerInventory = FindFirstObjectByType<PlayerInventory>();
-        }
 
         private void Start()
         {
@@ -51,6 +42,12 @@ namespace RobEveryone.UI
 
         private void Update()
         {
+            // Resolved lazily (not cached in Awake) since this client's
+            // own player object (Stage 4) may not have spawned yet the
+            // instant this UI's scene loads -- and must be *this*
+            // client's own, never another connected player's copy, which
+            // is what a plain FindFirstObjectByType risked returning.
+            if (playerInventory == null) playerInventory = PlayerInventory.LocalPlayer;
             if (playerInventory == null) return;
 
             if (quotaBar != null && roundManager != null && roundManager.Quota > 0)

@@ -1,4 +1,5 @@
 using System.Collections;
+using Mirror;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -9,8 +10,19 @@ namespace RobEveryone.Player
     // directly (Keyboard.current / Mouse.current) so there's no Input
     // Actions asset to configure yet -- good enough until movement needs
     // to be swappable (e.g. jail state freezing the player).
+    //
+    // NetworkBehaviour + isOwned guard (Stage 4): every connected client
+    // has a full copy of every player's GameObject, but only *one* of
+    // them is "yours" (isOwned true) -- this component only ever reads
+    // input/moves the CharacterController for that one copy. The
+    // resulting position/rotation reaches everyone else via a
+    // NetworkTransform component (Inspector-only, no code) riding
+    // alongside this on the Player prefab, set to Client Authority so the
+    // owner's own locally-simulated movement is what gets broadcast
+    // (matches this controller already being fully client-predicted, no
+    // server reconciliation) rather than the server re-simulating it.
     [RequireComponent(typeof(CharacterController))]
-    public class FirstPersonController : MonoBehaviour
+    public class FirstPersonController : NetworkBehaviour
     {
         [SerializeField] private Transform cameraTransform;
         [SerializeField] private float walkSpeed = 5f;
@@ -94,6 +106,14 @@ namespace RobEveryone.Player
         // launching immediately, so jumping still works standalone.
         private bool jumpScheduled;
 
+        // Server-set, client-visible -- true while PoliceAI has this
+        // specific player in custody (Stage 4's per-player jail/catch
+        // handling; see RoundManager). Only the owner's own Update loop
+        // needs to check it, but it's a SyncVar (not server-only state)
+        // since a caught player's own client is exactly who needs to stop
+        // processing input.
+        [SyncVar] public bool IsFrozen;
+
         private void Awake()
         {
             controller = GetComponent<CharacterController>();
@@ -102,13 +122,27 @@ namespace RobEveryone.Player
             if (cameraTransform != null) standCameraY = cameraTransform.localPosition.y;
         }
 
-        private void OnEnable()
+        // OnStartAuthority, not OnEnable -- this component is enabled on
+        // every client's copy of every player (including remote ones you
+        // don't control), but the cursor should only lock for the one
+        // copy that's actually yours. Mirror guarantees isOwned/authority
+        // is already correctly set by the time this fires.
+        public override void OnStartAuthority()
         {
             Cursor.lockState = CursorLockMode.Locked;
         }
 
         private void Update()
         {
+            // Remote players' copies exist so NetworkTransform has
+            // something to write synced positions into -- they must never
+            // also read local input/run their own physics simulation, or
+            // every client would see every player jitter between their
+            // own dead-reckoned guess and everyone else's simultaneously
+            // self-moved position.
+            if (!isOwned) return;
+            if (IsFrozen) return;
+
             HandleLook();
             HandleCrouch();
             HandleMove();

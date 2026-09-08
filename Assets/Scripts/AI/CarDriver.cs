@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Mirror;
 using RobEveryone.Inventory;
 using RobEveryone.Player;
 using RobEveryone.World;
@@ -12,8 +13,19 @@ namespace RobEveryone.AI
     // dodge rather than an AI that hunts). CarSpawnManager owns deciding
     // when/whether to spawn one of these at all; this script only knows how
     // to drive once it exists.
+    //
+    // Networking (Stage 4): only the server actually runs the movement/
+    // impact logic below (isServer guards) -- a NetworkTransform component
+    // on the prefab (Inspector-only, no code) broadcasts the resulting
+    // position/rotation to every client the same way it already does for
+    // players, so this same script's Update() doesn't need a client-side
+    // branch of its own. Without the guards, every client would also run
+    // its own independent copy of the waypoint-following logic (redundant
+    // at best, actively fighting the synced NetworkTransform position at
+    // worst) and every client's own OnTriggerEnter would independently
+    // (and wrongly) decide it was responsible for applying the impact.
     [RequireComponent(typeof(AudioSource))]
-    public class CarDriver : MonoBehaviour
+    public class CarDriver : NetworkBehaviour
     {
         [SerializeField] private float moveSpeed = 8f;
         [SerializeField] private float turnSpeed = 120f;
@@ -54,6 +66,8 @@ namespace RobEveryone.AI
 
         private void Update()
         {
+            if (!isServer) return;
+
             Transform target = CurrentTarget();
             if (target == null) return;
 
@@ -83,7 +97,12 @@ namespace RobEveryone.AI
             if (returningToOrigin)
             {
                 spawnManager.NotifyCarDespawned(this);
-                Destroy(gameObject);
+                // NetworkServer.Destroy, not a plain Destroy -- this
+                // GameObject was spawned over the network
+                // (CarSpawnManager.NetworkServer.Spawn), so clients need
+                // the matching despawn message or it'd linger as a ghost
+                // on every connected client forever.
+                NetworkServer.Destroy(gameObject);
                 return;
             }
 
@@ -100,13 +119,14 @@ namespace RobEveryone.AI
         // needs real physics interaction with the road/world.
         private void OnTriggerEnter(Collider other)
         {
+            if (!isServer) return;
+
             PlayerInventory player = other.GetComponentInParent<PlayerInventory>();
             if (player == null) return;
 
-            if (hornClip != null) audioSource.PlayOneShot(hornClip);
-            if (yellClip != null) audioSource.PlayOneShot(yellClip);
+            RpcPlayImpactSfx();
 
-            PlayerRagdoll receiver = player.GetComponentInParent<PlayerRagdoll>();
+            PlayerImpactRelay receiver = player.GetComponentInParent<PlayerImpactRelay>();
             if (receiver != null)
             {
                 // Away from the car, not the car's own forward -- a
@@ -117,8 +137,15 @@ namespace RobEveryone.AI
                 Vector3 toPlayer = receiver.transform.position - transform.position;
                 toPlayer.y = 0f;
                 Vector3 shoveDirection = (toPlayer.normalized + Vector3.up * impactUpwardBias).normalized;
-                receiver.ApplyImpact(shoveDirection, impactForce);
+                receiver.ServerApplyImpact(shoveDirection, impactForce);
             }
+        }
+
+        [ClientRpc]
+        private void RpcPlayImpactSfx()
+        {
+            if (hornClip != null) audioSource.PlayOneShot(hornClip);
+            if (yellClip != null) audioSource.PlayOneShot(yellClip);
         }
     }
 }

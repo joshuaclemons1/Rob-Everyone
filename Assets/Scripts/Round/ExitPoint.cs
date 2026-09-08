@@ -1,48 +1,38 @@
+using Mirror;
 using RobEveryone.Inventory;
 using UnityEngine;
 
 namespace RobEveryone.Round
 {
     // Trigger volume at the map's extraction point (the taxi). Needs a
-    // Collider with "Is Trigger" checked. Routes through a PartyGate
-    // rather than ending the round the instant one player arrives --
-    // solo play resolves this immediately (see PartyGate), but the round
-    // only actually ends once every present player has reached the exit.
+    // Collider with "Is Trigger" checked.
+    //
+    // Networking (Stage 4): every client has its own local copy of this
+    // trigger volume and would otherwise independently fire OnTriggerEnter
+    // the instant *their own* local player's collider touches it -- the
+    // NetworkServer.active guard means only the server's evaluation (the
+    // one everyone actually needs to agree on) ever counts. Reaching the
+    // exit resolves *that one player* (RoundManager.NotifyPlayerReachedExit)
+    // -- the round itself only actually ends once every connected player
+    // is resolved, whether by exiting or by being caught elsewhere (see
+    // RoundManager, which replaces the old single-player PartyGate: a
+    // caught player can never physically reach this trigger, so "wait for
+    // everyone to arrive here" alone would deadlock the round once anyone
+    // gets caught).
     [RequireComponent(typeof(Collider))]
     public class ExitPoint : MonoBehaviour
     {
         [SerializeField] private RoundManager roundManager;
-        [SerializeField] private PartyGate partyGate;
-
-        private void OnEnable()
-        {
-            if (partyGate != null) partyGate.OnAllArrived += HandleAllArrived;
-        }
-
-        private void OnDisable()
-        {
-            if (partyGate != null) partyGate.OnAllArrived -= HandleAllArrived;
-        }
 
         private void OnTriggerEnter(Collider other)
         {
+            if (!NetworkServer.active) return;
+            if (roundManager == null) return;
+
             PlayerInventory inventory = other.GetComponentInParent<PlayerInventory>();
             if (inventory == null) return;
 
-            if (partyGate != null)
-            {
-                partyGate.NotifyArrived(inventory);
-            }
-            else if (roundManager != null)
-            {
-                // Fallback if no gate is wired -- today's instant behavior.
-                roundManager.NotifyExitReached();
-            }
-        }
-
-        private void HandleAllArrived()
-        {
-            if (roundManager != null) roundManager.NotifyExitReached();
+            roundManager.NotifyPlayerReachedExit(inventory);
         }
     }
 }

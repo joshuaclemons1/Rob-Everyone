@@ -10,26 +10,26 @@ namespace RobEveryone.UI
     // an active round, and ignores Cash entirely). So starting a round
     // with Cash already saved up shows the bar partly filled before
     // you've picked anything up, and picking up loot fills it further on
-    // top of that. Fills toward GameFlowManager.LastQuota, since
-    // RoundManager itself isn't persistent and gameplay-design.md's real
-    // batch/tier target doesn't exist yet -- the most recent round's
-    // quota is a reasonable placeholder denominator until it does.
+    // top of that. Fills toward GameFlowManager.CurrentQuota, the real
+    // persistent batch quota (Stage 7b) -- always correct across the
+    // Lobby round-trip, unlike RoundManager's own Quota field, which is
+    // just a fresh copy of this taken at the start of whichever round
+    // happens to currently exist.
     public class CashBarUI : MonoBehaviour
     {
         [SerializeField] private LevelBarUI bar;
 
         private PlayerInventory playerInventory;
 
-        private void Awake()
-        {
-            playerInventory = FindFirstObjectByType<PlayerInventory>();
-        }
-
         private void Update()
         {
+            // Resolved lazily each frame (not cached in Awake/Start) since
+            // this client's own player object (Stage 4) may not have
+            // spawned yet the instant this UI's scene loads.
+            if (playerInventory == null) playerInventory = PlayerInventory.LocalPlayer;
             if (bar == null || playerInventory == null || GameFlowManager.Instance == null) return;
 
-            int quota = GameFlowManager.Instance.LastQuota;
+            int quota = GameFlowManager.Instance.CurrentQuota;
             if (quota <= 0) return;
 
             int progress = playerInventory.Cash + playerInventory.TotalValue;

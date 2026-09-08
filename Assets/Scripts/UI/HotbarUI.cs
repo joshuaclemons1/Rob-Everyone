@@ -1,25 +1,33 @@
+using System.Collections;
 using RobEveryone.Inventory;
 using UnityEngine;
 
 namespace RobEveryone.UI
 {
-    // Ties the 5 hotbar slot boxes to PlayerInventory's actual slot data
-    // and selection state. Leave `Inventory` unassigned for a UI living
-    // in a scene the Player doesn't exist in at edit time (e.g. the
-    // Lobby) -- same auto-find fallback InventoryUI/EconomyBarsUI use.
+    // Ties the 5 hotbar slot boxes to *this client's own*
+    // PlayerInventory.LocalPlayer (Stage 4) -- never another connected
+    // player's copy. The local player spawns asynchronously after
+    // connecting, so Start polls for it rather than assuming it already
+    // exists the way a single-player Awake lookup safely could.
     public class HotbarUI : MonoBehaviour
     {
-        [SerializeField] private PlayerInventory inventory;
         [SerializeField] private HotbarSlotUI[] slots; // exactly PlayerInventory.SlotCount, left to right
 
-        private void Awake()
+        private PlayerInventory inventory;
+
+        private void Start()
         {
-            if (inventory == null) inventory = FindFirstObjectByType<PlayerInventory>();
+            StartCoroutine(WaitForLocalPlayer());
         }
 
-        private void OnEnable()
+        private IEnumerator WaitForLocalPlayer()
         {
-            if (inventory == null) return;
+            while (inventory == null)
+            {
+                inventory = PlayerInventory.LocalPlayer;
+                if (inventory != null) break;
+                yield return null;
+            }
 
             inventory.OnSlotsChanged += Refresh;
             inventory.OnSelectedSlotChanged += RefreshSelection;

@@ -6,6 +6,18 @@ docs (several of which had drifted stale — see
 [completed.md](completed.md)'s note on that). Roughly ordered by "should
 happen soon" to "later stage."
 
+## In progress — do this first
+
+- **Stage 4/5 multiplayer (Mirror + Steam)** — code for full system sync
+  is written (`stage4-multiplayer-mirror.md`, `stage5-steam-multiplayer.md`),
+  but **none of it has been opened in the Editor, compiled, or tested**.
+  This is a huge, invasive change (12+ scripts converted to
+  `NetworkBehaviour`, `PartyGate.cs` deleted and folded into
+  `RoundManager`, several UI scripts changed from Inspector-wired to
+  runtime-resolved) — go through both docs' Rest Points in order and
+  report back per-Part rather than trying to power through both docs in
+  one sitting.
+
 ## Verify / playtest (built but not confirmed)
 
 - **Stage 7b (batch economy + hotbar)** — code and Editor wiring both

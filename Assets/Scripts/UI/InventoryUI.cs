@@ -1,31 +1,41 @@
+using System.Collections;
 using RobEveryone.Inventory;
 using TMPro;
 using UnityEngine;
 
 namespace RobEveryone.UI
 {
-    // Displays a single player's running total. Drag the Player's
-    // PlayerInventory into `inventory` and a TextMeshProUGUI into `moneyText`.
-    // Leave `inventory` unassigned for a UI living in a scene the Player
-    // doesn't exist in at edit time (e.g. the Lobby, where the Player is
-    // only ever present at runtime via GameFlowManager's
-    // DontDestroyOnLoad carry-over) -- Awake falls back to finding it,
-    // same pattern PoliceAI/HomeownerAI already use for their player
-    // reference.
+    // Displays this client's own running total -- never another
+    // connected player's, which is why this resolves PlayerInventory.
+    // LocalPlayer (Stage 4) instead of a plain FindFirstObjectByType that
+    // could just as easily find someone else's copy. Drag a
+    // TextMeshProUGUI into `moneyText`/`cashText`.
+    //
+    // The local player object spawns asynchronously after connecting, so
+    // it may not exist yet the instant this UI's scene loads -- Start
+    // waits (polling once a frame) rather than assuming it's already
+    // there the way a single-player Awake lookup safely could.
     public class InventoryUI : MonoBehaviour
     {
-        [SerializeField] private PlayerInventory inventory;
         [SerializeField] private TextMeshProUGUI moneyText;
         [SerializeField] private TextMeshProUGUI cashText;
 
-        private void Awake()
+        private PlayerInventory inventory;
+
+        private void Start()
         {
-            if (inventory == null) inventory = FindFirstObjectByType<PlayerInventory>();
+            StartCoroutine(WaitForLocalPlayer());
         }
 
-        private void OnEnable()
+        private IEnumerator WaitForLocalPlayer()
         {
-            if (inventory == null) return;
+            while (inventory == null)
+            {
+                inventory = PlayerInventory.LocalPlayer;
+                if (inventory != null) break;
+                yield return null;
+            }
+
             inventory.OnTotalValueChanged += UpdateText;
             inventory.OnCashChanged += UpdateCashText;
             UpdateText(inventory.TotalValue);
