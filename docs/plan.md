@@ -4,147 +4,45 @@ Full designed version with the map sketch and visual layout: https://claude.ai/c
 
 ## Where to pick up next
 
-**Stage 3h is done** — full-loop playtest confirmed working on the real
-layout (roads, fenced compound, jail interior, exit), and the 2 Good
-House slots were repositioned to actually read as inside/adjacent to the
-finished compound. **Stage 3i** (skybox, background skyline, forest ring
-+ world boundary, background hills) is done, scripts written and working.
-**Stage 3j is done** — traffic hazard (cars that drive the road loop and
-knock the player down via ragdoll) is playtested and working. See
-[stage3j-traffic-hazard.md](stage3j-traffic-hazard.md).
+Status tracking has moved out of this file — **[completed.md](completed.md)**
+is the flowing log of everything actually built, **[todo.md](todo.md)** is
+everything genuinely still open, both kept current instead of buried in
+this file's history. This section just orients you.
 
-Also jumped ahead to a scoped-down **Stage 7** (v1 Shop/Lobby phase) out
-of build order, since the core loop (loot → quota → exit) was confirmed
-working solo but had no restart path — a round ending just froze on a
-result banner with no way to play again. **Done and playtested** — see
-[stage7-shop-lobby-setup.md](stage7-shop-lobby-setup.md): full loop
-confirmed working (reach exit / timer out / caught → Lobby scene loads →
-sell loot at Sell Station → Cash bar/text update → stand on Ready Spot →
-5s countdown → gameplay scene reloads with fresh timer/quota).
+**Current state**: Stage 3 (full offline loop, real art, road/compound/
+skybox/traffic hazard) is feature-complete and playtested. Also jumped
+ahead of the build order into a scoped-down Stage 7 (v1 Shop/Lobby loop,
+batch economy, hotbar inventory) since the core loop had no restart path
+— see completed.md for why that's fine and what's still deliberately
+missing from the full Stage 7 design. Stage 4 (multiplayer) hasn't
+started.
 
-**Stage 7b** builds out two more pieces of the real design on top of
-that: a real **3-round batch economy** (quota grows ×1.5 per batch, Cash
-surplus above quota wiped at the batch boundary, rounds 1-2 show
-cumulative progress and only round 3 shows a pass/fail verdict) and a
-real **5-slot hotbar inventory** (Minecraft-style, bottom-center,
-selectable via number keys 1-5 or scroll wheel, replacing the old
-unlimited carried-items list) — see
-[stage7b-batch-economy-hotbar-setup.md](stage7b-batch-economy-hotbar-setup.md).
-Scripts written, Editor setup (hotbar UI in both scenes,
-`GameFlowManager`'s new quota growth field) not done yet. Still
-deliberately scoped down from the full gameplay-design.md system — no
-sabotage purchases, no real Jail & Bail rescue, no personal
-sabotage-spending quota add-on — those depend on multiplayer/sabotage
-items existing first.
-
-Done so far:
-
-- **Stage 3d** — Homeowner and Police reskinned with real Quaternius
-  characters (capsule collider kept, Mesh Renderer hidden on the swap
-  target). `HomeownerAnimator` (Idle-only) and `PoliceAnimator`
-  (Idle/Walk/Run Blend Tree, driven by `PoliceAI.cs` feeding
-  `agent.velocity.magnitude` into a `Speed` param each frame) exist under
-  `Assets/Art/Characters/Animators/`.
-- **Stage 3e** — `Real_House_01` built and proven: real Kenney building +
-  yard padding to the 40×40 plot size + Kenney Furniture Kit interior +
-  nested `Homeowner` + loot spot, all as one self-contained prefab at
-  `Assets/Prefabs/Houses/Real_House_01.prefab`. Also added
-  `DoorTeleporter` (`Assets/Scripts/World/DoorTeleporter.cs`) — a
-  paired-trigger doorway workaround for buildings without a real modeled
-  door gap, so building colliders never need hand-fitting.
-- **Stage 3f** — house pool still just `Real_House_01` (Zach owns adding
-  more variants, not started yet) — everything downstream was built to
-  not require more than one prefab, so this isn't blocking anything.
-- **Stage 3g** — `HousePoolSpawner.cs` (`Assets/Scripts/World/`) randomly
-  assigns a prefab per slot on `Start()`; `HomeownerAI`/`PoliceAI` fall
-  back to auto-finding the player if `Player Target` isn't hand-wired, so
-  runtime-spawned houses work with zero manual Inspector wiring. Full
-  rectangular-ring layout (15 outer house slots + 2 Good House slots + a
-  3-building compound stack) matched to the team's actual map sketch, not
-  the earlier circular-arc placeholder. `OnDrawGizmos` on the spawner
-  draws a 40×40 wireframe box per slot at all times (not just Play mode),
-  since houses only exist once spawned at runtime.
-- **Stage 3h** — road loop placed around the compound and driveways
-  connect it to the house ring. Compound fence replaced with a real
-  chain-link/barbed-wire/gate kit (perimeter placed); police station
-  placed with an essential interior (3 jail cells + 2 desks); `Exit`
-  repositioned away from the compound; 2 Good House slots repositioned to
-  read as inside/adjacent to the finished compound. Full-loop playtest
-  confirmed working — Stage 3 is feature-complete on real art. Note: both
-  `Kenney-CityKitRoads` and `Kenney-CityKitCommercial` needed the same FBX
-  import Scale Factor fix (`15`, matching `Kenney-CityKitSuburban`)
-  already applied to every other Kenney pack — worth checking any *new*
-  Kenney pack import (Industrial, Car Kit) for the same issue before
-  assuming it "looks tiny" for some other reason.
-- **Stage 3i** — skybox, background skyline, forest ring (doubles as the
-  map's world boundary — see `ForestRingSpawner.cs`), and background
-  hills. Done, see [stage3i-skybox-skyline.md](stage3i-skybox-skyline.md).
-- **Stage 3j (in progress)** — traffic hazard: cars drive one lap of the
-  road loop and knock the player down (pure knockback + stun, not a
-  round-ending catch) via a real per-limb ragdoll (Unity's Ragdoll
-  Wizard). Built for future multiplayer/character-selection compatibility
-  without adding any actual networking yet: the ragdoll shows whichever
-  skin `PlayerCosmeticSelection` (the existing main-menu system) has
-  picked (`PlayerSkinSpawner`, reading a new shared `PlayerSkinRoster`
-  asset that `CustomizationUI`'s menu preview also reads from now), and
-  is hidden from the owner's own camera via Culling Mask rather than
-  `SetActive` — so a future networked player can still be seen by others.
-  Scripts written (`CarDriver.cs`, `CarSpawnManager.cs`, `PlayerRagdoll.cs`,
-  `PlayerSkinSpawner.cs`, `RagdollHips.cs`); Editor setup (car prefabs,
-  waypoint loop, spawn manager, player components) in progress — see
-  [stage3j-traffic-hazard.md](stage3j-traffic-hazard.md). `PlayerSkinRoster`
-  now covers **all 52 files** in `Quaternius-UltimateAnimatedCharacterPack`
-  (a few looked like accessory props/non-humanoid animals at a glance,
-  but share the same rig and ragdoll fine, so nothing was excluded). All
-  52 are raw FBX (not prefabs) sharing an identical rig, so rather than
-  running the Ragdoll Wizard by hand 52 times, `RagdollBatchTool.cs`
-  (`Assets/Scripts/Editor/`) builds it on one template skin (manual, via
-  the Wizard) and copies that setup — including remapping each joint's
-  bone-to-bone connections correctly, which plain copy-paste wouldn't —
-  onto the rest, auto-wrapping any FBX targets into real prefabs along
-  the way. Template built manually on the `BaseCharacter` skin — 11
-  bones (pelvis, spine, head, 2 thighs, 2 shins, 2 upper arms, 2
-  forearms), which is the Ragdoll Wizard's actual complete output, not a
-  gap (feet/elbows are sizing references for the shin/forearm, not
-  separate bodies — this was briefly misdiagnosed as broken, it isn't).
-  The tool grew a **Force** option (redo an already-processed target) and
-  a selection-order fix (explicit drag-in Template field, was
-  `Selection.activeGameObject`) along the way regardless. **Done:** all 52
-  skins batch-copied and organized into
-  `Assets/Prefabs/PlayerSkins/_Ragdoll/`; `PlayerSkinRoster` updated to
-  point at all 52 (the `BaseCharacter` entry points at the original
-  hand-built template, not the redundant `BaseCharacter_Ragdoll.prefab`
-  the batch tool also produced — that duplicate is harmless, delete
-  whenever). Remaining: actually playtest a handful of the 52 (not just
-  one) before trusting the batch results, and eventually wire the
-  character-selection UI to something other than the placeholder
-  first-skin default.
-
-Full walkthroughs: [stage3d-character-art.md](stage3d-character-art.md),
+Full stage-by-stage how-to walkthroughs (procedural reference, not status
+— check completed.md/todo.md for what's actually done):
+[stage2-editor-setup.md](stage2-editor-setup.md),
+[stage3-editor-setup.md](stage3-editor-setup.md),
+[stage3b-homeowner-setup.md](stage3b-homeowner-setup.md),
+[stage3c-police-setup.md](stage3c-police-setup.md),
+[stage3d-character-art.md](stage3d-character-art.md),
 [stage3e-house-prefabs.md](stage3e-house-prefabs.md),
 [stage3f-house-pool.md](stage3f-house-pool.md),
 [stage3g-map-layout.md](stage3g-map-layout.md),
-[stage3h-map-dressing.md](stage3h-map-dressing.md) (roads, fenced police
-compound, exit placement),
-[stage3i-skybox-skyline.md](stage3i-skybox-skyline.md) (skybox, skyline,
-forest/hills),
-[stage3j-traffic-hazard.md](stage3j-traffic-hazard.md) (traffic hazard
-cars), [stage7-shop-lobby-setup.md](stage7-shop-lobby-setup.md) (v1
-Shop/Lobby phase, built ahead of order),
-[stage7b-batch-economy-hotbar-setup.md](stage7b-batch-economy-hotbar-setup.md)
-(3-round batch economy, 5-slot hotbar inventory). Style/asset reference
-(palette, sourced packs, remaining art to-do) is in
-[art-info.md](art-info.md);
-UI/menu element spec is in [ui-design.md](ui-design.md).
+[stage3h-map-dressing.md](stage3h-map-dressing.md),
+[stage3i-skybox-skyline.md](stage3i-skybox-skyline.md),
+[stage3j-traffic-hazard.md](stage3j-traffic-hazard.md),
+[stage7-shop-lobby-setup.md](stage7-shop-lobby-setup.md),
+[stage7b-batch-economy-hotbar-setup.md](stage7b-batch-economy-hotbar-setup.md).
+Style/asset reference (palette, sourced packs, remaining art to-do) is in
+[art-info.md](art-info.md); UI/menu element spec is in
+[ui-design.md](ui-design.md); main menu build docs are
+[main-menu-visual-design.md](main-menu-visual-design.md) and
+[main-menu-customization-setup.md](main-menu-customization-setup.md).
 
-**Next steps:** find better compound fence assets, source jail-cell
-props for the police station interior (needed later for Stage 7, fine to
-grab now while looking at compound assets generally), finish the
-compound fence + gates, relocate `Exit`, then playtest the whole loop on
-the real layout — that completes Stage 3 on real art. Work happens on
-`jclem's-branch`; merge to `main` once tested and confirmed working (the
-Stage 3g/3h work through this point has been playtested and confirmed —
-see commit history on `main` after this point).
+**Next steps**: see [todo.md](todo.md)'s "Verify / playtest" section
+first (Stage 7b, `Real_House_02`, and the ragdoll batch results all need
+confirmation, not more building) — then whatever else from that list
+looks most valuable next. Work happens on `jclem's-branch`; merge to
+`main` once tested and confirmed working.
 
 ## Strategy
 
