@@ -373,11 +373,11 @@ Wire:
   `BaseCharacter` included (a few looked like accessory props or
   non-humanoid animals at a glance, but they share the same rig and
   ragdoll correctly, so there was no reason to exclude them — see
-  [stage3j-traffic-hazard.md](stages/stage3j-traffic-hazard.md)).
+  [stage3j-traffic-hazard.md](stage3j-traffic-hazard.md)).
   Pulled out into its own shared asset (was a
   direct array on this component) so gameplay's `PlayerSkinSpawner` reads
   the exact same list instead of keeping a second copy in sync by hand —
-  see [stage3j-traffic-hazard.md](stages/stage3j-traffic-hazard.md)'s ragdoll
+  see [stage3j-traffic-hazard.md](stage3j-traffic-hazard.md)'s ragdoll
   section for why.
 - `Palette` → your `PlayerColorPalette` asset (Project window → right-
   click → **Create → Rob Everyone → Player Color Palette** if you

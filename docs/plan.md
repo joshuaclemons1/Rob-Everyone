@@ -34,9 +34,9 @@ Full stage-by-stage how-to walkthroughs (procedural reference, not status
 [stage7b-batch-economy-hotbar-setup.md](stages/stage7b-batch-economy-hotbar-setup.md).
 Style/asset reference (palette, sourced packs, remaining art to-do) is in
 [art-info.md](art-info.md); UI/menu element spec is in
-[ui-design.md](ui-design.md); main menu build docs are
-[main-menu-visual-design.md](main-menu-visual-design.md) and
-[main-menu-customization-setup.md](main-menu-customization-setup.md).
+[ui-design.md](stages/ui-design.md); main menu build docs are
+[main-menu-visual-design.md](stages/main-menu-visual-design.md) and
+[main-menu-customization-setup.md](stages/main-menu-customization-setup.md).
 
 **Next steps**: see [todo.md](todo.md)'s "Verify / playtest" section
 first (Stage 7b, `Real_House_02`, and the ragdoll batch results all need
@@ -65,7 +65,7 @@ loop (steal, quota, exit) is proven fun by yourself. Networking arrives at
 ## Core systems
 
 Full detailed design for economy/capacity/jail-bail/sabotage/movement is
-in [gameplay-design.md](gameplay-design.md) (written 2026-09-01, not yet
+in [gameplay-design.md](stages/gameplay-design.md) (written 2026-09-01, not yet
 implemented) — summary below, that doc is the source of truth for specifics.
 
 - **Player Controller** — first-person movement + interaction raycast;
@@ -103,7 +103,7 @@ implemented) — summary below, that doc is the source of truth for specifics.
 5. **Actually over the internet** — Steamworks.NET + FizzySteamworks, lobby via Steam overlay invite, test AppID 480.
 6. **Turn friends into rivals** — taser, hammer, alarm clock, bat, all networked correctly.
 7. **The meta-game** — Ready-up shop phase, Cash/quota-batch economy,
-   jail & bail — see [gameplay-design.md](gameplay-design.md) for the
+   jail & bail — see [gameplay-design.md](stages/gameplay-design.md) for the
    full design.
 8. **Playtest with the friend group** — real match with 3–4 people (design target is 4–8), collect notes, loop back as needed.
 
@@ -119,11 +119,11 @@ These exact numbers (~10 houses, 2 Good Houses, one compound entrance) are
 3g's slot layout, informed by how Stage 3f's house pool and playtesting
 actually feel. The single exit is deliberately kept as one contested
 chokepoint even at higher player counts (see
-[gameplay-design.md](gameplay-design.md)) — not something to "fix" into
+[gameplay-design.md](stages/gameplay-design.md)) — not something to "fix" into
 multiple exits without a specific reason to.
 
 Map size is fixed regardless of player count — the design target is 4–8
-players (see [gameplay-design.md](gameplay-design.md)), all sharing this
+players (see [gameplay-design.md](stages/gameplay-design.md)), all sharing this
 same house pool rather than the map scaling up. More players competing
 over the same fixed loot pool is the intended chaos, not a bigger map.
 
@@ -146,7 +146,7 @@ over the same fixed loot pool is the intended chaos, not a bigger map.
   is, whether it affects AI behavior) before it's added to a stage.
 - **Real per-blade 3D grass** — yards currently use a procedural
   striped-lawn Shader Graph material (flat plane + normal map, see
-  [lawn-shader-setup.md](lawn-shader-setup.md)), which was judged good
+  [lawn-shader-setup.md](stages/lawn-shader-setup.md)), which was judged good
   enough for now. Actual blade geometry (GPU-instanced or geometry-shader
   grass, with wind sway) would look more like real grass, but is a real
   technical undertaking — new rendering technique, LOD/performance tuning

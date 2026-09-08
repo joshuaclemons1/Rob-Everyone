@@ -4,7 +4,7 @@ Detailed design for the core loop: loot/economy, capacity, the quota-batch
 structure, the shop, jail/bail, sabotage, and movement. Written up from a
 design session (2026-09-01) before any of this is built — this is a design
 reference, not a build guide. Cross-reference:
-[plan.md](plan.md) for stage sequencing, `Assets/Scripts/` for what's
+[plan.md](../plan.md) for stage sequencing, `Assets/Scripts/` for what's
 actually implemented today.
 
 **Status:** none of this is implemented yet beyond the basics already in
@@ -300,7 +300,7 @@ On top of the existing money/quota/timer:
 - Save system format/location for meta-progression; whether it syncs with
   Steam.
 - Full audio trigger list beyond the four confirmed categories (see
-  [art-info.md](art-info.md) for the current SFX/music to-do list).
+  [art-info.md](../art-info.md) for the current SFX/music to-do list).
 
 ## Gap vs. current code
 
@@ -319,7 +319,7 @@ This is a substantially different system from what's implemented today:
   ready-spot shop phase, shared/networked loot state, PvP item theft,
   meta-progression/save data, or voice chat exist in code yet.
 
-Per [plan.md](plan.md)'s build order, none of this should be started
+Per [plan.md](../plan.md)'s build order, none of this should be started
 until the single-player core loop (Stage 3) and basic multiplayer (Stage
 4–5) are proven — this doc exists so the design is ready to build from
 once those stages are actually reached (roughly Stage 6–7).

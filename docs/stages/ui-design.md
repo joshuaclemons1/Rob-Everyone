@@ -6,7 +6,7 @@ from Unity — deliverables are individual PNG sprites/icons (Unity assembles
 them into Canvas UI), not full-screen flat comps, except where noted as a
 "layout mockup" (reference only, not imported directly).
 
-Style: follow [art-info.md](art-info.md)'s locked palette and "clean,
+Style: follow [art-info.md](../art-info.md)'s locked palette and "clean,
 low-poly cartoon, not overly stylized" direction — UI should feel like it
 belongs to the same game as the 3D art, not a generic default HUD.
 

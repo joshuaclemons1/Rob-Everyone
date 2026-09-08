@@ -51,7 +51,7 @@ station piece) and fence pieces from `Kenney-CityKitSuburban/FBX/`
 3. Decide the compound entrance count now (per plan.md's note, this was
    left open) — a single gated entrance is the simpler, more defensible
    default matching "campable single exit" thinking from
-   [gameplay-design.md](../gameplay-design.md), but it's your call once you
+   [gameplay-design.md](gameplay-design.md), but it's your call once you
    see the actual compound size.
 4. Place the **2 Good House slots** from Stage 3g adjacent to/inside this
    compound, per the sketch.

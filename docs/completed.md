@@ -98,18 +98,18 @@ status line inside an individual stage doc.
 
 - **Crosshair** — neutral dot + separate interact-hint icon (two
   permanent Images, not a sprite-swap, so size/position never shifts).
-  See [ui-implementation-setup.md](ui-implementation-setup.md).
+  See [ui-implementation-setup.md](stages/ui-implementation-setup.md).
 - **Cash/Quota/Timer bars** — pixel-art level-bar HUD (`LevelBarUI.cs`,
   `EconomyBarsUI.cs`). See
-  [ui-implementation-setup.md](ui-implementation-setup.md).
+  [ui-implementation-setup.md](stages/ui-implementation-setup.md).
 - **Main menu + customization** — Play/Settings/Quit, bracket-style
   buttons (`Button_L`/`Button_R` caps flanking text, reusable prefab),
   skin-cycling + color-swatch picker with a live 3D preview
   (`CustomizationUI.cs`, `PlayerColorizer.cs` targeting each skin's
   shared `Skin` material slot, `PlayerCosmeticSelection` for
   PlayerPrefs-backed persistence). See
-  [main-menu-visual-design.md](main-menu-visual-design.md),
-  [main-menu-customization-setup.md](main-menu-customization-setup.md).
+  [main-menu-visual-design.md](stages/main-menu-visual-design.md),
+  [main-menu-customization-setup.md](stages/main-menu-customization-setup.md).
 
 ## Meta-game (jumped ahead of build order — see note below)
 
@@ -150,11 +150,11 @@ those depend on multiplayer/sabotage items existing first (see
 
 ## Design/reference docs
 
-- [gameplay-design.md](gameplay-design.md) — full economy/capacity/
+- [gameplay-design.md](stages/gameplay-design.md) — full economy/capacity/
   jail-bail/sabotage/movement design (source of truth for specifics not
   yet built).
-- [ui-design.md](ui-design.md) — full UI element spec, tiered by build
+- [ui-design.md](stages/ui-design.md) — full UI element spec, tiered by build
   priority.
 - [art-info.md](art-info.md) — style/palette/sourced-asset reference.
-- [lawn-shader-setup.md](lawn-shader-setup.md) — procedural striped-lawn
+- [lawn-shader-setup.md](stages/lawn-shader-setup.md) — procedural striped-lawn
   Shader Graph material for yards.

@@ -8,7 +8,7 @@ placeholder-button approach in
 [main-menu-customization-setup.md](main-menu-customization-setup.md)'s
 Parts 5–8 once this art exists.
 
-Style: matches [art-info.md](art-info.md)'s locked "Bright Cartoon
+Style: matches [art-info.md](../art-info.md)'s locked "Bright Cartoon
 Suburbia" palette. **Design everything on a 3840×2160 canvas** — matches
 the Canvas Scaler setup used elsewhere, so pixel positions here translate
 directly to Unity Rect Transform values later.
@@ -116,7 +116,7 @@ frames); rows marked **New** are things the kit likely doesn't cover.
 
 | # | Asset (filename) | Source | Canvas size | Format | Notes |
 |---|---|---|---|---|---|
-| 1 | `bg_neighborhood.png` | New | 3840×2160 | PNG, no alpha needed (full bleed, opaque) | Drone/aerial shot of the neighborhood, locked palette colors, **should visually tie into the actual in-game map layout** (house ring + fenced compound from the sketch, see [plan.md](plan.md)'s Map section and Stage 3g/3h) rather than being a generic unrelated neighborhood. Full-bleed, no transparent areas. Shared behind all screens including Settings. |
+| 1 | `bg_neighborhood.png` | New | 3840×2160 | PNG, no alpha needed (full bleed, opaque) | Drone/aerial shot of the neighborhood, locked palette colors, **should visually tie into the actual in-game map layout** (house ring + fenced compound from the sketch, see [plan.md](../plan.md)'s Map section and Stage 3g/3h) rather than being a generic unrelated neighborhood. Full-bleed, no transparent areas. Shared behind all screens including Settings. |
 | 2 | `title_wordmark.png` | New | 2400×700 (author large for crispness — final on-screen size is smaller, ~2600×400 placed at Title region above) | PNG, alpha | "ROB EVERYONE" logo art. Transparent background — sits over `bg_neighborhood`. Static art only, the pulse is applied in Unity. |
 | 3 | `button_base.png` | **Adapt** — check the pill-shaped bars, top-left of the kit sheet | ~900×180 | PNG, alpha, 9-slice friendly (flat tileable center, fixed-width rounded ends/corners) | Shared background for Play, Settings, Quit, Invite Players, Game Settings, Customization, Back — one asset, Unity's Button component recolors via Color Tint on hover/press, no separate states needed. |
 | 4 | `button_startgame.png` | New (or heavily recolor an adapted piece) | ~1000×220 (slightly larger than `button_base`) | PNG, alpha | Gold accent (`#FFD166`) baked into the art, not runtime-tinted — this is the one visually emphasized button, worth a dedicated asset rather than a tint trick. |

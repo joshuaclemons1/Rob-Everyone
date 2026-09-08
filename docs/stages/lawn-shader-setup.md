@@ -2,7 +2,7 @@
 
 A procedural shader that gives the yard a "recently mowed" look — alternating
 light/dark green stripes, using the locked palette colors from
-[art-info.md](art-info.md), plus real bump depth from a free normal map so
+[art-info.md](../art-info.md), plus real bump depth from a free normal map so
 it doesn't read as a flat color. No texture file to hand-paint; stripe
 width/angle/colors are all Inspector-tunable afterward.
 

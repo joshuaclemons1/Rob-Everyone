@@ -6,8 +6,8 @@ and `asset-sources.md` (consolidated here so there's one place to work
 out of).
 
 Cross-reference: build stages are defined in [plan.md](plan.md). Lawn/yard
-ground material: [lawn-shader-setup.md](lawn-shader-setup.md). Full UI/menu
-element spec: [ui-design.md](ui-design.md).
+ground material: [lawn-shader-setup.md](stages/lawn-shader-setup.md). Full UI/menu
+element spec: [ui-design.md](stages/ui-design.md).
 
 ---
 
@@ -134,7 +134,7 @@ list) is locked enough that the work won't get thrown away.
 - ~~Color palette~~ — done, see Color palette above.
 - **HUD style pass** — full element-by-element spec (crosshair, money/
   quota/timer treatment, carry slots, item icons, shop screen, menus, and
-  more) is in [ui-design.md](ui-design.md), organized by what's safe to
+  more) is in [ui-design.md](stages/ui-design.md), organized by what's safe to
   build now vs. later. Mock up against a screenshot of the current scene.
   Plugs directly into [InventoryUI.cs](../Assets/Scripts/UI/InventoryUI.cs)
   and [RoundUI.cs](../Assets/Scripts/UI/RoundUI.cs) once it looks right.
@@ -169,7 +169,7 @@ list) is locked enough that the work won't get thrown away.
 - **Exit / extraction point** — needs to be readable as "the goal" from a
   distance.
 - **SFX** — confirmed trigger list (see
-  [gameplay-design.md](gameplay-design.md) for the design context):
+  [gameplay-design.md](stages/gameplay-design.md) for the design context):
   - A short stinger on each Homeowner state transition (Idle→Suspicious,
     Suspicious→Alerted) — immediate audio feedback without needing to be
     looking at the Homeowner.
@@ -194,7 +194,7 @@ list) is locked enough that the work won't get thrown away.
 
 - ~~Player skins/colors~~ — built ahead of schedule: a Body-color palette
   picker + live preview, see
-  [main-menu-customization-setup.md](main-menu-customization-setup.md).
+  [main-menu-customization-setup.md](stages/main-menu-customization-setup.md).
   Not yet wired onto actual networked players (Stage 4–5 doesn't exist
   yet), just the selection/persistence/preview system.
 - **Sabotage item icons + models** — taser, hammer, alarm clock, bat (per
