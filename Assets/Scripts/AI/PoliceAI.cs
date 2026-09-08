@@ -57,7 +57,11 @@ namespace RobEveryone.AI
         // with multiple players it's no longer a fixed single target.
         private Transform chaseTarget;
 
-        [SyncVar]
+        // [field: SyncVar], not [SyncVar] directly -- SyncVar only
+        // applies to an actual field, and on an auto-property the
+        // `field:` target attaches it to the compiler-generated backing
+        // field instead of the property declaration itself.
+        [field: SyncVar]
         public PoliceState State { get; private set; } = PoliceState.Patrol;
 
         private void Awake()

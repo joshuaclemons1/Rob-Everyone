@@ -92,7 +92,11 @@ namespace RobEveryone.Inventory
         private void Awake()
         {
             for (int i = 0; i < SlotCount; i++) slotItemNames.Add(string.Empty);
-            slotItemNames.OnChange += (op, index, oldItem, newItem) => RebuildSlotsFromSync();
+            // SyncList<T>.OnChange is (Operation, index, item) -- 3
+            // params, not the 4-param (old, new) shape a SyncVar hook
+            // uses. Ignored here regardless; any change just triggers a
+            // full rebuild rather than patching one slot.
+            slotItemNames.OnChange += (op, index, item) => RebuildSlotsFromSync();
         }
 
         public override void OnStartServer()
