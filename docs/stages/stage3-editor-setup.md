@@ -35,7 +35,7 @@ size for now (larger/smaller variants come later). Reuse it for the other
    vary per house.
 
 Placeholder blockout geometry only, same as Stage 2 — don't spend real time
-polishing here yet, see [art-info.md](art-info.md) for when final
+polishing here yet, see [art-info.md](../art-info.md) for when final
 house art is safe to build.
 
 ## 2. Round Manager

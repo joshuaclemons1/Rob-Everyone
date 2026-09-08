@@ -19,19 +19,19 @@ started.
 
 Full stage-by-stage how-to walkthroughs (procedural reference, not status
 — check completed.md/todo.md for what's actually done):
-[stage2-editor-setup.md](stage2-editor-setup.md),
-[stage3-editor-setup.md](stage3-editor-setup.md),
-[stage3b-homeowner-setup.md](stage3b-homeowner-setup.md),
-[stage3c-police-setup.md](stage3c-police-setup.md),
-[stage3d-character-art.md](stage3d-character-art.md),
-[stage3e-house-prefabs.md](stage3e-house-prefabs.md),
-[stage3f-house-pool.md](stage3f-house-pool.md),
-[stage3g-map-layout.md](stage3g-map-layout.md),
-[stage3h-map-dressing.md](stage3h-map-dressing.md),
-[stage3i-skybox-skyline.md](stage3i-skybox-skyline.md),
-[stage3j-traffic-hazard.md](stage3j-traffic-hazard.md),
-[stage7-shop-lobby-setup.md](stage7-shop-lobby-setup.md),
-[stage7b-batch-economy-hotbar-setup.md](stage7b-batch-economy-hotbar-setup.md).
+[stage2-editor-setup.md](stages/stage2-editor-setup.md),
+[stage3-editor-setup.md](stages/stage3-editor-setup.md),
+[stage3b-homeowner-setup.md](stages/stage3b-homeowner-setup.md),
+[stage3c-police-setup.md](stages/stage3c-police-setup.md),
+[stage3d-character-art.md](stages/stage3d-character-art.md),
+[stage3e-house-prefabs.md](stages/stage3e-house-prefabs.md),
+[stage3f-house-pool.md](stages/stage3f-house-pool.md),
+[stage3g-map-layout.md](stages/stage3g-map-layout.md),
+[stage3h-map-dressing.md](stages/stage3h-map-dressing.md),
+[stage3i-skybox-skyline.md](stages/stage3i-skybox-skyline.md),
+[stage3j-traffic-hazard.md](stages/stage3j-traffic-hazard.md),
+[stage7-shop-lobby-setup.md](stages/stage7-shop-lobby-setup.md),
+[stage7b-batch-economy-hotbar-setup.md](stages/stage7b-batch-economy-hotbar-setup.md).
 Style/asset reference (palette, sourced packs, remaining art to-do) is in
 [art-info.md](art-info.md); UI/menu element spec is in
 [ui-design.md](ui-design.md); main menu build docs are

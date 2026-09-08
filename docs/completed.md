@@ -18,27 +18,27 @@ status line inside an individual stage doc.
 
 - **Stage 2/3 base loop** — single house → multi-house map, quota/timer
   UI, an exit that ends the round. See
-  [stage2-editor-setup.md](stage2-editor-setup.md),
-  [stage3-editor-setup.md](stage3-editor-setup.md).
+  [stage2-editor-setup.md](stages/stage2-editor-setup.md),
+  [stage3-editor-setup.md](stages/stage3-editor-setup.md).
 - **Homeowner AI** — Idle → Suspicious → Alerted vision-cone state
   machine, calls police on Alert. `HomeownerAI.cs`. See
-  [stage3b-homeowner-setup.md](stage3b-homeowner-setup.md).
+  [stage3b-homeowner-setup.md](stages/stage3b-homeowner-setup.md).
 - **Police AI** — Patrol → Respond → Search → Chase → Catch, NavMesh-driven,
   responds to any Homeowner's alert via a static event (no manual
   wiring). `PoliceAI.cs`. See
-  [stage3c-police-setup.md](stage3c-police-setup.md).
+  [stage3c-police-setup.md](stages/stage3c-police-setup.md).
 - **Character art** — Homeowner/Police reskinned with real Quaternius
   characters; `HomeownerAnimator` (Idle) and `PoliceAnimator`
   (Idle/Walk/Run Blend Tree). See
-  [stage3d-character-art.md](stage3d-character-art.md).
+  [stage3d-character-art.md](stages/stage3d-character-art.md).
 - **Real house prefab** — `Real_House_01`: real Kenney building + 40×40
   yard padding + Furniture Kit interior + nested Homeowner + loot spot,
   self-contained prefab. `DoorTeleporter.cs` (paired-trigger doorway
   workaround, no door-gap modeling needed). See
-  [stage3e-house-prefabs.md](stage3e-house-prefabs.md).
+  [stage3e-house-prefabs.md](stages/stage3e-house-prefabs.md).
 - **House pool** — `Real_House_02` also exists now (2 real house prefabs
   total; Zach's further variants still pending, not blocking anything).
-  See [stage3f-house-pool.md](stage3f-house-pool.md).
+  See [stage3f-house-pool.md](stages/stage3f-house-pool.md).
 - **Map slot layout + spawner** — `HousePoolSpawner.cs` randomly assigns
   a prefab per slot on `Start()`; `HomeownerAI`/`PoliceAI` auto-find the
   player if not hand-wired, so runtime-spawned houses need zero manual
@@ -46,7 +46,7 @@ status line inside an individual stage doc.
   Good House slots + 3-building compound stack) matched to the team's
   actual map sketch. `OnDrawGizmos` draws a 40×40 wireframe box per slot
   at all times (not just Play mode) since houses don't exist until
-  spawned. See [stage3g-map-layout.md](stage3g-map-layout.md).
+  spawned. See [stage3g-map-layout.md](stages/stage3g-map-layout.md).
 - **Roads, compound, exit** — road loop + driveways placed; compound
   fenced with a real chain-link/barbed-wire/gate kit (TampaJoey's Chain
   Link Fence Pack); police station placed with an essential interior (3
@@ -54,11 +54,11 @@ status line inside an individual stage doc.
   2 Good House slots repositioned to read as inside/adjacent to the
   compound. **Full-loop playtest confirmed working** — Stage 3 is
   feature-complete on real art. See
-  [stage3h-map-dressing.md](stage3h-map-dressing.md).
+  [stage3h-map-dressing.md](stages/stage3h-map-dressing.md).
 - **Skybox + background** — day skybox (Kenney Skyboxes pack, wired and
   live), background skyline, forest ring (also serves as the map's world
   boundary, `ForestRingSpawner.cs`), background hills. See
-  [stage3i-skybox-skyline.md](stage3i-skybox-skyline.md).
+  [stage3i-skybox-skyline.md](stages/stage3i-skybox-skyline.md).
 - **Traffic hazard** — cars drive one lap of the road loop and knock the
   player down (knockback + stun, not a catch) via a real per-limb ragdoll
   (Unity's Ragdoll Wizard). `CarDriver.cs`, `CarSpawnManager.cs`,
@@ -72,7 +72,7 @@ status line inside an individual stage doc.
   `Quaternius-UltimateAnimatedCharacterPack` now have a ragdoll variant
   in `Assets/Prefabs/PlayerSkins/_Ragdoll/`, `PlayerSkinRoster` updated
   to point at them. Playtested and confirmed working end to end. See
-  [stage3j-traffic-hazard.md](stage3j-traffic-hazard.md).
+  [stage3j-traffic-hazard.md](stages/stage3j-traffic-hazard.md).
 - **`HouseDesigner` scene** — a dev-tool scene with a `HouseTemplate`
   object, built to speed up creating further `Real_House_0X` variants for
   the pool (not a player-facing scene).
@@ -121,7 +121,7 @@ status line inside an individual stage doc.
   confirmed working**: reach exit / timer out / caught → Lobby loads →
   sell loot → Cash updates → Ready Spot → countdown → gameplay scene
   reloads with fresh timer/quota. See
-  [stage7-shop-lobby-setup.md](stage7-shop-lobby-setup.md).
+  [stage7-shop-lobby-setup.md](stages/stage7-shop-lobby-setup.md).
 - **Batch economy + hotbar** — quota grows ×1.5 per 3-round batch (Cash
   surplus above quota wiped at the boundary); carried loot is a real
   5-slot hotbar (Minecraft-style, number keys 1-5 or scroll to select),
@@ -131,7 +131,7 @@ status line inside an individual stage doc.
   `Lobby.unity` wiring) — despite the how-to doc's own header still
   saying "Editor setup not done yet," the commit that added it (`5e9ce4f`)
   shipped the scene/prefab work in the same pass. See
-  [stage7b-batch-economy-hotbar-setup.md](stage7b-batch-economy-hotbar-setup.md).
+  [stage7b-batch-economy-hotbar-setup.md](stages/stage7b-batch-economy-hotbar-setup.md).
 - **Item catalog + loot tables** — replaced one-off `(name, value)` pairs
   baked into `PickupItem` with a shared `ItemDefinition` catalog (name,
   value, icon, world model + scale) and a `LootTable`/`LootSpawnPoint`

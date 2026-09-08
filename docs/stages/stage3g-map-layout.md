@@ -5,7 +5,7 @@ tested, this stage lays out where houses actually go on the map and writes
 the script that randomly assigns one pool prefab per slot — this is what
 turns "a pool of house prefabs" into an actual map.
 
-Per [plan.md](plan.md)'s note, exact house/Good House counts are rough
+Per [plan.md](../plan.md)'s note, exact house/Good House counts are rough
 guidance, not locked — this doc gives you a process to decide them, not a
 fixed number to hit.
 
