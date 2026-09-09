@@ -14,6 +14,14 @@ All the code for both this stage and Stage 5 already exists in the repo
 the Unity Editor, not code to write yourself, unless a Part says
 otherwise.
 
+**Always press Play from `MainMenu`, never directly from `SampleScene`
+or `Lobby`.** `NetworkManager` (and `GameFlowManager` on it) only exists
+in `MainMenu` from Part 1 onward — pressing Play with a different scene
+open means Mirror's whole bootstrap never happens, and everything
+networked has nothing to attach to. The real test flow is always: Play
+from `MainMenu` → Host → lands in `Lobby` → walk to `ReadySpot` → carries
+you into `SampleScene`.
+
 **Before you start**: commit or stash anything uncommitted. This touches
 a huge fraction of the codebase in one pass — you want a clean baseline
 to diff against if something goes sideways.
@@ -274,6 +282,11 @@ for the still-free player afterward instead of just standing still.
    Direction: **Server To Client**, the default — cars are entirely
    server-driven, unlike the client-authoritative player).
 2. Add every car prefab to the NetworkManager's **Spawnable Prefabs**.
+3. **`CarSpawnManager`'s own GameObject** (wherever it lives in
+   `SampleScene`) also needs a **Network Identity** — separate from the
+   car prefabs above, same reason `HousePoolSpawner`/`RoundManager`
+   needed one on their own objects too (`OnStartServer()` never fires
+   without it, so nothing ever spawns, no error logged).
 
 ### 🔴 Rest Point 7
 Confirm cars appear identically for both clients, on the same lap, and
