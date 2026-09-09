@@ -248,13 +248,21 @@ worked example before doing the rest by hand.
 3. **Add a Network Identity** — required per
    [stage4-multiplayer-mirror.md](stage4-multiplayer-mirror.md) Part 4:
    "every `ItemDefinition`'s World Model Prefab needs a `Network
-   Identity` component *on the prefab asset itself*." `PickupItem` does
-   **not** need to be added by hand — `LootSpawnPoint` adds it at
-   runtime automatically if it's missing.
-4. **Drag it into `Assets/Prefabs/Items/`** (create that folder) to make
+   Identity` component *on the prefab asset itself*."
+4. **Add `PickupItem`** too — also has to be baked into the prefab
+   asset, not left for `LootSpawnPoint` to add at runtime. It technically
+   *can* be added after the fact, but `NetworkIdentity.Awake()` already
+   scans and caches this object's networked components by the time that
+   would happen, leaving `PickupItem` permanently unable to tell it's
+   spawned — it'll throw the instant anything tries to interact with it,
+   and Mirror will disconnect whoever triggered it. (This was a real bug
+   here, not a hypothetical — `LootSpawnPoint.cs` now fails loudly with a
+   clear error instead of silently adding it, specifically so this can't
+   happen silently again.)
+5. **Drag it into `Assets/Prefabs/Items/`** (create that folder) to make
    it a real prefab asset. Delete the scene instance afterward if you
    used a scratch scene.
-5. **Create the `ItemDefinition`**: right-click in `Assets/Data/Items/`
+6. **Create the `ItemDefinition`**: right-click in `Assets/Data/Items/`
    → **Create → Rob Everyone → Item Definition**. Name it to match the
    item. Set:
    - **Item Name**: the display name (e.g. "Gold Ingots")
@@ -263,17 +271,17 @@ worked example before doing the rest by hand.
      `todo.md` already tracks "loot item variety" needing icons — this
      doc is about getting the *world models* spawnable, not the hotbar
      icon art)
-   - **World Model Prefab**: the prefab you just made in step 4
+   - **World Model Prefab**: the prefab you just made in step 5
    - **World Model Scale**: `(1,1,1)` to start, tune once you see it
      in-game
    - **Inventory Size**: `1` unless the item is genuinely bulky (see
      Section 0) — most things stay at the default
-6. **Add it to `ItemCatalog`** (`Assets/Data/` — create the asset via
+7. **Add it to `ItemCatalog`** (`Assets/Data/` — create the asset via
    **Create → Rob Everyone → Item Catalog** if it doesn't exist yet) —
    required for multiplayer sync (`PlayerInventory` resolves carried
    items by name through this catalog, per
    stage4-multiplayer-mirror.md).
-7. **Add it to the correct-size `LootTable`** from Section 1, based on
+8. **Add it to the correct-size `LootTable`** from Section 1, based on
    the size category table in Section 2.
 
 ### Register the item's prefab as a Spawnable Prefab

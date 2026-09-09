@@ -19,12 +19,20 @@ namespace RobEveryone.Items
     // Networking (Stage 4): server-only (OnStartServer instead of Start)
     // -- every client needs to see the *same* rolled item, not each
     // independently gamble their own. Every ItemDefinition's
-    // WorldModelPrefab needs a NetworkIdentity component *on the prefab
-    // asset itself* (Mirror doesn't support adding NetworkIdentity at
-    // runtime after Instantiate -- unlike PickupItem/Collider below,
-    // which are fine as a runtime fallback) and to be registered as a
-    // Spawnable Prefab on the NetworkManager, the same way house/car
-    // prefabs are (see stage4-multiplayer-mirror.md Part 5).
+    // WorldModelPrefab needs both a NetworkIdentity *and* a PickupItem
+    // component baked into the prefab asset itself (ItemPrefabBatchTool
+    // does this automatically) and to be registered as a Spawnable
+    // Prefab on the NetworkManager, the same way house/car prefabs are
+    // (see stage4-multiplayer-mirror.md Part 5). Neither is safe to add
+    // here at runtime: NetworkIdentity isn't supported at all after
+    // Instantiate, and PickupItem technically *can* be added here, but
+    // NetworkIdentity.Awake() (which runs synchronously during
+    // Instantiate, just above) already scans and caches this object's
+    // NetworkBehaviours by the time this method would add it -- leaving
+    // its netIdentity back-reference permanently null and throwing the
+    // moment anything on it checks isServer/isClient/etc. Collider is
+    // the only one of the three that's genuinely fine as a runtime
+    // fallback, since it isn't a NetworkBehaviour.
     public class LootSpawnPoint : NetworkBehaviour
     {
         [SerializeField] private LootTable lootTable;
@@ -67,7 +75,11 @@ namespace RobEveryone.Items
             }
 
             PickupItem pickup = instance.GetComponent<PickupItem>();
-            if (pickup == null) pickup = instance.AddComponent<PickupItem>();
+            if (pickup == null)
+            {
+                Debug.LogError($"{item.ItemName}'s World Model Prefab has no PickupItem -- add one to the prefab asset itself (ItemPrefabBatchTool does this automatically). Adding it here at runtime would leave its NetworkIdentity link permanently broken -- see this script's class comment for why.", instance);
+                return;
+            }
             pickup.Initialize(item);
 
             NetworkServer.Spawn(instance);
