@@ -462,6 +462,7 @@ GameObject:
   - component: {fileID: 6444404575678660617}
   - component: {fileID: 8759766598189527609}
   - component: {fileID: 683274169285509742}
+  - component: {fileID: -2520749878045530298}
   m_Layer: 0
   m_Name: truck
   m_TagString: Untagged
@@ -619,6 +620,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 501026b88af32fb40a6a11e8f6887ecc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.AI.CarDriver
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
   moveSpeed: 10
   turnSpeed: 120
   waypointArrivalDistance: 1.5
@@ -626,3 +630,20 @@ MonoBehaviour:
   yellClip: {fileID: 0}
   impactForce: 500
   impactUpwardBias: 0.7
+--- !u!114 &-2520749878045530298
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9204829626951048575}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 0
+  _assetId: 1900686054
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0

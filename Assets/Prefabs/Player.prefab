@@ -388,7 +388,7 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  catalog: {fileID: 0}
+  catalog: {fileID: 11400000, guid: 1e4afd019d4884bfc921f0e38bd02473, type: 2}
 --- !u!114 &8359281859997383545
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -456,7 +456,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 485022fd30764af468621012e09cd814, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Player.PlayerAnimationDriver
-  syncDirection: 0
+  syncDirection: 1
   syncMode: 0
   syncInterval: 0
   jumpClip: {fileID: 140615187318258251, guid: 8ee889166b449410585929e6f1375a24, type: 3}

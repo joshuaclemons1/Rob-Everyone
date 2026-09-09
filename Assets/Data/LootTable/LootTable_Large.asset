@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af7fff2cc6e3bfc44803243bbe24e731, type: 3}
+  m_Name: LootTable_Large
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Items.LootTable
+  possibleItems:
+  - {fileID: 11400000, guid: ba9988cd7deea42efae188685af4ab30, type: 2}
+  - {fileID: 11400000, guid: c5a44e5abd84a4e03850ead475f46124, type: 2}
+  - {fileID: 11400000, guid: 922fb62118fdc4df997f4294d85f3c18, type: 2}
+  - {fileID: 11400000, guid: 79766274362254f10a825144e4b83b04, type: 2}
+  - {fileID: 11400000, guid: ae316a008ccdd40e4a224fd02e4f76ff, type: 2}
+  - {fileID: 11400000, guid: a818e0068948d4814a8323209cbe9da3, type: 2}
+  - {fileID: 11400000, guid: df65d24f167a44fe4ab8001088bcf698, type: 2}

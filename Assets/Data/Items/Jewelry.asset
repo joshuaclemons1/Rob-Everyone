@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b404cf6d9d997854b8045341480eca7b, type: 3}
+  m_Name: Jewelry
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Items.ItemDefinition
+  itemName: Jewelry
+  value: 40
+  icon: {fileID: 0}
+  worldModelPrefab: {fileID: 9153704227943385530, guid: 782f8b1be74e84b9585aed4240b27c6a, type: 3}
+  worldModelScale: {x: 1, y: 1, z: 1}
+  inventorySize: 1

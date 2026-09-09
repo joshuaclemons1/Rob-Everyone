@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af7fff2cc6e3bfc44803243bbe24e731, type: 3}
+  m_Name: LootTable_Medium
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Items.LootTable
+  possibleItems:
+  - {fileID: 11400000, guid: 36d0261ebb0ed684b8550b44e31b83d3, type: 2}
+  - {fileID: 11400000, guid: b82db5ac5018e48eb80b665972a835f7, type: 2}
+  - {fileID: 11400000, guid: aff22ce8946124fdca42e0455e157d31, type: 2}
+  - {fileID: 11400000, guid: 64a8965a0f02d4072bfb7731ea341492, type: 2}
+  - {fileID: 11400000, guid: 716df83739e964315bf641d948dab745, type: 2}
+  - {fileID: 11400000, guid: b8b037170771b4bd98aafb3154c26ff4, type: 2}
+  - {fileID: 11400000, guid: f7af8d7027e42422a81ad27da6c11050, type: 2}
+  - {fileID: 11400000, guid: 1d3b30dfa2ac84d06a027cdefec94b18, type: 2}
+  - {fileID: 11400000, guid: 14392e80279f1487184cdda7abf63b0b, type: 2}
+  - {fileID: 11400000, guid: a8c54b1d8503e46958c551b505efbdc8, type: 2}
+  - {fileID: 11400000, guid: e621294f4d75e4aa1870bdfe3bddd0dd, type: 2}
+  - {fileID: 11400000, guid: 311d8176bef974a9ba15ef832d5705d6, type: 2}
+  - {fileID: 11400000, guid: 365ae9e4285334f60817411a0bb7e917, type: 2}

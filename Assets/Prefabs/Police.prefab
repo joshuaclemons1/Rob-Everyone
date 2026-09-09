@@ -45,6 +45,7 @@ GameObject:
   - component: {fileID: 8252496224888755282}
   - component: {fileID: 8154693394757020744}
   - component: {fileID: 2484161188952674025}
+  - component: {fileID: -8627455501626082307}
   m_Layer: 0
   m_Name: Police
   m_TagString: Untagged
@@ -183,7 +184,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: db4d5d0ce579aa8478b307cea252419b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.AI.PoliceAI
-  playerTarget: {fileID: 0}
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
   eye: {fileID: 576958934821151671}
   roundManager: {fileID: 0}
   animator: {fileID: 7288856240111554620}
@@ -205,7 +208,23 @@ MonoBehaviour:
   searchDuration: 3
   searchSweepAngle: 45
   searchSweepFrequency: 2
-  <State>k__BackingField: 0
+--- !u!114 &-8627455501626082307
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6226090469135380053}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 0
+  _assetId: 1666706744
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
 --- !u!1001 &3768859263233797549
 PrefabInstance:
   m_ObjectHideFlags: 0

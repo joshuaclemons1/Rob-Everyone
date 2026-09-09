@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b404cf6d9d997854b8045341480eca7b, type: 3}
+  m_Name: Smartphone
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Items.ItemDefinition
+  itemName: Smartphone
+  value: 35
+  icon: {fileID: 0}
+  worldModelPrefab: {fileID: 5371446088624485251, guid: 290e1a3ef716d470fb7d00e510d8c637, type: 3}
+  worldModelScale: {x: 2, y: 2, z: 2}
+  inventorySize: 1

@@ -160,7 +160,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 029f1da9d1ab50741b3e57daa84992ef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.AI.HomeownerAI
-  playerTarget: {fileID: 0}
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
   eye: {fileID: 4573309271277751027}
   viewDistance: 10
   viewAngle: 60
@@ -174,7 +176,6 @@ MonoBehaviour:
   idleColor: {r: 1, g: 1, b: 1, a: 1}
   suspiciousColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   alertedColor: {r: 1, g: 0, b: 0, a: 1}
-  <State>k__BackingField: 0
 --- !u!1001 &1005967563832359713
 PrefabInstance:
   m_ObjectHideFlags: 0

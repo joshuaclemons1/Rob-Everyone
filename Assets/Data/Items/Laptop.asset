@@ -15,5 +15,6 @@ MonoBehaviour:
   itemName: Laptop
   value: 50
   icon: {fileID: 0}
-  worldModelPrefab: {fileID: 919132149155446097, guid: 800a2ab481b3c484597110420b86864a, type: 3}
+  worldModelPrefab: {fileID: 5622529101712411961, guid: 77fdfed142a204859a04549ba87bed31, type: 3}
   worldModelScale: {x: 0.2, y: 0.2, z: 0.2}
+  inventorySize: 1
