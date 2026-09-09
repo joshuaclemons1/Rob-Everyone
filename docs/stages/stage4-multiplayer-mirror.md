@@ -289,10 +289,15 @@ This is the biggest rearchitecture in the whole stage — `RoundManager`
 and `GameFlowManager` were rewritten from "track one player" to "track
 every connected player, each resolving independently (caught vs. exited)
 but sharing one round timer and one batch quota number." Read both
-scripts' class-doc comments if anything below doesn't make sense; there's
-no separate Editor wiring beyond what earlier Parts already covered
-(`ReadySpot` needing a `Network Identity`, from Part 4 step 3) —
-this Part is really just a *test*, not new setup.
+scripts' class-doc comments if anything below doesn't make sense.
+
+1. Select whatever GameObject `RoundManager` lives on in `SampleScene`
+   → **Add Component → Network Identity**. (This was missing from this
+   doc entirely — without it, `RoundManager.Update()` throws a
+   `NullReferenceException` every single frame just from checking
+   `isServer`, which floods the Console badly enough to bury other real
+   errors underneath it. `ReadySpot` (Part 4 step 3) is the only other
+   Editor wiring this Part needed beyond earlier Parts.)
 
 ### 🔴 Rest Point 8
 Play a **full 3-round batch with two players**:
