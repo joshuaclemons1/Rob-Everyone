@@ -44,6 +44,17 @@ Confirm the Console is clean before continuing.
 
 ## Part 1 — NetworkManager + player movement
 
+**First, a mixup to head off**: this project has never had a `Player`
+*prefab* — the Player has only ever existed as a GameObject hand-placed
+directly in `SampleScene`, since it was single-player until now. The
+`BaseCharacter`/ragdoll prefabs you already have are a completely
+different thing — those are the *skin* models `PlayerSkinSpawner`
+instantiates as children at runtime, not the Player root itself (the
+object carrying `FirstPersonController`, `CharacterController`,
+`PlayerInventory`, `Interactor`, `PlayerSkinSpawner`, etc.). Step 5 below
+is where you actually create the missing `Player` prefab asset, from the
+scene object you already have — don't go looking for an existing one.
+
 1. In `SampleScene`, create an empty GameObject named `NetworkManager`.
 2. Add component **Network Manager** (Mirror's own). Add component
    **Kcp Transport** (Mirror's built-in transport, good enough for
@@ -58,27 +69,43 @@ Confirm the Console is clean before continuing.
    the same object as the NetworkManager now — see that script's own
    comment for why) and **Network Identity** (search "Network Identity"
    in Add Component). Leave Network Identity's settings at default.
-5. Set the NetworkManager's own fields:
-   - **Transport**: drag the Kcp Transport component here.
-   - **Player Prefab**: your existing `Player` prefab (drag from
-     `Assets/Prefabs/`).
-   - **Auto Create Player**: checked.
-6. Open the `Player` prefab. Add component **Network Identity**. Add
+5. **Create the `Player` prefab.** In the Hierarchy, find the existing
+   `Player` GameObject in `SampleScene` (it's the one with
+   `FirstPersonController` etc. already on it — not `BaseCharacter` or
+   anything under `Assets/Prefabs/PlayerSkins/`). Select it, then **drag
+   it from the Hierarchy into the Project window**, into
+   `Assets/Prefabs/` (create that folder first if it doesn't exist). This
+   creates a new `Player.prefab` asset *and* automatically turns the
+   Hierarchy object into a blue-highlighted instance linked to it — you
+   haven't lost anything, you've just given it a reusable asset to point
+   the NetworkManager at.
+6. Open that new `Player.prefab` (double-click it in the Project window,
+   not the scene instance). Add component **Network Identity**. Add
    component **Network Transform Reliable** (Mirror's position/rotation
    sync) — set **Sync Direction** to **Client To Server** (this is what
    makes the *owner's* locally-simulated movement authoritative, matching
    `FirstPersonController` already being fully client-predicted).
-7. Delete the `Player` object that's currently hand-placed in
-   `SampleScene` (and in `Lobby`, if one's there too) — Mirror spawns the
-   Player prefab itself now, a hand-placed one in the scene would just be
-   a second, non-networked copy sitting uselessly in the world.
-8. Add a `PlayerSpawnPoint` object (empty GameObject with that component)
+7. Back on the `NetworkManager` GameObject, set its fields:
+   - **Transport**: drag the Kcp Transport component here.
+   - **Player Prefab**: drag `Assets/Prefabs/Player.prefab` here — the
+     **asset** from the Project window, not the scene instance in the
+     Hierarchy (dragging the wrong one is exactly what "wants a
+     GameObject not a prefab" looks like — Mirror's field technically
+     accepts either, but only a real prefab asset actually works for
+     spawning).
+   - **Auto Create Player**: checked.
+8. Delete the `Player` instance still sitting in `SampleScene`'s
+   Hierarchy (and in `Lobby`, if one's there too) — now that it's a
+   prefab the NetworkManager spawns itself, a leftover copy hand-placed
+   in the scene would just be a second, non-networked duplicate sitting
+   uselessly in the world.
+9. Add a `PlayerSpawnPoint` object (empty GameObject with that component)
    in both `SampleScene` and `Lobby` if you don't already have one in
    each — `GameFlowManager` repositions every connected player onto these
    after each scene load. Add a couple more `PlayerSpawnPoint`s in each
    scene, spread apart, so a second player doesn't spawn stacked on the
    first (`GameFlowManager` round-robins across however many exist).
-9. On `MenuActions` (Main Menu scene): wire a **Host** button to
+10. On `MenuActions` (Main Menu scene): wire a **Host** button to
    `HostGame()` and a **Join** button to `JoinGame()` (both new methods).
    Optionally drag a `TMP_InputField` into **Join Address Field** for
    typing an IP — leave it unassigned for now and `JoinGame()` defaults to
