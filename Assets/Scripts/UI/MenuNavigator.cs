@@ -27,8 +27,15 @@ namespace RobEveryone.UI
         // everywhere else in this project (3840x2160) -- one full
         // "off-screen" slide distance.
         [SerializeField] private float slideDistance = 3840f;
-        [SerializeField, Range(0f, 1f)] private float outgoingSlideFraction = 0.3f;
-        [SerializeField, Range(0f, 1f)] private float dimAlpha = 0.5f;
+        // File-tree feel by default: the outgoing panel just nudges
+        // aside and stays clearly visible, rather than sliding a third
+        // of the screen away and dimming to half black. Both are live-
+        // tunable per instance in the Inspector -- changing these
+        // defaults doesn't retroactively touch a MenuNavigator you've
+        // already added to a scene, since Unity serializes the values it
+        // had at add-time.
+        [SerializeField, Range(0f, 1f)] private float outgoingSlideFraction = 0.1f;
+        [SerializeField, Range(0f, 1f)] private float dimAlpha = 0.85f;
 
         private readonly Stack<RectTransform> history = new();
         private RectTransform current;
