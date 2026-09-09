@@ -71,6 +71,21 @@ namespace RobEveryone.Core
         public override void OnStartServer()
         {
             SceneManager.sceneLoaded += HandleSceneLoaded;
+
+            // Mirror's own StartServer() runs the Online Scene change
+            // (into Lobby) *before* NetworkServer.SpawnObjects() -- which
+            // is what triggers this override on a scene-placed
+            // NetworkIdentity like this one. That means the very first
+            // time this runs, Lobby (or whichever scene Online Scene
+            // points at) has *already* finished loading -- its own
+            // sceneLoaded event already fired and passed with nobody
+            // subscribed yet, so the subscription above alone would miss
+            // it entirely (confirmed bug: ReadySpot's countdown completed
+            // but nothing ever set currentReadySpot, so
+            // OnAllPlayersReady had zero subscribers). Processing the
+            // *current* active scene once here, manually, catches that
+            // first scene the same way a real sceneLoaded event would.
+            HandleSceneLoaded(SceneManager.GetActiveScene(), LoadSceneMode.Single);
         }
 
         public override void OnStopServer()
