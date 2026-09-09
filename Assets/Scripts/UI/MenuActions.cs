@@ -30,12 +30,14 @@ namespace RobEveryone.UI
         [SerializeField] private TMPro.TMP_InputField joinAddressField;
         [SerializeField] private MenuNavigator menuNavigator;
 
-        // The "Join" button and the input field occupy the same spot on
-        // the Play submenu -- BeginJoin hides one and shows/focuses the
-        // other. ConfirmJoin (wired to the input field's own On End Edit,
-        // which fires on Enter *or* clicking away) both actually joins
-        // and swaps back to showing the button again.
-        [SerializeField] private GameObject joinButton;
+        // Only the "Join" label text swaps for the input field -- the
+        // button itself (brackets, background, Button component/click
+        // area) stays put the whole time; BeginJoin just hides the label
+        // and shows/focuses the field in the same spot inside it.
+        // ConfirmJoin (wired to the input field's own On End Edit, which
+        // fires on Enter *or* clicking away) both actually joins and
+        // swaps the label back on.
+        [SerializeField] private GameObject joinLabelText;
         [SerializeField] private GameObject joinInputFieldObject;
 
         private void Awake()
@@ -57,11 +59,11 @@ namespace RobEveryone.UI
         }
 
         // Wire the Join button's OnClick to this instead of JoinGame
-        // directly -- swaps the button for the input field and focuses
-        // it, so the player can start typing immediately.
+        // directly -- swaps its label text for the input field and
+        // focuses it, so the player can start typing immediately.
         public void BeginJoin()
         {
-            if (joinButton != null) joinButton.SetActive(false);
+            if (joinLabelText != null) joinLabelText.SetActive(false);
 
             if (joinInputFieldObject != null)
             {
@@ -78,15 +80,14 @@ namespace RobEveryone.UI
 
         // Wire the input field's On End Edit (fires on Enter, or on
         // clicking/tabbing away) to this instead of JoinGame directly --
-        // actually connects, then swaps the input field back for the
-        // button so a failed/cancelled attempt doesn't leave the field
-        // stuck open.
+        // actually connects, then swaps the label text back on so a
+        // failed/cancelled attempt doesn't leave the field stuck open.
         public void ConfirmJoin(string _)
         {
             JoinGame();
 
             if (joinInputFieldObject != null) joinInputFieldObject.SetActive(false);
-            if (joinButton != null) joinButton.SetActive(true);
+            if (joinLabelText != null) joinLabelText.SetActive(true);
         }
 
         public void JoinGame()
