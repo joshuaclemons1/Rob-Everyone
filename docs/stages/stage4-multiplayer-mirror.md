@@ -94,6 +94,14 @@ scene object you already have — don't go looking for an existing one.
      accepts either, but only a real prefab asset actually works for
      spawning).
    - **Auto Create Player**: checked.
+   - **Online Scene**: set this to `Lobby`, not `SampleScene` — Host/Join
+     both load whichever scene is set here, and dropping straight into
+     the middle of `SampleScene` (houses already spawned, no ready-up)
+     skips the normal entry point. `Lobby` already has a `ReadySpot`
+     wired to `GameFlowManager`'s existing round-start logic, so walking
+     onto it takes you into `SampleScene` the same way it does between
+     every later round — including for solo testing (loot spawns,
+     houses, etc.), not just multiplayer.
 8. Delete the `Player` instance still sitting in `SampleScene`'s
    Hierarchy (and in `Lobby`, if one's there too) — now that it's a
    prefab the NetworkManager spawns itself, a leftover copy hand-placed
