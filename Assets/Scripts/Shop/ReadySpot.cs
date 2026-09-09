@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Mirror;
+using RobEveryone.Core;
 using RobEveryone.Inventory;
 using UnityEngine;
 
@@ -44,6 +45,19 @@ namespace RobEveryone.Shop
         // told the UI the countdown was actually done rather than still
         // running.
         public event Action OnCountdownComplete;
+
+        // Registering here (rather than GameFlowManager finding this via
+        // FindFirstObjectByType off Unity's own SceneManager.sceneLoaded)
+        // is what makes this reliable across every Lobby visit past the
+        // first -- see RoundManager.OnStartServer's own comment for the
+        // full reasoning (Mirror disables every scene NetworkIdentity by
+        // default and only re-enables this one inside
+        // NetworkServer.SpawnObjects(), which runs after sceneLoaded
+        // fires; OnStartServer only runs once that's actually happened).
+        public override void OnStartServer()
+        {
+            GameFlowManager.Instance?.RegisterReadySpot(this);
+        }
 
         private void OnTriggerEnter(Collider other)
         {

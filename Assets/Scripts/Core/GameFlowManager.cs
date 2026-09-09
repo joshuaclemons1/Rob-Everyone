@@ -161,26 +161,51 @@ namespace RobEveryone.Core
         [Server]
         private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            // Just repositioning -- safe to do here since PlayerSpawnPoint
+            // is a plain MonoBehaviour marker, not gated behind a
+            // NetworkIdentity, so it's already findable the instant the
+            // scene finishes loading. RoundManager/ReadySpot registration
+            // used to also happen here (FindFirstObjectByType, right below
+            // this comment used to sit) -- moved out to
+            // RegisterRoundManager/RegisterReadySpot below because those
+            // *are* NetworkIdentity scene objects, and Mirror disables
+            // every scene NetworkIdentity by default, only re-enabling it
+            // inside NetworkServer.SpawnObjects() -- which runs *after*
+            // this SceneManager.sceneLoaded-triggered call, on every scene
+            // transition past the very first one GameFlowManager itself
+            // loads into. FindFirstObjectByType doesn't see a disabled
+            // object, so currentRoundManager/currentReadySpot silently
+            // came back null here and nothing ever subscribed -- the round
+            // (or ready-up) still ran fine since RoundManager/ReadySpot's
+            // own OnStartServer doesn't depend on this, but nothing was
+            // ever listening for it to end. Confirmed via
+            // NetworkServer.SpawnObjects()'s own comment ("NetworkIdentity
+            // objects in a scene are disabled by default").
             List<PlayerInventory> players = PlayerInventory.AllPlayers;
             for (int i = 0; i < players.Count; i++)
             {
                 PositionPlayer(players[i].transform, i);
             }
+        }
 
-            if (scene.name == gameplaySceneName)
-            {
-                currentRoundManager = FindFirstObjectByType<RoundManager>();
-                if (currentRoundManager != null)
-                {
-                    currentRoundManager.OnPlayerResolved += HandlePlayerResolved;
-                    currentRoundManager.OnRoundEnded += HandleRoundEnded;
-                }
-            }
-            else if (scene.name == lobbySceneName)
-            {
-                currentReadySpot = FindFirstObjectByType<ReadySpot>();
-                if (currentReadySpot != null) currentReadySpot.OnAllPlayersReady += HandleAllPlayersReady;
-            }
+        // Called from RoundManager's own OnStartServer instead of being
+        // looked up here -- see HandleSceneLoaded's comment for why that
+        // timing is the only reliable one.
+        [Server]
+        public void RegisterRoundManager(RoundManager roundManager)
+        {
+            currentRoundManager = roundManager;
+            roundManager.OnPlayerResolved += HandlePlayerResolved;
+            roundManager.OnRoundEnded += HandleRoundEnded;
+        }
+
+        // Called from ReadySpot's own OnStartServer -- same reasoning as
+        // RegisterRoundManager above.
+        [Server]
+        public void RegisterReadySpot(ReadySpot readySpot)
+        {
+            currentReadySpot = readySpot;
+            readySpot.OnAllPlayersReady += HandleAllPlayersReady;
         }
 
         [Server]

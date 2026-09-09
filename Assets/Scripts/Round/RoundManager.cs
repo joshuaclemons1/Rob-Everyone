@@ -55,7 +55,21 @@ namespace RobEveryone.Round
 
         public override void OnStartServer()
         {
-            if (GameFlowManager.Instance != null) quota = GameFlowManager.Instance.CurrentQuota;
+            if (GameFlowManager.Instance != null)
+            {
+                quota = GameFlowManager.Instance.CurrentQuota;
+                // Registering here (rather than GameFlowManager finding
+                // this via FindFirstObjectByType off Unity's own
+                // SceneManager.sceneLoaded) is what actually makes this
+                // reliable -- Mirror disables every scene NetworkIdentity
+                // by default and only re-enables this one inside
+                // NetworkServer.SpawnObjects(), which runs *after*
+                // sceneLoaded fires. OnStartServer only ever runs once
+                // that's actually happened, so it's the one moment
+                // GameFlowManager can safely be told about this round's
+                // instance.
+                GameFlowManager.Instance.RegisterRoundManager(this);
+            }
             StartRound();
         }
 
