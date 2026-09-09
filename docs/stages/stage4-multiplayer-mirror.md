@@ -108,7 +108,7 @@ scene object you already have — don't go looking for an existing one.
 10. Host/Join buttons live on the Main Menu's **Play submenu** panel, not
     directly on Main — see
     [main-menu-customization-setup.md](main-menu-customization-setup.md)'s
-    Part 12 for the exact steps (a small sliding-panel system, built
+    Part 13 for the exact steps (a small sliding-panel system, built
     specifically to unblock this). Wire a **Host** button to
     `MenuActions.HostGame()` and a **Join** button to
     `MenuActions.JoinGame()` on that panel. Optionally drag a

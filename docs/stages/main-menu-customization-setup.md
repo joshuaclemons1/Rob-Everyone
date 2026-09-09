@@ -469,7 +469,7 @@ Since `Customization UI` now lives on `CustomizePanel` (not
   it's the **first** sibling under `Canvas` (topmost in the Hierarchy
   list — later siblings draw on top).
 
-## Part 12 — Play submenu + slide navigation (unblocks Stage 4 Host/Join)
+## Part 13 — Play submenu + slide navigation (unblocks Stage 4 Host/Join)
 
 Builds the "Lobby" screen from main-menu-visual-design.md's nav diagram
 (Main → **Play** → Lobby → Customization) — renamed **Play submenu** in
@@ -513,14 +513,13 @@ one.
    - **CustomizePanel's existing Back button**: change it from whatever
      closed it before (`MenuActions.CloseCustomize`, now removed) to
      **`MenuNavigator.NavigateBack`**.
-5. On `MenuNavigator`, drag `MainMenuPanel`'s RectTransform into a quick
-   test call to `SetInitial` from somewhere that runs once at startup —
-   easiest is adding one line to `MenuActions.Awake()`
-   (`GetComponent<MenuNavigator>().SetInitial(mainMenuPanelRectTransform)`)
-   if you're comfortable editing that, or ask me to add it as a proper
-   field + `Awake()` if not — this makes sure Main Menu starts already
-   correctly registered as "current" rather than the navigator finding
-   out for the first time on your first click.
+5. Select the `MenuActions` component (same object you just added
+   `Menu Navigator` to). A new **Menu Navigator** field should now be
+   showing on it — drag that same `Menu Navigator` component into it.
+   `MenuActions.Awake()` already calls `SetInitial` with `Main Menu
+   Panel` for you, so Main Menu starts correctly registered as
+   "current" instead of the navigator only finding out on your first
+   click.
 6. `MainMenuPanel`'s old direct-to-Customize button (if you had one
    before this Part existed) should be removed or repointed — per the
    design, Customize is only reached via the Play submenu now, not
@@ -554,4 +553,4 @@ connection logs when testing against Stage 4's Rest Points).
   ready.
 - Still not built: the title's continuous pulse animation, and Settings'
   fall-through-frame/fall-from-sky character animation — both explicitly
-  deferred out of Part 12 above, see that Part's intro for why.
+  deferred out of Part 13 above, see that Part's intro for why.

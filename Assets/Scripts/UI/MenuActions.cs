@@ -28,6 +28,20 @@ namespace RobEveryone.UI
         [SerializeField] private GameObject mainMenuPanel;
         [SerializeField] private GameObject settingsPanel;
         [SerializeField] private TMPro.TMP_InputField joinAddressField;
+        [SerializeField] private MenuNavigator menuNavigator;
+
+        private void Awake()
+        {
+            // Registers Main Menu as MenuNavigator's starting panel so it
+            // already knows "current" before your first click, instead of
+            // only finding out the first time NavigateTo/NavigateBack is
+            // called -- see main-menu-customization-setup.md's Part 13
+            // step 5.
+            if (menuNavigator != null && mainMenuPanel != null)
+            {
+                menuNavigator.SetInitial(mainMenuPanel.GetComponent<RectTransform>());
+            }
+        }
 
         public void HostGame()
         {
