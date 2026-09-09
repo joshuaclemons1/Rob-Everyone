@@ -17,6 +17,7 @@ namespace RobEveryone.UI
             if (readySpot == null) return;
             readySpot.OnCountdownTick += UpdateText;
             readySpot.OnCountdownCancelled += Hide;
+            readySpot.OnCountdownComplete += Hide;
             Hide();
         }
 
@@ -25,6 +26,7 @@ namespace RobEveryone.UI
             if (readySpot == null) return;
             readySpot.OnCountdownTick -= UpdateText;
             readySpot.OnCountdownCancelled -= Hide;
+            readySpot.OnCountdownComplete -= Hide;
         }
 
         private void UpdateText(float remaining)

@@ -37,6 +37,13 @@ namespace RobEveryone.Shop
         // calls below instead of firing directly from the coroutine.
         public event Action<float> OnCountdownTick;
         public event Action OnCountdownCancelled;
+        // Fired once, right as the countdown finishes successfully (not
+        // on a cancel -- that's OnCountdownCancelled above). Without
+        // this, the last tick's text (e.g. "Departing in 1...") just sits
+        // there forever once the coroutine stops ticking -- nothing ever
+        // told the UI the countdown was actually done rather than still
+        // running.
+        public event Action OnCountdownComplete;
 
         private void OnTriggerEnter(Collider other)
         {
@@ -81,6 +88,7 @@ namespace RobEveryone.Shop
 
             readyRoutine = null;
             readyPlayers.Clear();
+            RpcCountdownComplete();
             OnAllPlayersReady?.Invoke();
         }
 
@@ -89,5 +97,8 @@ namespace RobEveryone.Shop
 
         [ClientRpc]
         private void RpcCountdownCancelled() => OnCountdownCancelled?.Invoke();
+
+        [ClientRpc]
+        private void RpcCountdownComplete() => OnCountdownComplete?.Invoke();
     }
 }
