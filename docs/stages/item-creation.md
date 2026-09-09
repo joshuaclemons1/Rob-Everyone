@@ -211,9 +211,15 @@ each one fast and easy to verify visually:
 - **World Model Scale tuning** — every item is created at `(1,1,1)`;
   open each `ItemDefinition`, look at the prefab in the preview, adjust
   the scale until it looks right.
-- **Adding each `ItemDefinition` to `ItemCatalog`** — multi-select all
-  the new assets in `Assets/Data/Items/`, drag them into `ItemCatalog`'s
-  list in one action.
+- **Creating `ItemCatalog` itself, then adding each `ItemDefinition` to
+  it** — this asset doesn't exist yet (only the `ItemCatalog.cs` script
+  does). Right-click in `Assets/Data/` → **Create → Rob Everyone → Item
+  Catalog**, then multi-select all the new assets in
+  `Assets/Data/Items/` and drag them into its list in one action. **Then
+  wire it up**: select the `Player` prefab, find `PlayerInventory`'s
+  **Catalog** field, and drag this asset in — without that, item pickups
+  won't resolve to anything (`PlayerInventory` looks names up through
+  this exact reference, see its own class comment).
 - **Adding each `ItemDefinition` to the correct-size `LootTable`** —
   this is the actual size/exclusion decision from Section 1, drag each
   into `LootTable_Small`/`_Medium`/`_Large` based on the category table
