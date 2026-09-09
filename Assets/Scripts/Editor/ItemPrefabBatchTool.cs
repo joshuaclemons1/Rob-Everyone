@@ -161,6 +161,15 @@ namespace RobEveryone.EditorTools
             }
             else
             {
+                // Repairs a prefab from an earlier run of this tool, made
+                // before PickupItem started being baked in -- catches
+                // exactly the 32-items-already-created case, not just
+                // brand new ones. In-place edit (LoadPrefabContents /
+                // SaveAsPrefabAsset to the same path), not a new asset --
+                // keeps the existing GUID intact so ItemDefinition's
+                // World Model Prefab reference doesn't need re-fixing.
+                RepairPrefabIfMissingPickupItem(spec, prefabPath);
+                prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
                 skipped++;
             }
 
@@ -174,6 +183,34 @@ namespace RobEveryone.EditorTools
             {
                 RepairWorldModelPrefabIfBroken(spec, existing, prefab);
             }
+        }
+
+        // In-place fix for a prefab this tool already created before
+        // PickupItem started being baked into CreatePrefab -- LoadPrefabContents
+        // / SaveAsPrefabAsset(path) edits the existing asset directly
+        // rather than replacing it, so its GUID (and therefore any
+        // ItemDefinition already pointing at it) stays valid. No-ops if
+        // the prefab already has PickupItem.
+        private static void RepairPrefabIfMissingPickupItem(ItemSpec spec, string prefabPath)
+        {
+            GameObject prefabAsset = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            if (prefabAsset == null || prefabAsset.GetComponent<PickupItem>() != null) return;
+
+            GameObject contents = PrefabUtility.LoadPrefabContents(prefabPath);
+            try
+            {
+                if (contents.GetComponent<PickupItem>() == null)
+                {
+                    contents.AddComponent<PickupItem>();
+                }
+                PrefabUtility.SaveAsPrefabAsset(contents, prefabPath);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(contents);
+            }
+
+            Debug.LogWarning($"ItemPrefabBatchTool: '{spec.DisplayName}' prefab was missing PickupItem (created before this fix) -- added it in place, same prefab asset/GUID.");
         }
 
         // Self-heals a pre-existing ItemDefinition (currently just
@@ -218,6 +255,24 @@ namespace RobEveryone.EditorTools
                 if (instance.GetComponent<NetworkIdentity>() == null)
                 {
                     instance.AddComponent<NetworkIdentity>();
+                }
+
+                // Baked in here rather than left for LootSpawnPoint's
+                // runtime AddComponent<PickupItem> fallback (written for
+                // the pre-Mirror single-player version) -- adding a
+                // NetworkBehaviour *after* Instantiate() means
+                // NetworkIdentity.Awake() (which runs synchronously
+                // during Instantiate and scans/caches this object's
+                // NetworkBehaviours right then) has already finished
+                // before PickupItem even exists on the object, leaving
+                // its netIdentity back-reference permanently null --
+                // exactly the NullReferenceException PickupItem.Interact
+                // hit on isServer. Baking it into the prefab means
+                // LootSpawnPoint's GetComponent<PickupItem>() finds it
+                // already present and never needs to add it at runtime.
+                if (instance.GetComponent<PickupItem>() == null)
+                {
+                    instance.AddComponent<PickupItem>();
                 }
 
                 GameObject savedPrefab = PrefabUtility.SaveAsPrefabAsset(instance, prefabPath, out bool success);
