@@ -51,15 +51,20 @@ namespace RobEveryone.UI
         private Coroutine spinBoostCoroutine;
 
         // For merging a bulky item's boxes into one wide rectangle (see
-        // SetSpan) -- baseWidth is this box's own authored width,
-        // captured once before anything resizes it. Requires a
-        // LayoutElement (added automatically if missing) so a parent
-        // Horizontal Layout Group respects the override instead of
-        // forcing every child back to a uniform size.
+        // SetSpan) -- this prefab lays each slot out with its own fixed
+        // anchoredPosition/sizeDelta (Slot0..Slot4 spaced by hand), not a
+        // Horizontal Layout Group, so there's no layout system to hand a
+        // preferred width to. Instead each slot captures its own
+        // originally-authored center X and width once in Awake, and
+        // HotbarUI reads those (BaseAnchoredX/BaseWidth) off every slot a
+        // bulky item covers to compute exactly where its merged box
+        // should sit and how wide it should be.
         private RectTransform rectTransform;
-        private LayoutElement layoutElement;
+        private float baseAnchoredX;
         private float baseWidth;
-        private float parentSpacing;
+
+        public float BaseAnchoredX => baseAnchoredX;
+        public float BaseWidth => baseWidth;
 
         private void Awake()
         {
@@ -67,24 +72,26 @@ namespace RobEveryone.UI
             if (modelImage != null) BuildPreviewStage();
 
             rectTransform = GetComponent<RectTransform>();
-            layoutElement = GetComponent<LayoutElement>();
-            if (layoutElement == null) layoutElement = gameObject.AddComponent<LayoutElement>();
-            baseWidth = rectTransform.rect.width;
-
-            HorizontalLayoutGroup parentLayout = GetComponentInParent<HorizontalLayoutGroup>();
-            parentSpacing = parentLayout != null ? parentLayout.spacing : 0f;
+            baseAnchoredX = rectTransform.anchoredPosition.x;
+            baseWidth = rectTransform.sizeDelta.x;
         }
 
-        // span is how many slot-widths this box should visually cover --
-        // 1 for a normal single-slot item (or an empty slot), N for a
-        // bulky item's merged box. The N-1 continuation boxes it used to
-        // render as separate, redundant copies of the same icon are
-        // hidden entirely by HotbarUI instead (see its own Refresh) --
-        // this box's width grows to cover the gap they left behind.
-        public void SetSpan(int span)
+        // Resizes and repositions this box to cover a span of physical
+        // slots -- centerAnchoredX/width are computed by HotbarUI from
+        // this slot's own and its covered siblings' BaseAnchoredX/
+        // BaseWidth, so the merged box lines up exactly with the slots
+        // it's replacing regardless of their spacing. Passing this same
+        // slot's own base geometry back resets it to a normal, unmerged
+        // single slot.
+        public void SetSpan(float centerAnchoredX, float width)
         {
-            span = Mathf.Max(1, span);
-            layoutElement.preferredWidth = baseWidth * span + parentSpacing * (span - 1);
+            Vector2 pos = rectTransform.anchoredPosition;
+            pos.x = centerAnchoredX;
+            rectTransform.anchoredPosition = pos;
+
+            Vector2 size = rectTransform.sizeDelta;
+            size.x = width;
+            rectTransform.sizeDelta = size;
         }
 
         private void BuildPreviewStage()

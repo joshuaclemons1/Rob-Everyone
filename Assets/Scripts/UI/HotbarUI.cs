@@ -50,6 +50,13 @@ namespace RobEveryone.UI
         // hidden entirely, a span of 1+ means this index is a head (a
         // real item, or just an empty slot) whose box should cover that
         // many slot-widths. See PlayerInventory.SlotSpanLengths.
+        //
+        // The hotbar prefab positions each slot box by hand (fixed
+        // anchoredPosition/sizeDelta, no Horizontal Layout Group), so the
+        // merged box's center/width is computed here from the head's own
+        // and its covered siblings' original authored geometry
+        // (HotbarSlotUI.BaseAnchoredX/BaseWidth) rather than handed off
+        // to a layout system.
         private void Refresh()
         {
             if (slots == null) return;
@@ -66,7 +73,11 @@ namespace RobEveryone.UI
                 if (!isHead) continue;
 
                 slots[i].SetItem(inventory.Slots[i]);
-                slots[i].SetSpan(span);
+
+                int lastCovered = Mathf.Clamp(i + span - 1, i, slots.Length - 1);
+                float centerX = (slots[i].BaseAnchoredX + slots[lastCovered].BaseAnchoredX) / 2f;
+                float width = (slots[lastCovered].BaseAnchoredX - slots[i].BaseAnchoredX) + slots[i].BaseWidth;
+                slots[i].SetSpan(centerX, width);
             }
         }
 
