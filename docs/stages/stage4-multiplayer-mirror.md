@@ -229,6 +229,13 @@ Player A picks up an item. Confirm:
 2. Add each house prefab to the NetworkManager's **Spawnable Prefabs**
    list (Part 4 step 2 already told you to do this — just confirm it's
    done for every house, not just items).
+3. **The `HouseSlots` GameObject itself** (whatever object
+   `HousePoolSpawner` actually lives on in `SampleScene`) also needs a
+   **Network Identity** — separate from the house prefabs above. Without
+   one, `OnStartServer()` never fires on it (same reason `GameFlowManager`
+   and `PoliceAI` needed one on their own objects too), so `SpawnAt()`
+   never runs and zero houses spawn, with no error logged since nothing
+   ever attempted to run in the first place.
 
 ### 🔴 Rest Point 5
 Host + Join. Confirm both clients see the **exact same house** in the
