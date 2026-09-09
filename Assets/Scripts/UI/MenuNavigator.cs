@@ -8,11 +8,14 @@ namespace RobEveryone.UI
     // Customization), per main-menu-visual-design.md's Navigation flow.
     // Each panel needs a RectTransform (stretched to fill the canvas,
     // anchored position (0,0) when "home") -- a CanvasGroup is added
-    // automatically if missing. NavigateTo slides the current panel
-    // partway left and dims it (stays visible, stops being interactable)
-    // while the target panel slides in from off-screen-right to center;
-    // NavigateBack reverses whichever panel is currently showing back to
-    // its parent in the history stack.
+    // automatically if missing.
+    //
+    // A "stacking list" effect (file-tree style), not a two-panel
+    // overlap: every panel currently behind the active one animates
+    // together each time NavigateTo/NavigateBack runs, so depth 1 sits
+    // one slide-increment left, depth 2 sits two increments left, and so
+    // on -- rather than every background panel independently sliding to
+    // the same fixed offset and landing on top of each other.
     //
     // Deliberately out of scope for this pass (see plan.md/todo.md):
     // Settings stays a flat SetActive swap via MenuActions, not part of
@@ -25,29 +28,36 @@ namespace RobEveryone.UI
         [SerializeField] private float slideDuration = 0.5f;
         // Matches the Canvas Scaler's reference resolution width used
         // everywhere else in this project (3840x2160) -- one full
-        // "off-screen" slide distance.
+        // "off-screen" slide distance, and the unit outgoingSlideFraction
+        // multiplies against for each step back in the stack.
         [SerializeField] private float slideDistance = 3840f;
-        // File-tree feel by default: the outgoing panel just nudges
-        // aside and stays clearly visible, rather than sliding a third
-        // of the screen away and dimming to half black. Both are live-
+        // File-tree feel by default: each background panel just nudges
+        // aside and stays clearly visible, rather than sliding a third of
+        // the screen away and dimming to half black. Both are live-
         // tunable per instance in the Inspector -- changing these
         // defaults doesn't retroactively touch a MenuNavigator you've
         // already added to a scene, since Unity serializes the values it
         // had at add-time.
-        [SerializeField, Range(0f, 1f)] private float outgoingSlideFraction = 0.1f;
+        [SerializeField, Range(0f, 1f)] private float outgoingSlideFraction = 0.08f;
         [SerializeField, Range(0f, 1f)] private float dimAlpha = 0.85f;
 
-        private readonly Stack<RectTransform> history = new();
-        private RectTransform current;
+        // Ordered nearest-to-farthest: index 0 is the current, fully
+        // visible/interactable panel; index 1 is one step back, index 2
+        // two steps back, etc.
+        private readonly List<RectTransform> stack = new();
         private Coroutine activeTransition;
 
-        // Call once (e.g. from Awake) with whichever panel starts active
-        // -- Main Menu itself.
+        // Call once (e.g. from MenuActions.Awake) with whichever panel
+        // starts active -- Main Menu itself.
         public void SetInitial(RectTransform initialPanel)
         {
-            current = initialPanel;
-            CanvasGroup group = GetOrAddCanvasGroup(current);
-            current.anchoredPosition = Vector2.zero;
+            stack.Clear();
+            if (initialPanel == null) return;
+
+            stack.Add(initialPanel);
+            CanvasGroup group = GetOrAddCanvasGroup(initialPanel);
+            initialPanel.gameObject.SetActive(true);
+            initialPanel.anchoredPosition = Vector2.zero;
             group.alpha = 1f;
             group.interactable = true;
             group.blocksRaycasts = true;
@@ -58,75 +68,108 @@ namespace RobEveryone.UI
         // dynamic argument, no per-panel wrapper method needed.
         public void NavigateTo(RectTransform next)
         {
-            if (activeTransition != null || current == null || next == null || next == current) return;
+            if (activeTransition != null || next == null || stack.Count == 0 || stack.Contains(next)) return;
 
-            history.Push(current);
-            activeTransition = StartCoroutine(Slide(current, next, forward: true));
+            activeTransition = StartCoroutine(Animate(next, forward: true));
         }
 
         public void NavigateBack()
         {
-            if (activeTransition != null || history.Count == 0) return;
+            if (activeTransition != null || stack.Count <= 1) return;
 
-            RectTransform previous = history.Pop();
-            activeTransition = StartCoroutine(Slide(current, previous, forward: false));
+            activeTransition = StartCoroutine(Animate(null, forward: false));
         }
 
-        private IEnumerator Slide(RectTransform outgoing, RectTransform incoming, bool forward)
+        private IEnumerator Animate(RectTransform next, bool forward)
         {
-            incoming.gameObject.SetActive(true);
-            CanvasGroup incomingGroup = GetOrAddCanvasGroup(incoming);
-            CanvasGroup outgoingGroup = GetOrAddCanvasGroup(outgoing);
+            List<RectTransform> newStack;
+            RectTransform leaving = null;
 
-            incomingGroup.interactable = false;
-            incomingGroup.blocksRaycasts = false;
-            outgoingGroup.interactable = false;
-            outgoingGroup.blocksRaycasts = false;
-
-            float incomingStartX = forward ? slideDistance : -slideDistance * outgoingSlideFraction;
-            float outgoingEndX = forward ? -slideDistance * outgoingSlideFraction : slideDistance;
-            float outgoingStartX = outgoing.anchoredPosition.x;
-
-            float outgoingStartAlpha = outgoingGroup.alpha;
-            float outgoingEndAlpha = forward ? dimAlpha : 1f;
-            float incomingStartAlpha = forward ? 1f : dimAlpha;
-
-            incoming.anchoredPosition = new Vector2(incomingStartX, 0f);
-            incomingGroup.alpha = incomingStartAlpha;
-
-            float t = 0f;
-            while (t < slideDuration)
+            if (forward)
             {
-                t += Time.deltaTime;
-                float eased = 1f - Mathf.Pow(1f - Mathf.Clamp01(t / slideDuration), 3f); // ease-out cubic
+                newStack = new List<RectTransform>(stack.Count + 1) { next };
+                newStack.AddRange(stack);
 
-                outgoing.anchoredPosition = new Vector2(Mathf.Lerp(outgoingStartX, outgoingEndX, eased), 0f);
-                incoming.anchoredPosition = new Vector2(Mathf.Lerp(incomingStartX, 0f, eased), 0f);
-                outgoingGroup.alpha = Mathf.Lerp(outgoingStartAlpha, outgoingEndAlpha, eased);
-                incomingGroup.alpha = Mathf.Lerp(incomingStartAlpha, 1f, eased);
+                next.gameObject.SetActive(true);
+                CanvasGroup incomingGroup = GetOrAddCanvasGroup(next);
+                next.anchoredPosition = new Vector2(slideDistance, 0f);
+                incomingGroup.alpha = 1f;
+            }
+            else
+            {
+                leaving = stack[0];
+                newStack = stack.GetRange(1, stack.Count - 1);
+            }
+
+            // Lock out input on everything involved for the duration.
+            foreach (RectTransform t in newStack)
+            {
+                CanvasGroup g = GetOrAddCanvasGroup(t);
+                g.interactable = false;
+                g.blocksRaycasts = false;
+            }
+            if (leaving != null)
+            {
+                CanvasGroup g = GetOrAddCanvasGroup(leaving);
+                g.interactable = false;
+                g.blocksRaycasts = false;
+            }
+
+            var startPos = new Dictionary<RectTransform, float>();
+            var startAlpha = new Dictionary<RectTransform, float>();
+            foreach (RectTransform t in newStack)
+            {
+                startPos[t] = t.anchoredPosition.x;
+                startAlpha[t] = GetOrAddCanvasGroup(t).alpha;
+            }
+            if (leaving != null)
+            {
+                startPos[leaving] = leaving.anchoredPosition.x;
+            }
+
+            float elapsed = 0f;
+            while (elapsed < slideDuration)
+            {
+                elapsed += Time.deltaTime;
+                float eased = 1f - Mathf.Pow(1f - Mathf.Clamp01(elapsed / slideDuration), 3f); // ease-out cubic
+
+                for (int i = 0; i < newStack.Count; i++)
+                {
+                    RectTransform t = newStack[i];
+                    float targetX = -i * slideDistance * outgoingSlideFraction;
+                    float targetAlpha = i == 0 ? 1f : dimAlpha;
+
+                    t.anchoredPosition = new Vector2(Mathf.Lerp(startPos[t], targetX, eased), 0f);
+                    GetOrAddCanvasGroup(t).alpha = Mathf.Lerp(startAlpha[t], targetAlpha, eased);
+                }
+
+                if (leaving != null)
+                {
+                    leaving.anchoredPosition = new Vector2(Mathf.Lerp(startPos[leaving], slideDistance, eased), 0f);
+                }
 
                 yield return null;
             }
 
-            outgoing.anchoredPosition = new Vector2(outgoingEndX, 0f);
-            incoming.anchoredPosition = Vector2.zero;
-            outgoingGroup.alpha = outgoingEndAlpha;
-            incomingGroup.alpha = 1f;
-
-            incomingGroup.interactable = true;
-            incomingGroup.blocksRaycasts = true;
-
-            if (forward)
+            for (int i = 0; i < newStack.Count; i++)
             {
-                // Outgoing panel stays active, dimmed, non-interactable --
-                // "stays partly visible" per the design doc, not hidden.
-            }
-            else
-            {
-                outgoing.gameObject.SetActive(false);
+                RectTransform t = newStack[i];
+                t.anchoredPosition = new Vector2(-i * slideDistance * outgoingSlideFraction, 0f);
+                GetOrAddCanvasGroup(t).alpha = i == 0 ? 1f : dimAlpha;
             }
 
-            current = incoming;
+            if (leaving != null)
+            {
+                leaving.anchoredPosition = new Vector2(slideDistance, 0f);
+                leaving.gameObject.SetActive(false);
+            }
+
+            CanvasGroup frontGroup = GetOrAddCanvasGroup(newStack[0]);
+            frontGroup.interactable = true;
+            frontGroup.blocksRaycasts = true;
+
+            stack.Clear();
+            stack.AddRange(newStack);
             activeTransition = null;
         }
 
