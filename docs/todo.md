@@ -27,6 +27,20 @@ happen soon" to "later stage."
   inventory) and `SellStation` (can you sell straight out of the wallet,
   or does it need moving to a normal slot first) -- not just a UI slot.
 
+- **Drop item (hold + press Q)** — not built. A dropped item should look
+  the same as it does in the hotbar preview (spinning, slightly
+  floating) when it lands in the world, not disappear or revert to a
+  plain static object. Ties into the same "selected slot represents
+  what's in your hands" direction that shaped `AddItem`'s block-not-
+  fallback behavior (see `PlayerInventory.cs`'s own comment) — worth
+  designing both together rather than dropping first and reconciling
+  later.
+- **Inventory screen (Tab)** — not built. Shows the mouse in-game,
+  click-and-drag to move an item between slots (including a multi-slot
+  item — dragging it should move its whole span, not just one cell of
+  it). Real UI work: needs its own drag-and-drop system, separate from
+  the hotbar's existing number-key/scroll selection.
+
 ## Verify / playtest (built but not confirmed)
 
 - **Stage 7b (batch economy + hotbar)** — code and Editor wiring both

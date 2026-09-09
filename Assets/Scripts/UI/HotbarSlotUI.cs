@@ -50,10 +50,41 @@ namespace RobEveryone.UI
         private float currentSpinSpeed;
         private Coroutine spinBoostCoroutine;
 
+        // For merging a bulky item's boxes into one wide rectangle (see
+        // SetSpan) -- baseWidth is this box's own authored width,
+        // captured once before anything resizes it. Requires a
+        // LayoutElement (added automatically if missing) so a parent
+        // Horizontal Layout Group respects the override instead of
+        // forcing every child back to a uniform size.
+        private RectTransform rectTransform;
+        private LayoutElement layoutElement;
+        private float baseWidth;
+        private float parentSpacing;
+
         private void Awake()
         {
             currentSpinSpeed = normalSpinSpeed;
             if (modelImage != null) BuildPreviewStage();
+
+            rectTransform = GetComponent<RectTransform>();
+            layoutElement = GetComponent<LayoutElement>();
+            if (layoutElement == null) layoutElement = gameObject.AddComponent<LayoutElement>();
+            baseWidth = rectTransform.rect.width;
+
+            HorizontalLayoutGroup parentLayout = GetComponentInParent<HorizontalLayoutGroup>();
+            parentSpacing = parentLayout != null ? parentLayout.spacing : 0f;
+        }
+
+        // span is how many slot-widths this box should visually cover --
+        // 1 for a normal single-slot item (or an empty slot), N for a
+        // bulky item's merged box. The N-1 continuation boxes it used to
+        // render as separate, redundant copies of the same icon are
+        // hidden entirely by HotbarUI instead (see its own Refresh) --
+        // this box's width grows to cover the gap they left behind.
+        public void SetSpan(int span)
+        {
+            span = Mathf.Max(1, span);
+            layoutElement.preferredWidth = baseWidth * span + parentSpacing * (span - 1);
         }
 
         private void BuildPreviewStage()

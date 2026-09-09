@@ -66,8 +66,16 @@ namespace RobEveryone.Inventory
 
         private readonly SyncList<string> slotItemNames = new();
         private readonly InventorySlot?[] slots = new InventorySlot?[SlotCount];
+        // Parallel to slots[] -- 0 means "this index is covered by an
+        // earlier head, don't draw a box here at all," N (>=1) means
+        // "this index is a head (real item or just an empty slot) whose
+        // box should visually span N slot-widths." HotbarUI reads this to
+        // merge a bulky item's boxes into one wide rectangle instead of
+        // repeating its icon in N separate same-size boxes.
+        private readonly int[] slotSpanLength = new int[SlotCount];
 
         public IReadOnlyList<InventorySlot?> Slots => slots;
+        public IReadOnlyList<int> SlotSpanLengths => slotSpanLength;
 
         [SyncVar(hook = nameof(OnSelectedSlotChangedHook))]
         private int selectedSlot;
@@ -144,6 +152,7 @@ namespace RobEveryone.Inventory
         private void RebuildSlotsFromSync()
         {
             string currentOwner = null;
+            int currentHeadIndex = -1;
 
             for (int i = 0; i < SlotCount; i++)
             {
@@ -152,11 +161,16 @@ namespace RobEveryone.Inventory
                 if (raw == ContinuationMarker)
                 {
                     // currentOwner still holds whatever head this
-                    // continues, from the previous iteration.
+                    // continues, from the previous iteration -- and that
+                    // head's span grows by one to cover this index too.
+                    slotSpanLength[i] = 0;
+                    if (currentHeadIndex >= 0) slotSpanLength[currentHeadIndex]++;
                 }
                 else
                 {
                     currentOwner = string.IsNullOrEmpty(raw) ? null : raw;
+                    currentHeadIndex = i;
+                    slotSpanLength[i] = 1; // grows below if continuations follow; an empty slot is its own span-1 unit
                 }
 
                 ItemDefinition item = currentOwner != null && catalog != null ? catalog.GetByName(currentOwner) : null;
@@ -167,58 +181,82 @@ namespace RobEveryone.Inventory
             OnTotalValueChanged?.Invoke(TotalValue);
         }
 
-        // Returns false (and leaves the item untouched) if there aren't
-        // ItemDefinition.InventorySize *consecutive* free slots -- a
-        // bulky item can't split across a gap. PickupItem only
-        // deactivates the world item on success. Server-only: called
-        // from Interactor's Command by way of PickupItem.Interact, never
-        // directly by a client.
+        // Only ever tries the *currently selected* slot -- deliberately
+        // does not fall back to scanning for the next free run elsewhere.
+        // Picking something up while your selected slot can't fit it
+        // (occupied, or not enough room left for a bulky item starting
+        // there) just fails, item stays in the world. This is the
+        // intended lead-in to a future feature: the selected slot is
+        // meant to represent what's currently in your hands, so a
+        // pickup always goes there specifically, not wherever happens to
+        // be free. PickupItem only deactivates the world item on
+        // success. Server-only: called from Interactor's Command by way
+        // of PickupItem.Interact, never directly by a client.
         [Server]
         public bool AddItem(ItemDefinition item)
         {
             int size = item.InventorySize;
+            int start = selectedSlot;
 
-            for (int start = 0; start <= SlotCount - size; start++)
+            if (start < 0 || start + size > SlotCount) return false;
+
+            for (int offset = 0; offset < size; offset++)
             {
-                bool allFree = true;
-                for (int offset = 0; offset < size; offset++)
-                {
-                    if (!string.IsNullOrEmpty(slotItemNames[start + offset]))
-                    {
-                        allFree = false;
-                        break;
-                    }
-                }
-
-                if (!allFree) continue;
-
-                slotItemNames[start] = item.ItemName; // SyncList write -- propagates to every client automatically
-                for (int offset = 1; offset < size; offset++)
-                {
-                    slotItemNames[start + offset] = ContinuationMarker;
-                }
-
-                return true;
+                if (!string.IsNullOrEmpty(slotItemNames[start + offset])) return false;
             }
 
-            return false;
+            slotItemNames[start] = item.ItemName; // SyncList write -- propagates to every client automatically
+            for (int offset = 1; offset < size; offset++)
+            {
+                slotItemNames[start + offset] = ContinuationMarker;
+            }
+
+            return true;
         }
 
         [Command]
         public void CmdSelectSlot(int index) => SelectSlot(index);
 
+        // Selecting any index within a bulky item's span (e.g. pressing
+        // either "3" or "4" for an item occupying both) always resolves
+        // to the same logical selection -- its head slot -- rather than
+        // treating each physical slot as independently selectable.
         [Server]
         public void SelectSlot(int index)
         {
             if (index < 0 || index >= SlotCount) return;
-            selectedSlot = index;
+            selectedSlot = ResolveHead(index);
         }
 
-        // direction is +1/-1 -- wraps around both ends, for scroll wheel.
+        // Walks backward from a continuation slot to the head it
+        // belongs to. A no-op for an already-head (or empty) index.
+        // Safe because AddItem never leaves a gap between a head and its
+        // own continuation slots, and slot 0 can never itself be a
+        // continuation (nothing precedes it to continue from).
+        private int ResolveHead(int index)
+        {
+            while (index > 0 && slotItemNames[index] == ContinuationMarker)
+            {
+                index--;
+            }
+            return index;
+        }
+
+        // direction is +1/-1, for scroll wheel -- wraps around both ends,
+        // and steps by *logical* slot (skipping over a bulky item's own
+        // continuation entries) so a multi-slot item only ever costs one
+        // scroll step, the same as any single-slot item.
         [Command]
         public void CmdSelectRelative(int direction)
         {
-            SelectSlot(((selectedSlot + direction) % SlotCount + SlotCount) % SlotCount);
+            int next = selectedSlot;
+            for (int guard = 0; guard < SlotCount; guard++)
+            {
+                next = ((next + direction) % SlotCount + SlotCount) % SlotCount;
+                if (slotItemNames[next] != ContinuationMarker) break;
+            }
+
+            SelectSlot(next);
         }
 
         [Server]
