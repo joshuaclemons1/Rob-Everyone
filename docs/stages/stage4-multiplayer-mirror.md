@@ -55,7 +55,15 @@ object carrying `FirstPersonController`, `CharacterController`,
 is where you actually create the missing `Player` prefab asset, from the
 scene object you already have — don't go looking for an existing one.
 
-1. In `SampleScene`, create an empty GameObject named `NetworkManager`.
+1. In `MainMenu` — **not** `SampleScene` — create an empty GameObject
+   named `NetworkManager`. It has to live in whichever scene loads
+   first: Mirror's `NetworkManager` persists itself across every later
+   scene load (`DontDestroyOnLoad`), but it has to actually exist
+   *somewhere* before the Host/Join buttons (which live in `MainMenu`)
+   can call `RobEveryoneNetworkManager.singleton` — putting it in
+   `SampleScene` instead leaves that null until after `SampleScene` has
+   already loaded, which never happens without a working Host/Join in
+   the first place.
 2. Add component **Network Manager** (Mirror's own). Add component
    **Kcp Transport** (Mirror's built-in transport, good enough for
    localhost/LAN testing — this gets swapped for Steam's transport in
