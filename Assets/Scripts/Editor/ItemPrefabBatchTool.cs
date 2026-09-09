@@ -53,14 +53,25 @@ namespace RobEveryone.EditorTools
             }
         }
 
-        // Matches item-creation.md's price table exactly -- Laptop is
-        // excluded, it already has a working prefab/ItemDefinition from
-        // before this tool existed. ComputerKeyboardMouse was one row in
-        // the doc's table but is two separate source files -- split into
-        // two separate items here (Keyboard, Mouse) so every source file
-        // maps 1:1 to one output item, no combined-prefab special case.
+        // Matches item-creation.md's price table exactly. ComputerKeyboardMouse
+        // was one row in the doc's table but is two separate source files --
+        // split into two separate items here (Keyboard, Mouse) so every
+        // source file maps 1:1 to one output item, no combined-prefab
+        // special case.
+        //
+        // Laptop is included here too, despite already having an
+        // ItemDefinition from before this tool existed -- that older
+        // asset's World Model Prefab turned out to point directly at the
+        // raw laptop.fbx (no NetworkIdentity, no Collider), which is
+        // exactly the "add it at runtime isn't supported" error
+        // LootSpawnPoint logs. ProcessItem below wraps it into a real
+        // prefab like every other item and repoints the *existing*
+        // ItemDefinition at that prefab (leaving its hand-set Value/Icon
+        // alone) rather than creating a duplicate.
         private static readonly ItemSpec[] Items =
         {
+            new("laptop", "Laptop", 50),
+
             // Small -- all InventorySize 1 (default, omitted below)
             new("Key11_with_tag.001", "Car Keys", 8),
             new("Prop_Coins", "Coins", 10),
@@ -153,11 +164,36 @@ namespace RobEveryone.EditorTools
                 skipped++;
             }
 
-            if (AssetDatabase.LoadAssetAtPath<ItemDefinition>(itemDefPath) == null)
+            ItemDefinition existing = AssetDatabase.LoadAssetAtPath<ItemDefinition>(itemDefPath);
+            if (existing == null)
             {
                 CreateItemDefinition(spec, prefab, itemDefPath);
                 itemDefsCreated++;
             }
+            else
+            {
+                RepairWorldModelPrefabIfBroken(spec, existing, prefab);
+            }
+        }
+
+        // Self-heals a pre-existing ItemDefinition (currently just
+        // Laptop) whose World Model Prefab predates this tool and points
+        // directly at a raw source model with no NetworkIdentity --
+        // repoints it at the newly-wrapped prefab instead, leaving
+        // everything else on the asset (Value, Icon, World Model Scale)
+        // untouched. No-ops if the existing reference is already fine.
+        private static void RepairWorldModelPrefabIfBroken(ItemSpec spec, ItemDefinition existing, GameObject wrappedPrefab)
+        {
+            GameObject current = existing.WorldModelPrefab;
+            bool broken = current == null || current.GetComponent<NetworkIdentity>() == null;
+            if (!broken) return;
+
+            SerializedObject so = new SerializedObject(existing);
+            so.FindProperty("worldModelPrefab").objectReferenceValue = wrappedPrefab;
+            so.ApplyModifiedProperties();
+            EditorUtility.SetDirty(existing);
+
+            Debug.LogWarning($"ItemPrefabBatchTool: '{spec.DisplayName}' had a World Model Prefab with no NetworkIdentity (predating this tool) -- repointed it at the newly-wrapped prefab. Its Value/Icon/World Model Scale were left untouched.");
         }
 
         private static GameObject CreatePrefab(ItemSpec spec, string prefabPath)
