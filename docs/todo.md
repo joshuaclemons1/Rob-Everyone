@@ -79,10 +79,18 @@ happen soon" to "later stage."
 
 ## Art & audio (see art-info.md for full detail)
 
-- **Loot item variety** — only one `ItemDefinition` exists (`Laptop`).
-  The loot table system works, but needs more items (watch, cash,
-  jewelry, etc. — simple modeled props + a Photoshop icon is enough, per
-  `art-info.md`) to actually feel varied in play.
+- **Loot variety feels repetitive in play** — not an RNG bug (confirmed
+  by reading the actual house prefabs/tables): 33 `ItemDefinition`s
+  exist now, but only 2 house prefab variants
+  (`Real_House_01`/`Real_House_02`) fill all 15+2 house slots, **both**
+  wired to the same `LootTable_Medium` (13 items), and each house has
+  only 1 `LootSpawnPoint` — one roll per house. `LootTable_Small` (13
+  items) and `LootTable_Large` (7 items) aren't referenced by any house
+  at all right now. Fixing this for real needs more house variants
+  (blocked on Zach's house pool work below) — once those exist, revisit
+  which table each house tier uses and whether 1 spawn point per house
+  is enough, rather than just patching the 2 current houses in
+  isolation.
 - **"Good House" visual tell** — should read as visually distinct at a
   glance (gold accent trim, lighting, signage) since it's deliberately
   higher-risk/higher-reward. Not confirmed done.
