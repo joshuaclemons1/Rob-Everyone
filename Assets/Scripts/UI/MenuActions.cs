@@ -13,13 +13,19 @@ namespace RobEveryone.UI
     // gone -- entering the gameplay scene now means actually starting or
     // joining a Mirror session (Host for the player who's inviting/
     // hosting, Join for everyone connecting to them), which is what
-    // spawns the Player prefab and brings the scene along with it. Wire
-    // a Host button to HostGame and a Join button to JoinGame, instead of
-    // a single Play button -- see stage4-multiplayer-mirror.md Part 9.
+    // spawns the Player prefab and brings the scene along with it. Host/
+    // Join now live on the Play submenu panel (see MenuNavigator and
+    // main-menu-customization-setup.md's Play submenu section), reached
+    // by sliding in from Main rather than a flat panel swap -- this
+    // script no longer owns that navigation itself, only the actions a
+    // button inside one of those panels can trigger.
+    //
+    // Settings is the one panel still a flat SetActive swap (not part of
+    // MenuNavigator's slide stack) -- see that script's own comment for
+    // why, per main-menu-visual-design.md.
     public class MenuActions : MonoBehaviour
     {
         [SerializeField] private GameObject mainMenuPanel;
-        [SerializeField] private GameObject customizePanel;
         [SerializeField] private GameObject settingsPanel;
         [SerializeField] private TMPro.TMP_InputField joinAddressField;
 
@@ -43,8 +49,6 @@ namespace RobEveryone.UI
             Application.Quit();
         }
 
-        public void OpenCustomize() => SetPanel(customizePanel, true);
-        public void CloseCustomize() => SetPanel(customizePanel, false);
         public void OpenSettings() => SetPanel(settingsPanel, true);
         public void CloseSettings() => SetPanel(settingsPanel, false);
 

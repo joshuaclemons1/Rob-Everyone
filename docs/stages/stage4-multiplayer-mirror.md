@@ -105,11 +105,16 @@ scene object you already have — don't go looking for an existing one.
    after each scene load. Add a couple more `PlayerSpawnPoint`s in each
    scene, spread apart, so a second player doesn't spawn stacked on the
    first (`GameFlowManager` round-robins across however many exist).
-10. On `MenuActions` (Main Menu scene): wire a **Host** button to
-   `HostGame()` and a **Join** button to `JoinGame()` (both new methods).
-   Optionally drag a `TMP_InputField` into **Join Address Field** for
-   typing an IP — leave it unassigned for now and `JoinGame()` defaults to
-   `"localhost"`, which is all you need for this Part's test.
+10. Host/Join buttons live on the Main Menu's **Play submenu** panel, not
+    directly on Main — see
+    [main-menu-customization-setup.md](main-menu-customization-setup.md)'s
+    Part 12 for the exact steps (a small sliding-panel system, built
+    specifically to unblock this). Wire a **Host** button to
+    `MenuActions.HostGame()` and a **Join** button to
+    `MenuActions.JoinGame()` on that panel. Optionally drag a
+    `TMP_InputField` into **Join Address Field** for typing an IP — leave
+    it unassigned for now and `JoinGame()` defaults to `"localhost"`,
+    which is all you need for this Part's test.
 
 ### Testing two instances on one machine
 The easiest way to run two game instances against each other without a

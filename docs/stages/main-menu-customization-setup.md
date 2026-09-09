@@ -469,22 +469,89 @@ Since `Customization UI` now lives on `CustomizePanel` (not
   it's the **first** sibling under `Canvas` (topmost in the Hierarchy
   list — later siblings draw on top).
 
+## Part 12 — Play submenu + slide navigation (unblocks Stage 4 Host/Join)
+
+Builds the "Lobby" screen from main-menu-visual-design.md's nav diagram
+(Main → **Play** → Lobby → Customization) — renamed **Play submenu** in
+code/Hierarchy to avoid confusion with the separate gameplay `Lobby`
+*scene* (Stage 7's post-round shop/ready-up area, an unrelated thing that
+happens to share a name). This is the minimal slice: the slide+dim
+transition works, Host/Join/Customize/Back buttons live on it. **Not**
+included in this pass (deliberately, see `todo.md`): the title's
+continuous pulse animation, and Settings' fall-through-frame/fall-from-
+sky character animation — Settings stays exactly the flat show/hide it
+already is. The character preview also doesn't yet appear on the Play
+submenu or Main Menu themselves, only on Customize, same as today — full
+persistence across all three panels is part of that later pass, not this
+one.
+
+1. In the Hierarchy, duplicate `CustomizePanel` (or build fresh — either
+   way you want a full-canvas-stretched RectTransform, same as
+   `MainMenuPanel`/`CustomizePanel` already are) and rename it
+   `PlayPanel`. Strip out anything Customize-specific you copied; you
+   want it empty except for what step 3 adds.
+2. On the `Canvas` object (or wherever `MenuActions` already lives), add
+   component **`Menu Navigator`** (`Assets/Scripts/UI/MenuNavigator.cs`).
+3. Inside `PlayPanel`, add 4 buttons using the existing `MenuButton`
+   prefab (same bracket style as everywhere else): **Host**, **Join**,
+   **Customization**, **Back**. Add a `TMP_InputField` near the Join
+   button for typing an address (optional for now — leave it unassigned
+   and `JoinGame()` defaults to `"localhost"`).
+4. Wire buttons' `OnClick()`:
+   - **Main Menu's "Play" button** (was previously wired to
+     `MenuActions.PlayGame` — that method no longer exists, remove the
+     stale reference if Unity shows a missing-method warning): call
+     **`MenuNavigator.NavigateTo`**, drag `PlayPanel`'s RectTransform
+     into the dynamic RectTransform argument slot.
+   - **PlayPanel's Host button**: `MenuActions.HostGame`.
+   - **PlayPanel's Join button**: `MenuActions.JoinGame`.
+   - **PlayPanel's Customization button**: `MenuNavigator.NavigateTo`,
+     argument = `CustomizePanel`'s RectTransform.
+   - **PlayPanel's Back button**: `MenuNavigator.NavigateBack` (no
+     argument — it always returns to whatever's on top of the history
+     stack).
+   - **CustomizePanel's existing Back button**: change it from whatever
+     closed it before (`MenuActions.CloseCustomize`, now removed) to
+     **`MenuNavigator.NavigateBack`**.
+5. On `MenuNavigator`, drag `MainMenuPanel`'s RectTransform into a quick
+   test call to `SetInitial` from somewhere that runs once at startup —
+   easiest is adding one line to `MenuActions.Awake()`
+   (`GetComponent<MenuNavigator>().SetInitial(mainMenuPanelRectTransform)`)
+   if you're comfortable editing that, or ask me to add it as a proper
+   field + `Awake()` if not — this makes sure Main Menu starts already
+   correctly registered as "current" rather than the navigator finding
+   out for the first time on your first click.
+6. `MainMenuPanel`'s old direct-to-Customize button (if you had one
+   before this Part existed) should be removed or repointed — per the
+   design, Customize is only reached via the Play submenu now, not
+   directly from Main.
+
+### Test
+Click Play — Main should slide left and dim while PlayPanel slides in
+from the right. Click Back — reverses. From PlayPanel, click
+Customization — same slide, PlayPanel dims behind it. Back from there
+returns to PlayPanel (not all the way to Main — confirms the history
+stack, not just a single toggle). Confirm Host/Join buttons still call
+the right `MenuActions` methods (check the Console for Mirror's own
+connection logs when testing against Stage 4's Rest Points).
+
 ## Notes / open follow-ups
 
 - No skin **unlocking** yet — every prefab in `Skin Prefabs` is pickable
   immediately (future work, per gameplay-design.md's meta-progression).
 - This preview system isn't wired to the actual multiplayer `Player`
-  prefab yet — no networking exists (Stage 4–5). Future work: spawn each
-  networked player's chosen skin/color at spawn time using
-  `PlayerCosmeticSelection` + `PlayerColorizer`.
+  prefab yet — Stage 4/5 code exists but hasn't been playtested end to
+  end. Future work: spawn each networked player's chosen skin/color at
+  spawn time using `PlayerCosmeticSelection` + `PlayerColorizer` (this is
+  actually already how `PlayerSkinSpawner` works as of Stage 4's code —
+  just needs confirming in an actual playtest).
 - Still pending from main-menu-visual-design.md's asset checklist:
-  `button_startgame.png` (Lobby screen, not built yet in this doc pass),
-  `preview_frame.png` (needs the fall-through floor detail), and the
-  optional `panel_backdrop.png`. None of these change anything
-  structural here — they slot into the existing `MenuButton` prefab
-  (for Start Game, likely as a resized/recolored variant or a second
-  prefab) and the preview area whenever they're ready.
-- The Lobby screen (Invite Players / Game Settings / Customization /
-  Start Game) and the slide+dim panel transition animation aren't built
-  in this pass yet — this doc only covers Main Menu, Customize, and the
-  Settings stub with simple show/hide. Extend Part 8 onward once ready.
+  `button_startgame.png`, `preview_frame.png` (needs the fall-through
+  floor detail), and the optional `panel_backdrop.png`. None of these
+  change anything structural here — they slot into the existing
+  `MenuButton` prefab (for Start Game, likely as a resized/recolored
+  variant or a second prefab) and the preview area whenever they're
+  ready.
+- Still not built: the title's continuous pulse animation, and Settings'
+  fall-through-frame/fall-from-sky character animation — both explicitly
+  deferred out of Part 12 above, see that Part's intro for why.
