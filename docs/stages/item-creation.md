@@ -73,7 +73,7 @@ sizes at all.
 
 | Size | Items |
 |---|---|
-| **Small** | Wallet, Watch, Jewelry, CarKeys, DiamondRing, Sunglasses, Smartphone, GoldIngots, Coins, Books, Headphones, Camera, ComputerKeyboardMouse |
+| **Small** | Wallet, Watch, Jewelry, CarKeys, DiamondRing, Sunglasses, Smartphone, GoldIngots, Coins, Books, Headphones, Camera, Keyboard, Mouse |
 | **Medium** | Purse, Backpack, TableLamp, Toaster, CoffeeMachine, Blender, ComputerMonitor, Laptop, Speaker, Radio, Microwave |
 | **Large** | Fridge, FridgeLarge, Washer, Dryer, Stove, StoveElectric, TelevisionModern, TelevisionVintage, Safe |
 
@@ -92,25 +92,34 @@ the Large tier (the Safe is deliberately the one item that gets close).
 **World Model Scale**: only `Laptop` has a known-good value already
 (`0.2, 0.2, 0.2`, from its existing prefab). Every other item's scale is
 unknown until you see it in-scene at `(1,1,1)` first — start there and
-adjust by eye, same as `Laptop`'s original setup must have.
+adjust by eye, same as `Laptop`'s original setup must have. `Section 4`'s
+batch tool leaves every item at `(1,1,1)` for exactly this reason.
 
-### Small ($8–$90)
+This table is also the exact, hardcoded data
+`ItemPrefabBatchTool.cs` (Section 4) runs from — the two are kept in
+sync on purpose. `ComputerKeyboardMouse` from earlier drafts of this doc
+is split into two separate items below (`Keyboard`, `Mouse`) so every
+source file maps 1:1 to one output item, avoiding a combined-prefab
+special case in the tool.
+
+### Small ($7–$90)
 
 | Item | Source file | Value |
 |---|---|---|
-| CarKeys | `Key11_with_tag.001.fbx` | $8 |
+| Car Keys | `Key11_with_tag.001.fbx` | $8 |
 | Coins | `Prop_Coins.fbx` | $10 |
 | Books | `books.fbx` | $10 |
 | Sunglasses | `Sunglasses_01.obj` | $12 |
-| ComputerKeyboardMouse | `computerKeyboard.fbx` + `computerMouse.fbx` | $15 |
+| Mouse | `computerMouse.fbx` | $7 |
+| Keyboard | `computerKeyboard.fbx` | $8 |
 | Headphones | `Headphones.obj` | $18 |
 | Wallet | `Wallet.obj` | $20 |
 | Watch | `Wirst Watch.obj` | $30 |
 | Smartphone | `Smartphone.obj` | $35 |
 | Camera | `Camera.obj` | $35 |
 | Jewelry | `Jewelry.obj` | $40 |
-| DiamondRing | `diamond_ring.fbx` | $65 |
-| GoldIngots | `Gold_Ingots.fbx` | $90 |
+| Diamond Ring | `diamond_ring.fbx` | $65 |
+| Gold Ingots | `Gold_Ingots.fbx` | $90 |
 
 ### Medium ($15–$50)
 
@@ -118,13 +127,13 @@ adjust by eye, same as `Laptop`'s original setup must have.
 |---|---|---|
 | Toaster | `toaster.fbx` | $15 |
 | Purse | `Purse_01.obj` | $18 |
-| TableLamp | `lampRoundTable.fbx` | $20 |
+| Table Lamp | `lampRoundTable.fbx` | $20 |
 | Backpack | `Backpack.fbx` | $20 |
 | Radio | `radio.fbx` | $22 |
 | Blender | `kitchenBlender.fbx` | $25 |
-| CoffeeMachine | `kitchenCoffeeMachine.fbx` | $28 |
+| Coffee Machine | `kitchenCoffeeMachine.fbx` | $28 |
 | Speaker | `speaker.fbx` | $32 |
-| ComputerMonitor | `computerScreen.fbx` | $35 |
+| Computer Monitor | `computerScreen.fbx` | $35 |
 | Microwave | `kitchenMicrowave.fbx` | $45 |
 | Laptop | `laptop.fbx` (existing prefab, don't rewrap) | $50 *(already set)* |
 
@@ -132,19 +141,62 @@ adjust by eye, same as `Laptop`'s original setup must have.
 
 | Item | Source file | Value |
 |---|---|---|
-| TelevisionVintage | `televisionVintage.fbx` | $60 |
+| Vintage Television | `televisionVintage.fbx` | $60 |
 | Dryer | `dryer.fbx` | $70 |
 | Washer | `washer.fbx` | $75 |
 | Stove | `kitchenStove.fbx` | $80 |
-| StoveElectric | `kitchenStoveElectric.fbx` | $85 |
-| TelevisionModern | `televisionModern.fbx` | $90 |
+| Electric Stove | `kitchenStoveElectric.fbx` | $85 |
+| Modern Television | `televisionModern.fbx` | $90 |
 | Fridge | `kitchenFridge.fbx` | $100 |
-| FridgeLarge | `kitchenFridgeLarge.fbx` | $130 |
+| Large Fridge | `kitchenFridgeLarge.fbx` | $130 |
 | Safe | `Safe.obj` | $250 *(jackpot item)* |
 
 ---
 
-## 4. Per-item pipeline (repeat for each of the 32 remaining items)
+## 4. Run the batch tool
+
+`ItemPrefabBatchTool.cs` (`Assets/Scripts/Editor/`) automates the
+mechanical two-thirds of this: for each of the 33 items in the price
+list above, it finds the matching source model, adds a fitted `Box
+Collider` + `Network Identity`, saves it as a prefab in
+`Assets/Prefabs/Items/`, and creates its `ItemDefinition` in
+`Assets/Data/Items/` with the name/value from the table pre-filled and
+`World Model Prefab` already wired. `Laptop` is skipped — it already has
+a working prefab/`ItemDefinition` from before this tool existed.
+
+1. `Rob Everyone → Batch Create Loot Items` (menu bar).
+2. Read the Console output: it reports exactly how many prefabs and
+   `ItemDefinition`s were created, how many were skipped (already
+   existed — safe to re-run any time, nothing gets duplicated or
+   overwritten), and logs a specific error for anything that failed
+   rather than failing silently or partway through.
+3. If an item is reported as "couldn't find a source model," the most
+   likely cause is a filename that doesn't exactly match this doc's price
+   table (e.g. a file got renamed at some point) — check the exact
+   filename in `Assets/Art/Items/` against the table above.
+
+What it deliberately **doesn't** do — still yours to finish by hand,
+each one fast and easy to verify visually:
+
+- **World Model Scale tuning** — every item is created at `(1,1,1)`;
+  open each `ItemDefinition`, look at the prefab in the preview, adjust
+  the scale until it looks right.
+- **Adding each `ItemDefinition` to `ItemCatalog`** — multi-select all
+  the new assets in `Assets/Data/Items/`, drag them into `ItemCatalog`'s
+  list in one action.
+- **Adding each `ItemDefinition` to the correct-size `LootTable`** —
+  this is the actual size/exclusion decision from Section 1, drag each
+  into `LootTable_Small`/`_Medium`/`_Large` based on the category table
+  in Section 2.
+- **Registering each new prefab as a Spawnable Prefab** on the
+  `NetworkManager` (see the note below) — the batch tool can't reach
+  into a scene's `NetworkManager` component from an Editor menu command
+  safely, so this one's manual too.
+
+### The old manual per-item pipeline
+
+Kept below for reference/in case you ever add a single one-off item by
+hand later — the batch tool is what you actually want for all 32 at once.
 
 `Laptop` already has a working prefab + `ItemDefinition` — open
 `Assets/Data/Items/Laptop.asset` and its referenced prefab first as a
@@ -192,17 +244,6 @@ Same requirement as houses/cars/existing items — on the
 `NetworkManager`'s **Spawnable Prefabs** list, add every new item prefab
 you make. Easy to forget one; if a specific item never seems to spawn
 once Stage 4 testing starts, this is the first thing to check.
-
-### A faster path, if 32 of these by hand feels like too much
-
-`RagdollBatchTool.cs` (`Assets/Scripts/Editor/`) exists for exactly this
-kind of "do the same wrapping step to N similar assets" problem (it
-batch-applied ragdoll setup to 52 character skins). If wrapping 32 items
-one at a time by hand turns out to be more tedious than it's worth, say
-so and I'll write an equivalent batch tool for this — add
-Collider+NetworkIdentity to a list of dragged-in models in one pass,
-rather than 32 manual repeats of steps 1-4. Not built now since you
-didn't ask for it, but the precedent exists if you want it.
 
 ---
 
