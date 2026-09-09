@@ -23,6 +23,30 @@ namespace RobEveryone.Core
         {
             base.OnServerAddPlayer(conn);
 
+            // Player objects are otherwise destroyed by every single-mode
+            // ServerChangeScene (SampleScene<->Lobby, every round) -- Unity's
+            // scene load unloads whatever scene the player happens to be
+            // sitting in, and Mirror's own OnClientSceneChanged just quietly
+            // spawns a brand new one to replace it (see NetworkManager.cs's
+            // own doc comment on OnClientSceneChanged: "Scene changes can
+            // cause player objects to be destroyed... default implementation
+            // is to add a player object if none exists"). A brand new
+            // PlayerInventory means Cash and any carried loot both reset to
+            // their defaults -- confirmed bug: carried loot vanished the
+            // instant a round ended and Lobby loaded, before ever reaching
+            // the SellStation. DontDestroyOnLoad keeps the *same* object
+            // (and all its SyncVars/SyncLists) alive across every scene
+            // change instead -- HandleSceneLoaded's PositionPlayer loop
+            // already repositions every connected player into the new
+            // scene's own spawn point regardless of whether the object is
+            // new or reused, so nothing else needs to change for that to
+            // keep working, and this now only runs once per connection's
+            // whole lifetime instead of on every scene change too.
+            if (conn.identity != null)
+            {
+                DontDestroyOnLoad(conn.identity.gameObject);
+            }
+
             if (GameFlowManager.Instance != null)
             {
                 GameFlowManager.Instance.HandlePlayerAdded(conn.identity);
