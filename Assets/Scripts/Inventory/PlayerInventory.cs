@@ -35,6 +35,18 @@ namespace RobEveryone.Inventory
     {
         public const int SlotCount = 5;
 
+        // Written into slotItemNames for every slot a bulky item occupies
+        // *after* its first (head) slot -- ItemDefinition.InventorySize
+        // (see item-creation.md's price table) is how many slots an item
+        // costs, but the underlying sync representation is still just one
+        // name per slot (no schema change needed for Mirror). A control
+        // character prefix guarantees this can never collide with a real
+        // ItemDefinition.ItemName. AddItem always writes a head followed
+        // immediately by exactly (InventorySize - 1) of these, with no
+        // gap -- RebuildSlotsFromSync and TotalValue both rely on that
+        // invariant.
+        private const string ContinuationMarker = "continued";
+
         [SerializeField] private ItemCatalog catalog;
 
         // Every connected player's PlayerInventory, server-side only --
@@ -68,17 +80,25 @@ namespace RobEveryone.Inventory
         private int cash;
         public int Cash => cash;
 
-        // Computed from the slots each time, not cached -- always
+        // Computed from slotItemNames each time, not cached -- always
         // correct, no risk of drifting from the slot array through some
-        // missed update path.
+        // missed update path. Reads slotItemNames directly (not the
+        // slots[] UI view, which repeats a bulky item's icon across
+        // every slot it occupies) and only counts a head entry -- a
+        // ContinuationMarker never adds value, or a fridge occupying 4
+        // slots would count its own value 4 times over.
         public int TotalValue
         {
             get
             {
                 int total = 0;
-                foreach (InventorySlot? slot in slots)
+                for (int i = 0; i < slotItemNames.Count; i++)
                 {
-                    if (slot.HasValue) total += slot.Value.Item.Value;
+                    string itemName = slotItemNames[i];
+                    if (string.IsNullOrEmpty(itemName) || itemName == ContinuationMarker) continue;
+
+                    ItemDefinition item = catalog != null ? catalog.GetByName(itemName) : null;
+                    if (item != null) total += item.Value;
                 }
                 return total;
             }
@@ -114,12 +134,32 @@ namespace RobEveryone.Inventory
             RebuildSlotsFromSync();
         }
 
+        // For UI purposes, every slot a bulky item occupies shows that
+        // same item (repeated icon across its span reads clearly as "this
+        // one thing takes up this much room" -- the same visual language
+        // inventory-Tetris games use). A ContinuationMarker resolves to
+        // whichever real item name comes immediately before it -- safe
+        // because AddItem never leaves a gap between a head and its own
+        // continuation slots.
         private void RebuildSlotsFromSync()
         {
+            string currentOwner = null;
+
             for (int i = 0; i < SlotCount; i++)
             {
-                string itemName = i < slotItemNames.Count ? slotItemNames[i] : string.Empty;
-                ItemDefinition item = catalog != null ? catalog.GetByName(itemName) : null;
+                string raw = i < slotItemNames.Count ? slotItemNames[i] : string.Empty;
+
+                if (raw == ContinuationMarker)
+                {
+                    // currentOwner still holds whatever head this
+                    // continues, from the previous iteration.
+                }
+                else
+                {
+                    currentOwner = string.IsNullOrEmpty(raw) ? null : raw;
+                }
+
+                ItemDefinition item = currentOwner != null && catalog != null ? catalog.GetByName(currentOwner) : null;
                 slots[i] = item != null ? new InventorySlot { Item = item } : (InventorySlot?)null;
             }
 
@@ -127,20 +167,38 @@ namespace RobEveryone.Inventory
             OnTotalValueChanged?.Invoke(TotalValue);
         }
 
-        // Returns false (and leaves the item untouched) if every slot is
-        // full -- PickupItem only deactivates the world item on success.
-        // Server-only: called from Interactor's Command by way of
-        // PickupItem.Interact, never directly by a client.
+        // Returns false (and leaves the item untouched) if there aren't
+        // ItemDefinition.InventorySize *consecutive* free slots -- a
+        // bulky item can't split across a gap. PickupItem only
+        // deactivates the world item on success. Server-only: called
+        // from Interactor's Command by way of PickupItem.Interact, never
+        // directly by a client.
         [Server]
         public bool AddItem(ItemDefinition item)
         {
-            for (int i = 0; i < SlotCount; i++)
+            int size = item.InventorySize;
+
+            for (int start = 0; start <= SlotCount - size; start++)
             {
-                if (string.IsNullOrEmpty(slotItemNames[i]))
+                bool allFree = true;
+                for (int offset = 0; offset < size; offset++)
                 {
-                    slotItemNames[i] = item.ItemName; // SyncList write -- propagates to every client automatically
-                    return true;
+                    if (!string.IsNullOrEmpty(slotItemNames[start + offset]))
+                    {
+                        allFree = false;
+                        break;
+                    }
                 }
+
+                if (!allFree) continue;
+
+                slotItemNames[start] = item.ItemName; // SyncList write -- propagates to every client automatically
+                for (int offset = 1; offset < size; offset++)
+                {
+                    slotItemNames[start + offset] = ContinuationMarker;
+                }
+
+                return true;
             }
 
             return false;

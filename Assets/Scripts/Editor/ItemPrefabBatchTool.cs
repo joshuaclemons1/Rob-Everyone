@@ -37,12 +37,19 @@ namespace RobEveryone.EditorTools
             public string SourceFileName; // exact filename in Assets/Art/Items/, no extension needed if unambiguous
             public string DisplayName;
             public int Value;
+            // How many of PlayerInventory's 5 slots this item costs to
+            // carry -- see ItemDefinition.InventorySize. Small/Medium
+            // items all fit in one hand, so 1; Large (appliance-scale)
+            // items scale up to reflect actually being bulky to haul,
+            // with Safe deliberately costing the entire inventory.
+            public int InventorySize;
 
-            public ItemSpec(string sourceFileName, string displayName, int value)
+            public ItemSpec(string sourceFileName, string displayName, int value, int inventorySize = 1)
             {
                 SourceFileName = sourceFileName;
                 DisplayName = displayName;
                 Value = value;
+                InventorySize = inventorySize;
             }
         }
 
@@ -54,7 +61,7 @@ namespace RobEveryone.EditorTools
         // maps 1:1 to one output item, no combined-prefab special case.
         private static readonly ItemSpec[] Items =
         {
-            // Small
+            // Small -- all InventorySize 1 (default, omitted below)
             new("Key11_with_tag.001", "Car Keys", 8),
             new("Prop_Coins", "Coins", 10),
             new("books", "Books", 10),
@@ -70,7 +77,7 @@ namespace RobEveryone.EditorTools
             new("diamond_ring", "Diamond Ring", 65),
             new("Gold_Ingots", "Gold Ingots", 90),
 
-            // Medium
+            // Medium -- all InventorySize 1 (default, omitted below)
             new("toaster", "Toaster", 15),
             new("Purse_01", "Purse", 18),
             new("lampRoundTable", "Table Lamp", 20),
@@ -82,16 +89,17 @@ namespace RobEveryone.EditorTools
             new("computerScreen", "Computer Monitor", 35),
             new("kitchenMicrowave", "Microwave", 45),
 
-            // Large
-            new("televisionVintage", "Vintage Television", 60),
-            new("dryer", "Dryer", 70),
-            new("washer", "Washer", 75),
-            new("kitchenStove", "Stove", 80),
-            new("kitchenStoveElectric", "Electric Stove", 85),
-            new("televisionModern", "Modern Television", 90),
-            new("kitchenFridge", "Fridge", 100),
-            new("kitchenFridgeLarge", "Large Fridge", 130),
-            new("Safe", "Safe", 250),
+            // Large -- genuinely bulky, InventorySize scales with how
+            // much of a 5-slot inventory hauling it out plausibly costs.
+            new("televisionVintage", "Vintage Television", 60, 2),
+            new("dryer", "Dryer", 70, 2),
+            new("washer", "Washer", 75, 2),
+            new("kitchenStove", "Stove", 80, 2),
+            new("kitchenStoveElectric", "Electric Stove", 85, 2),
+            new("televisionModern", "Modern Television", 90, 2),
+            new("kitchenFridge", "Fridge", 100, 3),
+            new("kitchenFridgeLarge", "Large Fridge", 130, 4),
+            new("Safe", "Safe", 250, 5), // the whole inventory, on purpose -- the jackpot item
         };
 
         [MenuItem("Rob Everyone/Batch Create Loot Items")]
@@ -238,9 +246,10 @@ namespace RobEveryone.EditorTools
         }
 
         // Uses SerializedObject/SerializedProperty rather than adding
-        // public setters to ItemDefinition -- keeps this tool from
-        // needing any change to that class at all (zero risk of
-        // affecting the existing, already-working Laptop.asset/script).
+        // public setters to ItemDefinition -- avoids widening that
+        // class's API just for this tool (it already had InventorySize
+        // added for the multi-slot mechanic itself, but nothing here
+        // needs a public setter for any of these fields either way).
         private static void CreateItemDefinition(ItemSpec spec, GameObject prefab, string assetPath)
         {
             ItemDefinition item = ScriptableObject.CreateInstance<ItemDefinition>();
@@ -250,6 +259,7 @@ namespace RobEveryone.EditorTools
             so.FindProperty("value").intValue = spec.Value;
             so.FindProperty("worldModelPrefab").objectReferenceValue = prefab;
             so.FindProperty("worldModelScale").vector3Value = Vector3.one;
+            so.FindProperty("inventorySize").intValue = spec.InventorySize;
             so.ApplyModifiedProperties();
 
             AssetDatabase.CreateAsset(item, assetPath);

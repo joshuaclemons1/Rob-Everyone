@@ -20,11 +20,21 @@ namespace RobEveryone.Items
         // model itself, not of any one LootSpawnPoint that happens to
         // roll it.
         [SerializeField] private Vector3 worldModelScale = Vector3.one;
+        // How many of PlayerInventory's 5 hotbar slots this item eats up
+        // at once -- most things are 1, but a bulky item (a fridge, a
+        // safe) should plausibly cost most or all of your carrying
+        // capacity just to haul out. See item-creation.md's price table
+        // for the values actually used. Clamped to at least 1 in
+        // InventorySize below -- 0 or negative would let an item occupy
+        // no slots at all, which isn't a real state PlayerInventory's
+        // slot-finding logic is written to handle.
+        [SerializeField, Min(1)] private int inventorySize = 1;
 
         public string ItemName => itemName;
         public int Value => value;
         public Sprite Icon => icon;
         public GameObject WorldModelPrefab => worldModelPrefab;
         public Vector3 WorldModelScale => worldModelScale;
+        public int InventorySize => Mathf.Max(1, inventorySize);
     }
 }

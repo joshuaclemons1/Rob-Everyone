@@ -18,6 +18,15 @@ happen soon" to "later stage."
   report back per-Part rather than trying to power through both docs in
   one sitting.
 
+- **Prison Wallet slot** — gameplay-design.md's 6th, separate inventory
+  slot: holds exactly 1 item of any size/value, immune to whatever
+  happens to the other 5 when caught. Deliberately not built alongside
+  `InventorySize` (see [item-creation.md](stages/item-creation.md)) since
+  it needs its own design pass through `PoliceAI`/`RoundManager`'s catch
+  handling (what does "immune" actually do to a caught player's
+  inventory) and `SellStation` (can you sell straight out of the wallet,
+  or does it need moving to a normal slot first) -- not just a UI slot.
+
 ## Verify / playtest (built but not confirmed)
 
 - **Stage 7b (batch economy + hotbar)** — code and Editor wiring both

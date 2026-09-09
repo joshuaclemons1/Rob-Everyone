@@ -11,6 +11,36 @@ Do this **before** Stage 4 Part 4 (interaction/inventory networking) —
 that Part expects every `ItemDefinition`'s World Model Prefab to already
 have a `NetworkIdentity`, which this doc is what actually builds.
 
+**Not covered here**: the Prison Wallet (a 6th, separate slot that holds
+1 item of any size/value, immune to whatever happens to the other 5 when
+caught) — tracked in `todo.md` as real, still-needed work, deliberately
+not built in this pass since it touches jail/catch behavior and selling
+logic well beyond loot spawning.
+
+---
+
+## 0. InventorySize — bulky items cost more than one slot
+
+`ItemDefinition.InventorySize` (default `1`) is how many of
+`PlayerInventory`'s 5 slots one item costs to carry — a `Watch` costs 1,
+a `Large Fridge` costs 4, a `Safe` costs all 5 (the entire inventory, on
+purpose — the jackpot item should feel like it takes everything you've
+got to haul out). `AddItem` looks for that many *consecutive* free
+slots, not just any one free slot, and fails (leaving the item in the
+world) if it can't find a big enough contiguous run — a full inventory
+with 3 free slots scattered between other items still can't fit a
+4-slot fridge.
+
+Under the hood this is still a single `SyncList<string>` (one name per
+slot, unchanged schema) — a bulky item writes its name into its first
+("head") slot and a reserved sentinel into every slot after that, so
+`TotalValue` counts it exactly once regardless of how many slots it
+spans, while the hotbar UI still shows the item's icon repeated across
+every slot it occupies (the same visual language inventory-Tetris games
+use for a multi-cell item). None of this needs touching by hand — it's
+already wired into `PlayerInventory.cs`, and `ItemPrefabBatchTool`
+(Section 4) sets the right `InventorySize` per item automatically.
+
 ---
 
 ## 1. Why exclusion needs multiple LootTable assets, not one
@@ -230,6 +260,8 @@ worked example before doing the rest by hand.
    - **World Model Prefab**: the prefab you just made in step 4
    - **World Model Scale**: `(1,1,1)` to start, tune once you see it
      in-game
+   - **Inventory Size**: `1` unless the item is genuinely bulky (see
+     Section 0) — most things stay at the default
 6. **Add it to `ItemCatalog`** (`Assets/Data/` — create the asset via
    **Create → Rob Everyone → Item Catalog** if it doesn't exist yet) —
    required for multiplayer sync (`PlayerInventory` resolves carried
