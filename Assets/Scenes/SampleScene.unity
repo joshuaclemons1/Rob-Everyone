@@ -9917,56 +9917,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: c921c8829a49f472eb510c14ae5425d6, type: 3}
---- !u!1 &799346968
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 799346970}
-  - component: {fileID: 799346969}
-  m_Layer: 0
-  m_Name: GameFlowManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &799346969
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 799346968}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 73a543b1709fecc438a883b09f86df4a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Core.GameFlowManager
-  syncDirection: 0
-  syncMode: 0
-  syncInterval: 0
-  gameplaySceneName: SampleScene
-  lobbySceneName: Lobby
-  quotaGrowthMultiplier: 1.5
---- !u!4 &799346970
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 799346968}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &804324536
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10869,7 +10819,6 @@ GameObject:
   - component: {fileID: 849345399}
   - component: {fileID: 849345398}
   - component: {fileID: 849345397}
-  - component: {fileID: 849345400}
   m_Layer: 0
   m_Name: Exit
   m_TagString: Untagged
@@ -10927,18 +10876,6 @@ Transform:
   - {fileID: 929810995}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 135, z: 0}
---- !u!114 &849345400
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 849345396}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4051c005ebf09fc4ab2f6b7b86e11c5c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Round.PartyGate
 --- !u!1 &849800708
 GameObject:
   m_ObjectHideFlags: 0
@@ -28594,7 +28531,6 @@ SceneRoots:
   - {fileID: 311102884}
   - {fileID: 205998221}
   - {fileID: 1808652745}
-  - {fileID: 799346970}
   - {fileID: 728616786}
   - {fileID: 1099526219}
   - {fileID: 416787903}
