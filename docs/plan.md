@@ -47,7 +47,10 @@ Full stage-by-stage how-to walkthroughs (procedural reference, not status
 [stage7-shop-lobby-setup.md](stages/stage7-shop-lobby-setup.md),
 [stage7b-batch-economy-hotbar-setup.md](stages/stage7b-batch-economy-hotbar-setup.md),
 [stage4-multiplayer-mirror.md](stages/stage4-multiplayer-mirror.md),
-[stage5-steam-multiplayer.md](stages/stage5-steam-multiplayer.md).
+[stage5-steam-multiplayer.md](stages/stage5-steam-multiplayer.md),
+[item-creation.md](stages/item-creation.md) (turning
+`Assets/Art/Items/`'s 33 raw models into spawnable loot with
+size-tiered exclusion, done between Stage 4 Parts 3 and 4).
 Style/asset reference (palette, sourced packs, remaining art to-do) is in
 [art-info.md](art-info.md); UI/menu element spec is in
 [ui-design.md](stages/ui-design.md); main menu build docs are
