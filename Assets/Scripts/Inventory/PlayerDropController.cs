@@ -1,3 +1,4 @@
+using RobEveryone.Player;
 using RobEveryone.UI;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -24,12 +25,18 @@ namespace RobEveryone.Inventory
         [SerializeField] private Key dropKey = Key.Q;
 
         private PlayerInventory inventory;
+        private CarryController carry;
 
-        private void Awake() => inventory = GetComponent<PlayerInventory>();
+        private void Awake()
+        {
+            inventory = GetComponent<PlayerInventory>();
+            carry = GetComponent<CarryController>();
+        }
 
         private void Update()
         {
             if (!inventory.isOwned || InventoryScreenUI.MenuOpen) return;
+            if (carry != null && carry.IsCarrying) return; // hands full
             if (Keyboard.current == null || !Keyboard.current[dropKey].wasPressedThisFrame) return;
 
             Vector3 flatForward = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;

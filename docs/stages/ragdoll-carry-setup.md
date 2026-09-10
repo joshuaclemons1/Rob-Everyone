@@ -14,6 +14,7 @@ then a two-Editor playtest. **Always press Play from `MainMenu`.**
 | `PlayerTheftTarget` (changed) | Player prefab | **carried players can't be stolen from** — carrying is a grief/relocate toy, not strip-mining or body-passing. |
 | `FirstPersonController` (changed) | Player prefab | `CarryingSomething` kills air-control + autohop (no bhop while carrying); walk/sprint stay normal. |
 | `SabotageUseController` (changed) | Player prefab | suppressed while carrying (LMB is the throw). |
+| `Interactor` / `PickupItem` / `PlayerDropController` (changed) | Player prefab | no loot pickup or item-drop while carrying — hands full. |
 | `RobEveryoneNetworkManager` (changed) | MainMenu | drops the body if the carrier disconnects mid-carry. |
 
 Design (from the Q&A): `E` on *any* ragdolled rival (car or sabotage);
@@ -90,8 +91,10 @@ the map boundary.
   re-stun with a fresh sabotage hit → stealing works again.
 - A **can't bhop** while carrying (hold Space does nothing; a single
   jump is fine but builds no air speed). Walk/sprint feel normal.
-- A's hotbar keys and world interactions (`E` on a Sell Station etc.)
-  still work; sabotage LMB/RMB does not (that's the throw).
+- A **can't pick up loot or drop a hotbar item** while carrying (hands
+  full — no "Take" prompt on items, `Q` does nothing). World
+  interactions (`E` on a Sell Station / Ready Spot) and hotbar
+  *selection* still work; sabotage LMB/RMB does not (that's the throw).
 - A disconnects mid-carry → B drops.
 
 ### 🔴 Rest Point 5 — full pass

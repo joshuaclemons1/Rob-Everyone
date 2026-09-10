@@ -102,6 +102,10 @@ namespace RobEveryone.Items
         {
             if (!isServer || item == null || taken) return;
 
+            // Hands full while carrying a downed player.
+            var carry = interactor.GetComponent<RobEveryone.Player.CarryController>();
+            if (carry != null && carry.IsCarrying) return;
+
             PlayerInventory inventory = interactor.GetComponent<PlayerInventory>();
             if (inventory == null) return;
 

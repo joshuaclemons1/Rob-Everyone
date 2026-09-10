@@ -1,4 +1,6 @@
 using Mirror;
+using RobEveryone.Items;
+using RobEveryone.Player;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -22,8 +24,14 @@ namespace RobEveryone.Interaction
         [SerializeField] private LayerMask interactableMask = ~0;
 
         private IInteractable currentTarget;
+        private CarryController carry;
 
         public IInteractable CurrentTarget => currentTarget;
+
+        private void Awake()
+        {
+            carry = GetComponent<CarryController>();
+        }
 
         private void Update()
         {
@@ -46,7 +54,13 @@ namespace RobEveryone.Interaction
             if (Physics.Raycast(viewPoint.position, viewPoint.forward, out RaycastHit hit, interactRange, interactableMask))
             {
                 IInteractable target = hit.collider.GetComponentInParent<IInteractable>();
-                if (target != null && target.CanInteract) return target;
+                if (target == null || !target.CanInteract) return null;
+
+                // Hands full -- can't pick loot up while carrying a body.
+                // Other interactions (Sell Station, Ready Spot) are fine.
+                if (target is PickupItem && carry != null && carry.IsCarrying) return null;
+
+                return target;
             }
 
             return null;
