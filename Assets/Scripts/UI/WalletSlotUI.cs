@@ -16,15 +16,16 @@ namespace RobEveryone.UI
     // item; put an InventoryDragSlot (Kind = MyWallet) on the same
     // GameObject for the drag half.
     //
-    // Locked indicator: once something's in the wallet during a gameplay
-    // round it can't be swapped out until the shop phase -- the lock
-    // object makes that legible rather than the drag just silently
-    // failing. It's any small child object you make (an Image, or a TMP
-    // set to a padlock glyph) -- nothing to download.
+    // Lock indicator: while an item's in the wallet it's either LOCKED
+    // (mid-round -- can't be swapped until the shop phase) or UNLOCKED
+    // (in the Lobby -- drag it out to a hotbar slot to sell it). Both
+    // are small child Image objects; neither shows while the wallet is
+    // empty. Wire whichever you have -- either alone is fine.
     [RequireComponent(typeof(HotbarSlotUI))]
     public class WalletSlotUI : MonoBehaviour
     {
         [SerializeField] private GameObject lockedIcon;
+        [SerializeField] private GameObject unlockedIcon;
 
         private HotbarSlotUI display;
         private PlayerInventory inventory;
@@ -33,6 +34,7 @@ namespace RobEveryone.UI
         {
             display = GetComponent<HotbarSlotUI>(); // always this box's own
             if (lockedIcon != null) lockedIcon.SetActive(false);
+            if (unlockedIcon != null) unlockedIcon.SetActive(false);
         }
 
         private void Start()
@@ -60,10 +62,13 @@ namespace RobEveryone.UI
 
         private void Update()
         {
-            if (lockedIcon == null || inventory == null) return;
+            if (inventory == null) return;
 
+            bool filled = inventory.WalletFilled;
             bool inRound = GameFlowManager.Instance != null && GameFlowManager.Instance.InGameplayScene;
-            lockedIcon.SetActive(inventory.WalletFilled && inRound);
+
+            if (lockedIcon != null) lockedIcon.SetActive(filled && inRound);
+            if (unlockedIcon != null) unlockedIcon.SetActive(filled && !inRound);
         }
 
         private void Refresh()

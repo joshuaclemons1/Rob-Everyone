@@ -104,13 +104,18 @@ background, ghost) stays put.
    background Image needs **Raycast Target ON**.
 5. Change the `Inventory Drag Slot` it copied over: `Kind` = **My
    Wallet**, `Index` `-1`.
-6. Add a **`LockedIcon`** child — any small object shown while the
-   wallet is filled *and* you're mid-round. **Nothing to download**: a
-   `TextMeshPro - Text` set to `🔒` (or `LOCKED`), or an `Image` with any
-   lock-ish sprite, or even a small tinted square. Start it disabled.
+6. Two small child **Image** objects on `WalletBox` (both start
+   disabled), positioned in a corner:
+   - **`LockedIcon`** — Image, `Source Image` = `Assets/Art/UI/Icon_Lock`
+     (sprite, already imported). Shows while the wallet is filled *and*
+     you're mid-round.
+   - **`UnlockedIcon`** — Image, `Source Image` =
+     `Assets/Art/UI/Icon_Unlock`. Shows while the wallet is filled *and*
+     you're in the Lobby (drag it out to sell). Either icon alone is
+     fine if you only want one.
 7. On `WalletBox`: **Add Component → Wallet Slot UI** → wire **Locked
-   Icon** = `LockedIcon`. (It finds its own `Hotbar Slot UI` — no
-   Display field to wire.)
+   Icon** = `LockedIcon`, **Unlocked Icon** = `UnlockedIcon`. (It finds
+   its own `Hotbar Slot UI` — no Display field to wire.)
 
 ### 2c. Drag components on the 5 slots
 
