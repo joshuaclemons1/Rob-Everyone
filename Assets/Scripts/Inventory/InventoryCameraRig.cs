@@ -28,9 +28,16 @@ namespace RobEveryone.Inventory
         public void Show()
         {
             if (rig == null) return;
+            // Following (not a static pose) so the shot stays framed on
+            // the character while they walk around with the screen open.
+            rig.CutToFollowing(FramePose, chaseSpeed: 0f, showOwnSkin: true, blendDuration);
+        }
+
+        private (Vector3 pos, Vector3 lookAt) FramePose()
+        {
             Vector3 pos = transform.position + transform.rotation * frontOffset;
             Vector3 lookAt = transform.position + Vector3.up * lookAtHeight;
-            rig.CutTo(pos, lookAt, showOwnSkin: true, blendDuration);
+            return (pos, lookAt);
         }
 
         public void Hide()

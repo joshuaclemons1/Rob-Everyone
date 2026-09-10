@@ -190,9 +190,13 @@ namespace RobEveryone.Player
             // self-moved position.
             if (!isOwned) return;
             if (IsFrozen) return;
-            if (LookSuppressed) return;
 
-            HandleLook();
+            // While the inventory / steal screen is open the mouse is the
+            // cursor, so only mouse-look is parked -- you can still walk,
+            // sprint, jump and crouch (deliberate: keep moving toward the
+            // exit while you sort loot). IsFrozen (jail) still stops
+            // everything.
+            if (!LookSuppressed) HandleLook();
             HandleCrouch();
             HandleMove();
         }
@@ -225,7 +229,11 @@ namespace RobEveryone.Player
             // when standing (heightDelta == 0).
             controller.center = standCenter - new Vector3(0f, heightDelta * 0.5f, 0f);
 
-            if (cameraTransform == null) return;
+            // Skip the camera bob while the inventory screen owns the
+            // camera (PlayerCameraRig has it detached) -- the body still
+            // crouches, but the camera write would just be fought by the
+            // rig every LateUpdate.
+            if (cameraTransform == null || LookSuppressed) return;
             Vector3 camPos = cameraTransform.localPosition;
             camPos.y = standCameraY - heightDelta;
             cameraTransform.localPosition = camPos;

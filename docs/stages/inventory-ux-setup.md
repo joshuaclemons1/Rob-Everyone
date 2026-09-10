@@ -22,6 +22,7 @@ there.
 | `PlayerTheftTarget` (rewritten) | Player prefab (already there) | E on a stunned rival opens the steal screen; drag-driven transfer, one item per stun |
 | `PlayerImpactRelay` (changed) | Player prefab (already there) | steal window is an expiry timestamp now — no wiring |
 | `PickupItem` (changed) | item prefabs (already there) | a dropped item spins/bobs *and* its colliders become triggers (walk through it); house loot unaffected |
+| `FirstPersonController` (changed) | Player prefab (already there) | `LookSuppressed` parks **only mouse-look** while the screen is open — walk/sprint/jump/crouch still work |
 | `InventoryScreenUI` (new) | `Hotbar.prefab` root | the Tab / steal screen orchestrator |
 | `InventoryDragSlot` (new) | each slot box | drag source / drop target conduit |
 | `WalletSlotUI` (new) | `Hotbar.prefab` (wallet box) | the always-visible wallet box + lock indicator |
@@ -206,9 +207,11 @@ loot still sits still and stays solid. Tune `Drop Forward` /
 
 ### 🔴 Rest Point 2 — Tab screen + camera
 Press **Tab**: camera **blends** (doesn't snap — ~0.35 s) to a wide
-front view of your character, `SlotRow` rises + grows, cursor appears,
-movement/look stop. **Tab** / **Esc** closes — the camera blends back
-and control only returns once it's home. Drag an item between two slots
+front view of your character, `SlotRow` rises + grows, cursor appears.
+Mouse-look stops (the mouse is the cursor now) but you can still
+**walk / sprint / jump / crouch** — the camera stays framed on you as
+you move. **Tab** / **Esc** closes — the camera blends back and look
+only returns once it's home. Drag an item between two slots
 → moves on **both** Editors; the drag ghost is a live mini-render of the
 item, not a white box. Drop onto an occupied slot → snaps back. The
 other player is unaffected while your screen is open. Also confirm the
