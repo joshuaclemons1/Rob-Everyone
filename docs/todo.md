@@ -8,51 +8,60 @@ happen soon" to "later stage."
 
 ## Priority order (the plan)
 
-1. **Inventory / UX** (high) — Tab inventory screen, drop-with-Q, Prison
-   Wallet slot, steal-window rework. **Code done**; Editor wiring +
-   playtest remain: [inventory-ux-setup.md](stages/inventory-ux-setup.md).
-2. **Finish Stage 6 Phase 2** — only the Alarm Clock build + a full
+1. **Inventory / UX** — Tab inventory screen, drop-with-Q, Prison Wallet
+   slot, steal-window rework. **Done and playtested** — see
+   [completed.md](completed.md); build steps in
+   [inventory-ux-setup.md](stages/inventory-ux-setup.md).
+2. **Player feel pass** (in progress) — instant jump (drop the
+   animation-sync delay), CS-style bhop + hold-to-autohop, first-person
+   visible body with the head trimmed (also prep for held-item-in-hands).
+3. **Finish Stage 6 Phase 2** — only the Alarm Clock build + a full
    two-Editor Phase 2 playtest are left.
-3. **Stage 5 real Steam overlay test** — parked until a second Steam
+4. **Stage 5 real Steam overlay test** — parked until a second Steam
    account is available; not blocking anything else.
-4. **Stage 7 — full meta-game** (medium) — sabotage purchases, real
+5. **Stage 7 — full meta-game** (medium) — sabotage purchases, real
    Jail & Bail, sabotage-spending quota.
-5. **VoIP / proximity voice chat** (medium-low) — Steam's own voice API.
+6. **VoIP / proximity voice chat** (medium-low) — Steam's own voice API.
    Build guide: [voip-setup.md](stages/voip-setup.md).
-6. **Stage 8 — friend-group playtest** — depends on 1–4.
-7. **Art & audio** — more house variants (unblocks loot variety), all
+7. **Stage 8 — friend-group playtest** — depends on 1–5.
+8. **Art & audio** — more house variants (unblocks loot variety), all
    SFX, ambient music, "Good House" tell, skin unlock-gating, HUD
    result banner, environmental detail. Mostly Zach / asset work.
-8. **Housekeeping + code-review nits** — as they come up.
+9. **Housekeeping + code-review nits** — as they come up.
 
 Detail for each below.
 
-## Do first — inventory / UX (high priority)
+## Do first — player feel pass (in progress)
 
-**Code is written and committed** (`jclem's-branch`) — what's left is
-Editor wiring + a two-Editor playtest, step by step in
-[inventory-ux-setup.md](stages/inventory-ux-setup.md). One shared Tab /
-steal screen (front-facing third-person camera, hotbar rises + grows,
-cursor); drag to rearrange your slots and to/from the Prison Wallet;
-`Q` drops the selected slot into the world (spinning/bobbing); `E` on a
-stunned rival opens the same screen with their hotbar above yours to
-drag one item down. Design calls baked in: fully vulnerable while open;
-wallet takes one item of any size, placeable only mid-round, retrievable
-only in the Lobby, locked once filled, survives being caught; sell only
-after dragging it to a hotbar slot; one steal per stun.
+- **Instant jump** — the jump physics currently wait on an
+  animation-anticipation delay (`FirstPersonController.ScheduleJumpLaunch`
+  / `PlayerAnimationDriver.jumpAnticipationFraction`), which reads as
+  sluggish. The velocity should apply the frame Space goes down; the
+  animation is best-effort and never gates input.
+- **CS-style bhop + autohop** — air-strafe accel tuned to Source-ish
+  values (tight air-wishspeed cap, high air accel), horizontal speed
+  preserved across the jump frame (no ground friction tick while
+  jumping), and **holding Space auto-jumps** on landing instead of only
+  firing on the initial press.
+- **First-person visible body, head trimmed** — the owner's own skin
+  should render (so it's not a floating camera, and to prep for the
+  future "held hotbar item shows in your hands"), with the head bone
+  scaled out on the owner's copy only so the camera doesn't clip through
+  it. Remote copies keep the full head.
 
-New scripts: `InventoryScreenUI`, `InventoryDragSlot`, `WalletSlotUI`,
-`InventoryCameraRig`, `PlayerDropController`. Changed: `PlayerInventory`
-(wallet + move/drop), `PlayerTheftTarget` (drag-driven rework),
-`PlayerImpactRelay` (steal window = expiry timestamp, closing the
-multi-attacker race + the stale class comment), `HotbarUI` (bind to an
-explicit inventory), `PickupItem` (dropped spin), `FirstPersonController`
-(`LookSuppressed`).
+Follow-ups: arm/shoulder clipping in first person may need the camera
+nudged or more bones trimmed; a real separate first-person viewmodel is
+the "proper" version, deferred.
 
-Follow-ups deferred (see the setup doc's own list): swap-on-drag,
-right-click quick-drop, real Steam names in the "Steal from:" label,
-auto-banking an unretrieved wallet item, making the wallet item
-off-limits to theft.
+## Inventory / UX — done
+
+Tab / steal screen, drop-with-Q, Prison Wallet, steal-window rework.
+**Playtested and confirmed.** Build steps:
+[inventory-ux-setup.md](stages/inventory-ux-setup.md); full detail in
+[completed.md](completed.md). Deferred follow-ups (see the setup doc's
+own list): swap-on-drag, right-click quick-drop, real Steam names in the
+"Steal from:" label, auto-banking an unretrieved wallet item, making the
+wallet item off-limits to theft.
 
 ## Do first — finish Stage 6 Phase 2
 
@@ -65,6 +74,22 @@ off-limits to theft.
   Spawnable Prefabs. Then a real two-Editor playtest of all of Phase 2
   (Bat, Hammer swing/throw, Tranq Gun, Alarm Clock, the steal-window)
   before it's done.
+
+## Known bugs / deeper dives
+
+- **Player un-ragdolls too fast after a car hit** — sometimes before the
+  body even reaches the ground. `PlayerRagdoll.ImpactSequence` ends the
+  ragdoll after a fixed `duration` regardless of whether the body has
+  settled; the stun timing needs a real look (wait for the ragdoll to
+  come to rest / touch ground, or at least a longer/floor-gated
+  minimum), not just the current fixed timer. `PlayerImpactRelay` also
+  clears `IsStunned` on its own fixed `duration` — keep the two in sync.
+- **Carry / throw ragdolled players** (future feature) — pick up a
+  ragdolled rival (`E` while they're stunned?), carry them, move them,
+  and throw them. Networked. Ties into the steal-window and the
+  `PlayerCameraRig`/`PlayerImpactRelay` state. Not scoped yet — needs a
+  design pass (can a carried player still be stolen from? does carrying
+  slow you? what stops a griefing carry-chain?).
 
 ## Test when able
 

@@ -22,6 +22,13 @@ namespace RobEveryone.Player
         [SerializeField] private PlayerSkinRoster skinRoster;
         [SerializeField] private PlayerColorPalette palette;
         [SerializeField] private LayerMask skinLayer;
+        // On the owner's own copy only, these bones get scaled to zero so
+        // the first-person camera (which now renders your body -- it's
+        // not a floating nothing, and it's the anchor for the future
+        // "held hotbar item in your hands") doesn't clip through your own
+        // head. Every other client's copy of you keeps the full model.
+        // Exact bone-name match; the Quaternius rig calls it "Head".
+        [SerializeField] private string[] firstPersonHiddenBones = { "Head", "Head_end" };
         // Shared across every skin -- only BaseCharacter.fbx actually has
         // baked-in clips (Idle/Walk/Run/Jump/etc.), the other 51 are bare
         // meshes on the *identical* Generic rig topology, so one
@@ -94,6 +101,16 @@ namespace RobEveryone.Player
             WidenSkinnedMeshBounds(SkinInstance.transform);
             ConfigureAnimator(SkinInstance.transform);
 
+            // Owner-only: trim the head so first person isn't a floating
+            // camera and doesn't clip through the model. isOwned is
+            // reliable here -- the owner path (OnStartLocalPlayer) always
+            // has it true, and the remote path (OnCosmeticsChanged) is
+            // guarded to non-owners.
+            if (isOwned && firstPersonHiddenBones != null && firstPersonHiddenBones.Length > 0)
+            {
+                SkinInstance.AddComponent<FirstPersonBodyTrim>().Apply(SkinInstance.transform, firstPersonHiddenBones);
+            }
+
             PlayerColorizer colorizer = SkinInstance.GetComponent<PlayerColorizer>();
             if (colorizer == null) colorizer = SkinInstance.AddComponent<PlayerColorizer>();
 
@@ -161,35 +178,20 @@ namespace RobEveryone.Player
             }
         }
 
-        // skinLayer is specifically "hidden from its owner's own camera"
-        // (see PlayerRagdoll, which briefly re-adds it to your own
-        // camera's culling mask during a stun so you can see yourself
-        // ragdoll) -- every player's camera excludes this same layer, so
-        // only *your own* skin instance can go on it. Every other
-        // player's skin has to stay on an ordinary, always-rendered layer
-        // (Default), or nobody's camera would ever render anyone's body,
-        // not just its owner's -- SetActive(false) isn't an option either,
-        // same reasoning as the original single-player version of this
-        // comment: that would hide it from every camera, not just one.
+        // Every skin (yours and everyone else's) goes on the ordinary
+        // always-rendered Default layer now -- your own body is meant to
+        // be visible in first person (head trimmed, see
+        // firstPersonHiddenBones). `skinLayer` is kept as a field for
+        // PlayerRagdoll/PlayerCameraRig's culling-mask toggle, which is
+        // now a harmless no-op since Default is always in the mask
+        // anyway; left in place rather than ripping it out of two other
+        // scripts for no functional gain.
         private void SetLayerRecursively(Transform root)
         {
-            int layer = isOwned ? LayerMaskToLayer(skinLayer) : 0; // 0 = Default
-            if (layer < 0) return;
-
             foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
             {
-                child.gameObject.layer = layer;
+                child.gameObject.layer = 0; // Default
             }
-        }
-
-        private static int LayerMaskToLayer(LayerMask mask)
-        {
-            int value = mask.value;
-            for (int i = 0; i < 32; i++)
-            {
-                if ((value & (1 << i)) != 0) return i;
-            }
-            return -1;
         }
     }
 }

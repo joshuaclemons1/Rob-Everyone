@@ -1,0 +1,75 @@
+# Player feel pass — instant jump, bhop/autohop, first-person body
+
+Mostly code. The Editor side is a handful of Inspector values on the
+**Player prefab** to tune to taste.
+
+## What changed
+
+- **Instant jump.** `FirstPersonController` applies the launch velocity
+  the frame Space goes down — no more waiting on the jump animation's
+  anticipation window (`ScheduleJumpLaunch` / `DelayedLaunch` are gone).
+  `PlayerAnimationDriver` still fires the Jump trigger and rescales the
+  clip (`JumpSpeed`) to roughly match air time, but never gates input.
+  The anticipation squat now plays while you're already rising; set
+  **Jump Anticipation Fraction** to `0` on `Player Animation Driver` if
+  you'd rather skip it.
+- **Autohop.** `First Person Controller` → **Hold To Auto Hop** (default
+  on): holding Space re-jumps the instant you land. Turn it off for
+  jump-only-on-press.
+- **CS-style air control.** `Air Acceleration` `100`, `Air Wish Speed`
+  `1.0` (was `12` / `3`). The tight wish-speed cap is the point —
+  holding W in the air doesn't accelerate you; you gain speed by
+  air-strafing (turn the view while holding a strafe key). Ground
+  friction is skipped on the jump frame, so a clean bhop keeps its
+  speed straight through the hop. No total-speed cap, by design.
+- **First-person visible body, head trimmed.** Your own skin renders now
+  (it's not a floating camera, and it's the anchor for the future
+  held-hotbar-item-in-hands). On *your* copy only, the head bone is
+  scaled to zero so the camera doesn't clip through it — every other
+  client sees your full model. New `FirstPersonBodyTrim` component,
+  added at runtime by `PlayerSkinSpawner`.
+
+## Editor
+
+### Player prefab
+
+1. **First Person Controller** — tune to taste:
+   - **Hold To Auto Hop** — on.
+   - **Air Acceleration** `100`, **Air Wish Speed** `1.0` — the bhop
+     feel. Lower Air Wish Speed = harder to gain speed; higher = easier
+     (too high and holding W just accelerates you, which kills the
+     skill element).
+   - **Jump Height** — unchanged; the animation follows it now.
+2. **Player Animation Driver** — **Jump Anticipation Fraction**: `0` for
+   no squat, or leave at `0.2` and accept the squat plays mid-rise.
+3. **Player Skin Spawner** — new **First Person Hidden Bones** array,
+   pre-filled with `Head` and `Head_end` (the Quaternius bone names).
+   If a skin's head bone is named differently, add it here —
+   `FirstPersonBodyTrim` logs a warning naming the skin if nothing
+   matched.
+4. No layer changes. The owner's skin is on **Default** now like
+   everyone else's (`skinLayer` is kept only for `PlayerRagdoll`/
+   `PlayerCameraRig`'s now-no-op culling toggle).
+
+### 🔴 Rest Point
+Two Editors, or one for the movement:
+
+- Jump responds the **instant** you press Space — no lag.
+- Hold Space while running → you bunny-hop continuously without
+  re-pressing.
+- Strafe-jump (hold A + turn left, or D + turn right, repeatedly) and
+  speed builds past sprint. Holding just W in the air does not.
+- Land without holding Space → friction brings you back to walk speed.
+- Look down → you see your torso/legs, no head, no clipping. A rival
+  looking at you sees your full model with head.
+- Get hit by a car → the ragdoll shows your full head (trim pauses
+  during the stun), then trims again once you're up.
+
+## Still open (tracked in todo.md)
+
+- Arm/shoulder clipping in first person if it's bad — nudge the camera
+  forward a touch, or add `Shoulder.L`/`Shoulder.R`/`UpperArm.*` to the
+  hidden-bones list.
+- A real separate first-person viewmodel (own mesh, own FOV) is the
+  "proper" version — deferred.
+- The ragdoll get-up-too-fast bug is a separate deeper dive.

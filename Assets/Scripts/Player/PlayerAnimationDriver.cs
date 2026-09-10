@@ -156,11 +156,19 @@ namespace RobEveryone.Player
         {
             if (!TryResolveAnimator() || !animator.enabled) return;
 
-            float delay = ComputeJumpTiming(out float speedMultiplier);
+            // The jump physics are instant now (FirstPersonController
+            // applies the launch the same frame Space goes down) -- this
+            // only fires the animation. JumpSpeed rescales the clip so it
+            // roughly matches the real air time regardless of how
+            // jumpHeight/gravity are tuned; the anticipation squat plays
+            // while the character is already rising, which is a fine
+            // trade for the input never feeling delayed. Set
+            // jumpAnticipationFraction to 0 in the Inspector if you'd
+            // rather skip the squat entirely.
+            float speedMultiplier = ComputeJumpSpeedMultiplier();
 
             animator.SetFloat(JumpSpeedParam, speedMultiplier);
             animator.SetTrigger(JumpParam);
-            firstPersonController.ScheduleJumpLaunch(delay);
 
             // Tell the server, which relays to every *other* client
             // (includeOwner: false -- this client already triggered its
@@ -169,27 +177,19 @@ namespace RobEveryone.Player
             CmdNotifyJumped(speedMultiplier);
         }
 
-        // Split out of HandleJumped so both the locally-triggering owner
-        // and the RPC-driven remote copies compute the exact same delay
-        // from the exact same speedMultiplier, rather than each side
-        // deriving it independently and risking drift.
-        private float ComputeJumpTiming(out float speedMultiplier)
+        // Split out so the locally-triggering owner and the RPC-driven
+        // remote copies compute the exact same multiplier rather than
+        // each deriving it independently and risking drift.
+        private float ComputeJumpSpeedMultiplier()
         {
-            speedMultiplier = 1f;
-            if (jumpClip == null) return 0f;
+            if (jumpClip == null) return 1f;
 
             float realAirTime = firstPersonController.JumpApexTime * 2f;
             float airborneFraction = 1f - jumpAnticipationFraction;
-            if (realAirTime <= 0f || airborneFraction <= 0f) return 0f;
+            if (realAirTime <= 0f || airborneFraction <= 0f) return 1f;
 
-            speedMultiplier = (airborneFraction * jumpClip.length) / realAirTime;
-            if (speedMultiplier <= 0f)
-            {
-                speedMultiplier = 1f;
-                return 0f;
-            }
-
-            return (jumpAnticipationFraction * jumpClip.length) / speedMultiplier;
+            float m = (airborneFraction * jumpClip.length) / realAirTime;
+            return m > 0f ? m : 1f;
         }
 
         [Command]

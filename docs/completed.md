@@ -111,6 +111,27 @@ status line inside an individual stage doc.
   PlayerPrefs-backed persistence). See
   [main-menu-visual-design.md](stages/main-menu-visual-design.md),
   [main-menu-customization-setup.md](stages/main-menu-customization-setup.md).
+- **Inventory / UX** — one shared **Tab / steal screen**: a shared
+  `PlayerCameraRig` cuts the first-person camera to a smoothly-blended,
+  following front-facing third-person shot (the ragdoll stun cutaway
+  uses the same rig now), the hotbar rises + scales, the cursor
+  unlocks, and every slot box becomes drag-and-drop. Drag to rearrange
+  the 5 slots or to/from the **Prison Wallet** (its own SyncVar pair,
+  outside `ResetInventory`'s loop so it survives being caught; placeable
+  only mid-round, retrievable only in the Lobby, locked once filled,
+  with imported lock/unlock HUD icons). `Q` drops the selected item as
+  a spinning, walk-through world pickup. `E` on a stunned rival opens
+  the same screen with their hotbar above yours — drag one item down,
+  one steal per stun. You stay fully vulnerable and can still
+  walk/sprint/jump/crouch while it's open (only mouse-look parks).
+  `InventoryScreenUI`/`InventoryDragSlot`/`WalletSlotUI`/
+  `InventoryCameraRig`/`PlayerCameraRig`/`PlayerDropController`, plus
+  `PlayerInventory` (wallet + move/drop), `PlayerTheftTarget`
+  (drag-driven rework), `PlayerImpactRelay` (steal window as an expiry
+  timestamp), `PickupItem` (dropped spin + trigger colliders),
+  `PlayerRagdoll` (camera moved onto the rig). **Playtested and
+  confirmed.** See
+  [inventory-ux-setup.md](stages/inventory-ux-setup.md).
 
 ## Meta-game (jumped ahead of build order — see note below)
 

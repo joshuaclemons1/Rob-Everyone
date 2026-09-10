@@ -1,4 +1,3 @@
-using System.Collections;
 using Mirror;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -32,25 +31,24 @@ namespace RobEveryone.Player
         [SerializeField] private float gravity = -9.81f;
         [SerializeField] private float jumpHeight = 1.2f;
         [SerializeField, Range(0.3f, 1f)] private float crouchHeightRatio = 0.55f;
-        // See DelayedLaunch's own comment -- CharacterController.isGrounded
-        // lags a frame or more behind an actual launch, so IsJumpPending
-        // needs to stay true a little past the real jump for the Animator
-        // lie to hold through that gap.
-        [SerializeField] private float groundedLiePadding = 0.15f;
 
         [SerializeField] private float groundAcceleration = 60f;
+        // Hold Space to auto-jump the instant you land (CS-style bhop /
+        // autohop). Off = jump only on the initial press.
+        [SerializeField] private bool holdToAutoHop = true;
 
         // Bhop-style air control: id Software's classic "air-accelerate"
-        // formula. It caps speed gain per frame only in the current strafe
-        // direction (airWishSpeed), so as the player turns while strafing
-        // in the air, velocity keeps accumulating in the new direction on
-        // top of what's already there -- chaining jump + air-strafe lets a
-        // player who's learned the timing carry more speed than sprint
-        // alone. No cap on total speed, by design (see gameplay-design.md's
-        // Movement section: this is a skill-ceiling reward, not a
-        // menu-toggle ability).
-        [SerializeField] private float airAcceleration = 12f;
-        [SerializeField] private float airWishSpeed = 3f;
+        // formula, tuned toward Source values. `airWishSpeed` is a tight
+        // per-tick cap on how much speed you can add *in the current
+        // strafe direction* -- kept small on purpose so holding W in the
+        // air doesn't accelerate you; you gain speed by air-strafing
+        // (turning the view while holding a strafe key), which keeps
+        // adding into the new direction on top of what's already there.
+        // `airAcceleration` is high so each strafing tick actually reaches
+        // that cap. No cap on total speed, by design (gameplay-design.md's
+        // Movement section: a skill-ceiling reward, not a menu toggle).
+        [SerializeField] private float airAcceleration = 100f;
+        [SerializeField] private float airWishSpeed = 1.0f;
 
         private CharacterController controller;
         private float verticalVelocity;
@@ -68,16 +66,12 @@ namespace RobEveryone.Player
         // each frame to blend Idle/Walk/Run.
         public float HorizontalSpeed => horizontalVelocity.magnitude;
         public bool IsGrounded => controller.isGrounded;
-        // True from the moment a jump is triggered until the real launch
-        // velocity actually applies (see jumpPending below) --
-        // PlayerAnimationDriver reports Grounded as false to the Animator
-        // for this whole window, even though the character is physically
-        // still touching the ground during the anticipation squat.
-        // Without that, the Jump state's own Grounded-gated exit
-        // transitions (back to Idle/Walk/Run) fire immediately during the
-        // squat itself, since nothing else distinguishes "still
-        // squatting, haven't left yet" from "already landed" -- both are
-        // genuinely Grounded=true.
+        // True for the ~frame between triggering a jump and the
+        // CharacterController actually registering as airborne
+        // (isGrounded lags a frame). Guards against the same grounded
+        // window triggering a second jump, and lets PlayerAnimationDriver
+        // report Grounded=false to the Animator immediately so the Jump
+        // state can start without waiting on isGrounded to catch up.
         public bool IsJumpPending => jumpPending;
         // Time from launch to the peak of the arc (v=0), assuming flat
         // ground -- PlayerAnimationDriver doubles this for the full
@@ -94,17 +88,8 @@ namespace RobEveryone.Player
         // subscribes and fires the Jump trigger straight from this.
         public event System.Action Jumped;
 
-        // True once Jumped has fired for the current press and until the
-        // actual upward velocity has been applied -- guards against a
-        // second space press mid-anticipation (see ScheduleJumpLaunch)
-        // re-triggering an overlapping jump before the first one has even
-        // left the ground.
         private bool jumpPending;
-        // Set by ScheduleJumpLaunch during the *same* Jumped dispatch it
-        // was called from -- if nothing sets it (e.g. no
-        // PlayerAnimationDriver is attached), HandleMove falls back to
-        // launching immediately, so jumping still works standalone.
-        private bool jumpScheduled;
+        private float jumpPendingSince;
 
         // Server-set, client-visible -- true while PoliceAI has this
         // specific player in custody (Stage 4's per-player jail/catch
@@ -239,57 +224,6 @@ namespace RobEveryone.Player
             cameraTransform.localPosition = camPos;
         }
 
-        // Called by PlayerAnimationDriver, synchronously from within its
-        // own Jumped handler, once it knows how long the jump clip's
-        // anticipation/squat portion will actually take to play at
-        // whatever speed it's using -- keeps the character's feet on the
-        // ground until that finishes, instead of leaving the ground on
-        // the very first frame while the animation is still mid-squat.
-        // Always routes through the coroutine (even for delay <= 0) so
-        // the post-launch grounded-lie padding below applies uniformly
-        // regardless of whether a delay was actually needed.
-        public void ScheduleJumpLaunch(float delay)
-        {
-            jumpScheduled = true;
-            StartCoroutine(DelayedLaunch(delay));
-        }
-
-        private IEnumerator DelayedLaunch(float delay)
-        {
-            if (delay > 0f) yield return new WaitForSeconds(delay);
-
-            // A car impact mid-anticipation disables this component for
-            // the ragdoll stun -- the coroutine itself keeps running
-            // regardless (Unity doesn't pause coroutines just because
-            // their component is disabled), so without this check a
-            // pending jump would silently apply a stale launch velocity
-            // the moment the player regains control after the stun ends.
-            // jumpPending still has to be cleared here even though the
-            // launch itself is being skipped -- otherwise it stays stuck
-            // true forever, and PlayerAnimationDriver reports
-            // Grounded=false to the Animator permanently from then on.
-            if (!enabled)
-            {
-                jumpPending = false;
-                yield break;
-            }
-
-            verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
-
-            // CharacterController.isGrounded only updates on the *next*
-            // Move() call -- for at least a frame after the line above,
-            // sometimes more depending on exactly how this coroutine's
-            // resumption lines up against HandleMove's own Update, it can
-            // still report stale "grounded" data even though the launch
-            // velocity has already been applied. Keep lying about
-            // Grounded for a short cushion past the real launch so the
-            // Jump state's exit transitions can't fire on that stale
-            // read, same bug as the squat itself just shifted later.
-            if (groundedLiePadding > 0f) yield return new WaitForSeconds(groundedLiePadding);
-
-            jumpPending = false;
-        }
-
         private void HandleMove()
         {
             if (Keyboard.current == null) return;
@@ -306,26 +240,32 @@ namespace RobEveryone.Player
 
             IsSprinting = grounded && !IsCrouching && input.y > 0f && Keyboard.current.leftShiftKey.isPressed;
 
-            if (grounded)
+            // jumpPending only exists to bridge the frame or two before
+            // isGrounded catches up to the launch -- clear it the moment
+            // we're actually airborne, with a hard timeout as a backstop.
+            if (jumpPending && (!grounded || Time.time - jumpPendingSince > 0.3f)) jumpPending = false;
+
+            bool wantJump = grounded && !jumpPending &&
+                (holdToAutoHop ? Keyboard.current.spaceKey.isPressed : Keyboard.current.spaceKey.wasPressedThisFrame);
+
+            if (wantJump)
+            {
+                // Instant -- the velocity applies this frame, no waiting
+                // on any animation. The Jumped event lets the animator
+                // react but never gates this. Ground friction is
+                // deliberately skipped this frame so a bhop keeps its
+                // carried horizontal speed straight through the hop.
+                verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+                jumpPending = true;
+                jumpPendingSince = Time.time;
+                Jumped?.Invoke();
+            }
+            else if (grounded)
             {
                 if (verticalVelocity < 0f) verticalVelocity = -2f;
 
                 float targetSpeed = IsCrouching ? crouchSpeed : IsSprinting ? sprintSpeed : walkSpeed;
-                Vector3 targetVelocity = wishDir * targetSpeed;
-                horizontalVelocity = Vector3.MoveTowards(horizontalVelocity, targetVelocity, groundAcceleration * Time.deltaTime);
-
-                if (!jumpPending && Keyboard.current.spaceKey.wasPressedThisFrame)
-                {
-                    jumpPending = true;
-                    jumpScheduled = false;
-                    Jumped?.Invoke();
-
-                    // No listener scheduled a delayed launch (e.g. no
-                    // PlayerAnimationDriver is attached to sync it against
-                    // an anticipation animation) -- jump immediately
-                    // rather than silently doing nothing.
-                    if (!jumpScheduled) ScheduleJumpLaunch(0f);
-                }
+                horizontalVelocity = Vector3.MoveTowards(horizontalVelocity, wishDir * targetSpeed, groundAcceleration * Time.deltaTime);
             }
             else
             {

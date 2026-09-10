@@ -69,6 +69,7 @@ namespace RobEveryone.Player
         private Animator animator;
 
         private bool isStunned;
+        public bool IsRagdolling => isStunned;
 
         private void Awake()
         {
