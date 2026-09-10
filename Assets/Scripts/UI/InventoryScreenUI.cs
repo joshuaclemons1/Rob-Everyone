@@ -7,6 +7,7 @@ using RobEveryone.Sabotage;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 namespace RobEveryone.UI
 {
@@ -52,13 +53,14 @@ namespace RobEveryone.UI
         [SerializeField] private float transformLerpSpeed = 12f;
 
         [Header("Drag ghost")]
-        [SerializeField] private RectTransform dragGhost;      // an Image; raycastTarget OFF
-        [SerializeField] private TMP_Text dragGhostLabel;
+        [SerializeField] private RectTransform dragGhost;      // container, follows the cursor; every Graphic under it RaycastTarget OFF
+        [SerializeField] private RawImage dragGhostImage;      // shows the dragged item's live spinning model
+        [SerializeField] private TMP_Text dragGhostLabel;      // fallback name text when the item has no model
 
         [Header("Steal")]
         [SerializeField] private float stealBreakDistance = 6f; // walk this far from the victim and the screen closes
 
-        private enum Mode { Closed, Self, Steal }
+        private enum Mode { Closed, Self, Steal, Closing }
         private Mode mode = Mode.Closed;
 
         private FirstPersonController fpc;
@@ -87,6 +89,13 @@ namespace RobEveryone.UI
             {
                 if (CanOpenSelf() && TabPressed()) OpenSelf();
             }
+            else if (mode == Mode.Closing)
+            {
+                // Hold the menu "closing" -- input still parked -- until
+                // the camera has finished blending back, so
+                // FirstPersonController doesn't fight the blend.
+                if (cameraRig == null || !cameraRig.Transitioning) FinishClose();
+            }
             else if (mode == Mode.Self)
             {
                 if (TabPressed() || EscapePressed()) Close(sendRelease: false);
@@ -103,7 +112,7 @@ namespace RobEveryone.UI
 
             // A stun landing on us while a screen is up (we're fully
             // vulnerable) -- bail so PlayerRagdoll can own the camera.
-            if (mode != Mode.Closed && myRelay != null && myRelay.IsStunned)
+            if ((mode == Mode.Self || mode == Mode.Steal) && myRelay != null && myRelay.IsStunned)
             {
                 if (mode == Mode.Steal) CancelStealLocally();
                 else Close(sendRelease: false);
@@ -159,19 +168,29 @@ namespace RobEveryone.UI
                 myTheft.ReleaseStealWindow(stealVictimIdentity);
             }
 
-            mode = Mode.Closed;
             stealVictim = null;
             stealVictimIdentity = null;
             if (victimHotbarUI != null) victimHotbarUI.Bind(null);
 
             EndGhost();
-            SetPanelsForClosed();
+            foreach (var s in EnumerateSlots()) { s.DragEnabled = false; s.DropEnabled = false; }
+            if (victimRow != null) victimRow.SetActive(false);
+            if (cameraRig != null) cameraRig.Hide();
 
+            // Stay in Closing -- input still parked, hotbar animates back
+            // to compact, dim background stays up -- until the camera blend
+            // finishes; FinishClose does the actual handback.
+            mode = Mode.Closing;
+        }
+
+        private void FinishClose()
+        {
+            mode = Mode.Closed;
+            if (dimBackground != null) dimBackground.SetActive(false);
             MenuOpen = false;
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
             if (fpc != null) fpc.LookSuppressed = false;
-            if (cameraRig != null) cameraRig.Hide();
         }
 
         private void EnterScreen()
@@ -284,8 +303,19 @@ namespace RobEveryone.UI
             ItemDefinition item = ItemAt(from.Kind, from.Index);
             if (item == null) return;
 
+            Texture preview = from.Slot != null ? from.Slot.PreviewTexture : null;
+            if (dragGhostImage != null)
+            {
+                dragGhostImage.texture = preview;
+                dragGhostImage.enabled = preview != null;
+            }
+            if (dragGhostLabel != null)
+            {
+                dragGhostLabel.text = item.ItemName;
+                dragGhostLabel.enabled = preview == null; // text only when there's no model to show
+            }
+
             dragGhost.gameObject.SetActive(true);
-            if (dragGhostLabel != null) dragGhostLabel.text = item.ItemName;
             MoveGhost(screenPos);
         }
 
@@ -327,7 +357,7 @@ namespace RobEveryone.UI
         private void AnimateHotbar()
         {
             if (hotbarContainer == null) return;
-            bool open = mode != Mode.Closed;
+            bool open = mode == Mode.Self || mode == Mode.Steal;
             Vector2 targetPos = open ? expandedAnchoredPos : compactAnchoredPos;
             float targetScale = open ? expandedScale : compactScale;
 

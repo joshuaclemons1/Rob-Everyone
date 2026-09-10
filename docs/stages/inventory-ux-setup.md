@@ -16,10 +16,12 @@ there.
 |---|---|---|
 | `PlayerInventory` (changed) | Player prefab (already there) | `MoveItem`/`TryPlaceAt` (drag-rearrange), `MoveToWallet`/`MoveFromWallet` (phase-gated), `CmdDropSelected`/`DropSlot`, wallet SyncVars, `DisplayName` |
 | `PlayerDropController` (new) | Player prefab | `Q` → `inventory.CmdDropSelected(...)` |
-| `InventoryCameraRig` (new) | Player prefab | front-facing static third-person camera while the screen is open |
+| `PlayerCameraRig` (new) | Player prefab | shared camera cut/blend/re-dock — used by both the inventory screen and the ragdoll cutaway; both transitions are smooth now |
+| `InventoryCameraRig` (new) | Player prefab | the wide front-facing framing for the screen; hands it to `PlayerCameraRig` |
+| `PlayerRagdoll` (changed) | Player prefab (already there) | camera cutaway moved onto `PlayerCameraRig` — `Camera Transform` field removed, in/out no longer snap |
 | `PlayerTheftTarget` (rewritten) | Player prefab (already there) | E on a stunned rival opens the steal screen; drag-driven transfer, one item per stun |
 | `PlayerImpactRelay` (changed) | Player prefab (already there) | steal window is an expiry timestamp now — no wiring |
-| `PickupItem` (changed) | item prefabs (already there) | a dropped item spins/bobs; house loot doesn't |
+| `PickupItem` (changed) | item prefabs (already there) | a dropped item spins/bobs *and* its colliders become triggers (walk through it); house loot unaffected |
 | `InventoryScreenUI` (new) | `Hotbar.prefab` root | the Tab / steal screen orchestrator |
 | `InventoryDragSlot` (new) | each slot box | drag source / drop target conduit |
 | `WalletSlotUI` (new) | `Hotbar.prefab` (wallet box) | the always-visible wallet box + lock indicator |
@@ -38,16 +40,24 @@ hotbar to yours**, one per stun.
 
 Open `Assets/Prefabs/Player.prefab` in prefab edit mode.
 
-1. **Add Component → Player Drop Controller.** `Drop Forward` `1.0`,
+1. **Add Component → Player Camera Rig.** No fields to wire (it finds
+   the camera and `PlayerSkinSpawner` itself). `Default Blend` `0.35` is
+   the shared transition time — this is the one component that now owns
+   *all* camera cutaways.
+2. **Add Component → Player Drop Controller.** `Drop Forward` `1.0`,
    `Drop Height` `-0.4`, `Drop Key` `Q`. (Tuning knobs — adjust in
    Rest Point 1 so the item lands just in front of the character at
    about knee height.)
-2. **Add Component → Inventory Camera Rig.** `Front Offset` `(0, 1.6,
-   2.2)`, `Look At Height` `1.3`. No references — it finds the camera
-   and `PlayerSkinSpawner` itself. (Tune in Rest Point 2.)
-3. Confirm **Player Theft Target** and **Player Impact Relay** are
+3. **Add Component → Inventory Camera Rig.** `Front Offset` `(0, 1.5,
+   4.0)` (a wide front shot), `Look At Height` `1.1`, `Blend Duration`
+   `0.35`. (Tune the offset in Rest Point 2.)
+4. **Player Ragdoll** — its old `Camera Transform` field is gone; the
+   ragdoll cutaway now goes through `Player Camera Rig` too, so its
+   in/out are smooth instead of snapping. `Third Person Offset` /
+   `Look At Height Offset` / `Camera Follow Speed` are unchanged.
+5. Confirm **Player Theft Target** and **Player Impact Relay** are
    already on the prefab (Stage 6 Phase 2 Part 3). No new fields.
-4. Save. If the temporary **Debug Third Person Camera** (`T`) is still
+6. Save. If the temporary **Debug Third Person Camera** (`T`) is still
    on the Player, remove it — it fights the same camera.
 
 ---
@@ -77,59 +87,61 @@ background, ghost) stays put.
 
 ### 2b. The wallet box
 
-4. Create a child of **`SlotRow`** named **`WalletBox`** (an **Image**).
-   Position it just past `Slot4` with a small gap so it reads as a
-   separate 6th slot. Style it like a slot box. **Raycast Target ON.**
-5. Children of `WalletBox`:
-   - `NameText` — **TextMeshPro - Text** (the item name)
-   - `UsesText` — **TextMeshPro - Text**, small, in a corner (the `x2`
-     durability readout)
-   - `EmptyHint` — any object shown while the wallet is empty (a faint
-     "vault" watermark)
-   - `LockedIcon` — a small padlock, shown while the wallet is filled
-     *and* you're mid-round
-6. On `WalletBox`: **Add Component → Wallet Slot UI** → wire `Name
-   Text`, `Uses Text`, `Empty Hint`, `Locked Icon`. Then **Add
-   Component → Inventory Drag Slot** → `Kind` = **My Wallet**, `Index`
-   `-1`.
+4. **Duplicate `Slot0`** (Ctrl/Cmd+D), drag the copy to be the last
+   child of `SlotRow`, rename it **`WalletBox`**. Position it just past
+   `Slot4` with a small gap so it reads as a separate 6th slot. It keeps
+   the `Hotbar Slot UI` from the duplicate — that's the point: the
+   wallet shows the same spinning 3D model preview as a hotbar slot.
+   Its background Image needs **Raycast Target ON**.
+5. Remove the `Inventory Drag Slot` the duplicate came with and re-add
+   it (or just change it): `Kind` = **My Wallet**, `Index` `-1`.
+6. Add a small **padlock** child object `LockedIcon` (shown while the
+   wallet is filled *and* you're mid-round).
+7. On `WalletBox`: **Add Component → Wallet Slot UI** → wire **Display**
+   = this same GameObject's `Hotbar Slot UI`, **Locked Icon** =
+   `LockedIcon`.
 
 ### 2c. Drag components on the 5 slots
 
-7. On each of `Slot0`…`Slot4`: **Add Component → Inventory Drag Slot**,
+8. On each of `Slot0`…`Slot4`: **Add Component → Inventory Drag Slot**,
    `Kind` = **My Hotbar**, `Index` = `0`…`4` to match. Each slot's
    background Image needs **Raycast Target ON**.
 
 ### 2d. Screen chrome
 
-8. Create a child of **`Hotbar`** (root, *not* `SlotRow`) named
+9. Create a child of **`Hotbar`** (root, *not* `SlotRow`) named
    **`DimBackground`** — a full-screen **Image**, dark, ~60% alpha,
    **Raycast Target ON**. Make it the **first** child of `Hotbar` so it
    renders behind everything else. **Disable it** (uncheck the
    GameObject).
-9. Create a child of **`Hotbar`** (root) named **`DragGhost`** — a
-   small **Image**, semi-transparent, with a child **TextMeshPro - Text**
-   `GhostLabel`. **Raycast Target OFF** on both. Make it the **last**
-   child of `Hotbar`. **Disable it.**
+10. Create a child of **`Hotbar`** (root) named **`DragGhost`** — an
+    empty RectTransform (~72×72), **last** child of `Hotbar`.
+    **Disable it.** Under it:
+    - **`GhostImage`** — a **Raw Image** filling `DragGhost` (shows the
+      dragged item's live spinning model). **Raycast Target OFF.**
+    - **`GhostLabel`** — a **TextMeshPro - Text**, centered, small font,
+      **Raycast Target OFF**. Only shows for an item with no model, so
+      it'll rarely appear — but keep it from overlapping `GhostImage`
+      (put it below, or just accept it's hidden most of the time).
 
 ### 2e. The victim row (for steal mode)
 
-10. Create a child of **`Hotbar`** (root) named **`VictimRow`**.
+11. Create a child of **`Hotbar`** (root) named **`VictimRow`**.
     **Disable it.** Position it above where `SlotRow` sits when
     expanded (see 2g).
-11. Under `VictimRow`, create **`VictimSlots`** and give it 5 child slot
-    boxes — the fastest way is to select `Slot0`…`Slot4` under `SlotRow`,
-    Ctrl/Cmd+D to duplicate, drag the copies under `VictimSlots`, rename
-    them `VSlot0`…`VSlot4`.
-12. On `VictimSlots`: **Add Component → Hotbar UI**, populate **Slots**
+12. Under `VictimRow`, create **`VictimSlots`** and give it 5 child slot
+    boxes — select `Slot0`…`Slot4` under `SlotRow`, Ctrl/Cmd+D, drag the
+    copies under `VictimSlots`, rename them `VSlot0`…`VSlot4`.
+13. On `VictimSlots`: **Add Component → Hotbar UI**, populate **Slots**
     with `VSlot0`…`VSlot4`, and **uncheck Bind To Local Player**.
-13. On each `VSlot0`…`VSlot4`: change its **Inventory Drag Slot** (copied
+14. On each `VSlot0`…`VSlot4`: change its **Inventory Drag Slot** (copied
     from the original) → `Kind` = **Victim Hotbar**, `Index` = `0`…`4`.
-14. Add a **TextMeshPro - Text** `VictimLabel` under `VictimRow` (above
+15. Add a **TextMeshPro - Text** `VictimLabel` under `VictimRow` (above
     the row) — text is set at runtime to `Steal from: <name>`.
 
 ### 2f. The InventoryScreenUI component
 
-15. On the **`Hotbar`** root: **Add Component → Inventory Screen UI**.
+16. On the **`Hotbar`** root: **Add Component → Inventory Screen UI**.
     Wire (all references are inside this prefab):
     - **Dim Background** → `DimBackground`
     - **Hotbar Container** → `SlotRow` (its RectTransform)
@@ -141,13 +153,13 @@ background, ghost) stays put.
     - **My Wallet Slot** → `WalletBox`'s `Inventory Drag Slot`
     - **Victim Hotbar Slots** → `VSlot0`…`VSlot4` (their `Inventory Drag
       Slot`), in order
-    - **Drag Ghost** → `DragGhost` (RectTransform), **Drag Ghost Label**
-      → `GhostLabel`
+    - **Drag Ghost** → `DragGhost` (RectTransform), **Drag Ghost Image**
+      → `GhostImage`, **Drag Ghost Label** → `GhostLabel`
     - **Steal Break Distance** → `6`
 
 ### 2g. Compact vs. expanded transform
 
-16. Still on **Inventory Screen UI**:
+17. Still on **Inventory Screen UI**:
     - **Compact Anchored Pos** → copy `SlotRow`'s current **Anchored
       Position** exactly (so it doesn't jump on load — should be
       `(0, 0)` after 2a).
@@ -156,7 +168,7 @@ background, ghost) stays put.
       `(0, 250)` — "moves up a bit"; eyeball in Rest Point 2).
     - **Expanded Scale** → `1.6`.
     - **Transform Lerp Speed** → `12`.
-17. Position `VictimRow` so it sits above `SlotRow` *at the expanded
+18. Position `VictimRow` so it sits above `SlotRow` *at the expanded
     position/scale* — easiest to temporarily set `SlotRow`'s anchored
     pos to the expanded value, place `VictimRow` above it, then set
     `SlotRow` back.
@@ -187,17 +199,22 @@ That's it — no per-scene component wiring.
 Host + join. Loot items into different slots, select each with the
 number keys, press **Q**. The item appears just in front of your
 character, spinning and bobbing, visible + pick-up-able for the **other**
-player. A multi-slot item drops whole and frees its span. House loot
-still sits still. Tune `Drop Forward` / `Drop Height` on the Player
-prefab.
+player — and you can **walk straight through it** (its colliders are
+triggers now). A multi-slot item drops whole and frees its span. House
+loot still sits still and stays solid. Tune `Drop Forward` /
+`Drop Height` on the Player prefab.
 
-### 🔴 Rest Point 2 — Tab screen
-Press **Tab**: camera swaps to a front view of your character, `SlotRow`
-rises + grows, cursor appears, movement/look stop. **Tab** / **Esc**
-closes and re-locks. Drag an item between two slots → moves on **both**
-Editors. Drop onto an occupied slot → snaps back. The other player is
-unaffected while your screen is open. Tune `Inventory Camera Rig`'s
-`Front Offset` and the Expanded transform values.
+### 🔴 Rest Point 2 — Tab screen + camera
+Press **Tab**: camera **blends** (doesn't snap — ~0.35 s) to a wide
+front view of your character, `SlotRow` rises + grows, cursor appears,
+movement/look stop. **Tab** / **Esc** closes — the camera blends back
+and control only returns once it's home. Drag an item between two slots
+→ moves on **both** Editors; the drag ghost is a live mini-render of the
+item, not a white box. Drop onto an occupied slot → snaps back. The
+other player is unaffected while your screen is open. Also confirm the
+**ragdoll** stun cutaway now eases in/out instead of snapping. Tune
+`Inventory Camera Rig`'s `Front Offset` and the Expanded transform
+values.
 
 ### 🔴 Rest Point 3 — wallet
 Mid-round (`SampleScene`): Tab, drag a loot item onto `WalletBox` → it

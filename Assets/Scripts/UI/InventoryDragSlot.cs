@@ -29,10 +29,15 @@ namespace RobEveryone.UI
         public bool DragEnabled { get; set; }
         public bool DropEnabled { get; set; }
 
+        // The visual for this box (same GameObject) -- the drag ghost
+        // borrows its live model-preview texture.
+        public HotbarSlotUI Slot { get; private set; }
+
         private InventoryScreenUI screen;
 
         private void Awake()
         {
+            Slot = GetComponent<HotbarSlotUI>();
             screen = GetComponentInParent<InventoryScreenUI>(true);
             if (screen == null) screen = FindFirstObjectByType<InventoryScreenUI>(FindObjectsInactive.Include);
         }

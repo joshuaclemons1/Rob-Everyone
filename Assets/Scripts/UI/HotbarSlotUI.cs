@@ -135,6 +135,12 @@ namespace RobEveryone.UI
             modelImage.texture = renderTexture;
         }
 
+        // The live spinning-model RenderTexture for whatever this slot is
+        // currently showing, or null if it's showing an icon / is empty.
+        // InventoryScreenUI's drag ghost reuses it so the thing you drag
+        // is a live mini-render of the item, not a blank box.
+        public Texture PreviewTexture => modelInstance != null && renderTexture != null ? renderTexture : null;
+
         public void SetItem(InventorySlot? slot)
         {
             ItemDefinition item = slot.HasValue ? slot.Value.Item : null;

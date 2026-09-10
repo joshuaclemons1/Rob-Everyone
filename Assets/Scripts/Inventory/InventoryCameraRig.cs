@@ -3,70 +3,39 @@ using UnityEngine;
 
 namespace RobEveryone.Inventory
 {
-    // Swaps the local player's first-person camera to a static,
-    // front-facing third-person shot for the duration of the Tab / steal
-    // screen -- you see your own character from the front while you drag
-    // items around. Same detach-reposition-restore approach as
-    // PlayerRagdoll's stun camera (including turning the owner's own skin
-    // layer back on in the culling mask, since the FPS camera normally
-    // hides your own body), just static instead of chasing a ragdoll.
-    //
-    // Local player only -- InventoryScreenUI calls Show()/Hide().
+    // Knows the framing for the Tab / steal screen -- a wide, static
+    // front-facing shot of the character -- and hands it to the shared
+    // PlayerCameraRig, which does the actual smooth blend in/out.
+    // InventoryScreenUI calls Show()/Hide().
+    [RequireComponent(typeof(PlayerCameraRig))]
     public class InventoryCameraRig : MonoBehaviour
     {
-        // In front of the character (local +Z is forward), roughly head
-        // height, pulled back a couple of metres.
-        [SerializeField] private Vector3 frontOffset = new(0f, 1.6f, 2.2f);
-        [SerializeField] private float lookAtHeight = 1.3f;
+        // In front of the character (local +Z is forward). Wide enough to
+        // frame roughly head-to-knee with room around them.
+        [SerializeField] private Vector3 frontOffset = new(0f, 1.5f, 4.0f);
+        [SerializeField] private float lookAtHeight = 1.1f;
+        [SerializeField] private float blendDuration = 0.35f;
 
-        private Camera playerCamera;
-        private Transform cameraTransform;
-        private PlayerSkinSpawner skinSpawner;
+        private PlayerCameraRig rig;
 
-        private Transform originalParent;
-        private Vector3 originalLocalPosition;
-        private Quaternion originalLocalRotation;
-        private int originalCullingMask;
-        private bool showing;
+        // True while the camera is mid-blend either way -- InventoryScreenUI
+        // holds the menu "closing" (input still parked) until this clears
+        // so the first-person controller doesn't fight the blend-back.
+        public bool Transitioning => rig != null && rig.IsActive;
 
-        private void Awake()
-        {
-            playerCamera = GetComponentInChildren<Camera>(true);
-            if (playerCamera != null) cameraTransform = playerCamera.transform;
-            skinSpawner = GetComponent<PlayerSkinSpawner>();
-        }
+        private void Awake() => rig = GetComponent<PlayerCameraRig>();
 
         public void Show()
         {
-            if (showing || cameraTransform == null) return;
-            showing = true;
-
-            originalParent = cameraTransform.parent;
-            originalLocalPosition = cameraTransform.localPosition;
-            originalLocalRotation = cameraTransform.localRotation;
-
-            cameraTransform.SetParent(null, true);
-            cameraTransform.position = transform.position + transform.rotation * frontOffset;
-            cameraTransform.rotation = Quaternion.LookRotation(
-                (transform.position + Vector3.up * lookAtHeight - cameraTransform.position).normalized, Vector3.up);
-
-            if (playerCamera != null && skinSpawner != null)
-            {
-                originalCullingMask = playerCamera.cullingMask;
-                playerCamera.cullingMask |= skinSpawner.SkinLayer.value; // show my own body
-            }
+            if (rig == null) return;
+            Vector3 pos = transform.position + transform.rotation * frontOffset;
+            Vector3 lookAt = transform.position + Vector3.up * lookAtHeight;
+            rig.CutTo(pos, lookAt, showOwnSkin: true, blendDuration);
         }
 
         public void Hide()
         {
-            if (!showing || cameraTransform == null) return;
-            showing = false;
-
-            cameraTransform.SetParent(originalParent, false);
-            cameraTransform.localPosition = originalLocalPosition;
-            cameraTransform.localRotation = originalLocalRotation;
-
-            if (playerCamera != null) playerCamera.cullingMask = originalCullingMask;
+            if (rig != null) rig.Return(blendDuration);
         }
     }
 }

@@ -127,6 +127,17 @@ namespace RobEveryone.Items
             {
                 droppedBasePos = transform.position;
                 capturedDroppedBase = true;
+
+                // A dropped item is a floating pickup, not an obstacle --
+                // make every collider a trigger so the player walks
+                // through it instead of getting hung up on it. The
+                // Interactor raycast still hits it (queriesHitTriggers is
+                // on project-wide). Runs on every client + server so
+                // local physics agrees.
+                foreach (Collider c in GetComponentsInChildren<Collider>(true))
+                {
+                    c.isTrigger = true;
+                }
             }
 
             transform.Rotate(0f, dropSpinSpeed * Time.deltaTime, 0f, Space.World);

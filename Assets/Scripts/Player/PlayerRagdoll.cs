@@ -40,7 +40,6 @@ namespace RobEveryone.Player
         public float DefaultStunDuration => defaultStunDuration;
 
         [Header("Third-person ragdoll view")]
-        [SerializeField] private Transform cameraTransform;
         [SerializeField] private Vector3 thirdPersonOffset = new(0f, 2.5f, -5f);
         [SerializeField] private float lookAtHeightOffset = 0.5f;
         // How quickly the camera catches up to the character -- lower
@@ -48,13 +47,14 @@ namespace RobEveryone.Player
         // camera feels detached), higher reads as more "locked on" (feels
         // alive/dynamic, but starts canceling out visible travel the
         // closer it gets to instant). This is deliberately not instant.
+        // Handed to PlayerCameraRig, which owns the detach/blend/re-dock;
+        // the blend in and out are smooth now instead of snapping.
         [SerializeField] private float cameraFollowSpeed = 3f;
 
         private FirstPersonController firstPersonController;
         private CharacterController characterController;
         private PlayerSkinSpawner skinSpawner;
-        private Camera playerCamera;
-        private int cameraOriginalCullingMask;
+        private PlayerCameraRig cameraRig;
 
         private Rigidbody[] ragdollBodies;
         private Vector3[] restLocalPositions;
@@ -67,15 +67,6 @@ namespace RobEveryone.Player
         // bone's physics-computed Transform every frame with wherever the
         // locomotion clip says it should be).
         private Animator animator;
-        // Fixed direction+distance (rotated by the yaw at impact), not an
-        // absolute position -- re-added to the target's *current* position
-        // every frame in UpdateThirdPersonView, so the camera keeps a
-        // stable facing/distance while still following.
-        private Vector3 fixedCameraOffset;
-
-        private Transform cameraOriginalParent;
-        private Vector3 cameraOriginalLocalPosition;
-        private Quaternion cameraOriginalLocalRotation;
 
         private bool isStunned;
 
@@ -84,8 +75,7 @@ namespace RobEveryone.Player
             firstPersonController = GetComponent<FirstPersonController>();
             characterController = GetComponent<CharacterController>();
             skinSpawner = GetComponent<PlayerSkinSpawner>();
-
-            if (cameraTransform != null) playerCamera = cameraTransform.GetComponent<Camera>();
+            cameraRig = GetComponent<PlayerCameraRig>();
         }
 
         // True once TryInitializeRagdoll has either fully succeeded or hit
@@ -447,21 +437,35 @@ namespace RobEveryone.Player
             // third-person camera's facing stable even though the hips
             // it's tracking are about to fly off unpredictably.
             Quaternion rigYaw = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
+            Vector3 camOffset = rigYaw * thirdPersonOffset;
 
             BeginRagdoll(direction, force);
-            BeginThirdPersonView(rigYaw);
+            if (cameraRig != null)
+            {
+                cameraRig.CutToFollowing(
+                    () => (hipsRigidbody.position + camOffset,
+                           hipsRigidbody.position + Vector3.up * lookAtHeightOffset),
+                    cameraFollowSpeed, showOwnSkin: true);
+            }
 
             float elapsed = 0f;
             while (elapsed < duration)
             {
-                UpdateThirdPersonView();
                 UpdateBridgeBones();
                 elapsed += Time.deltaTime;
                 yield return null;
             }
 
-            EndThirdPersonView();
+            // Blend the camera back (it tracks the dock as EndRagdoll
+            // stands the character up), pose the skin standing, then hold
+            // control until the camera's actually home so
+            // FirstPersonController doesn't fight the blend.
+            if (cameraRig != null) cameraRig.Return();
             EndRagdoll();
+            if (animator != null) animator.enabled = true;
+
+            if (cameraRig != null)
+                while (cameraRig.IsActive) yield return null;
 
             // Don't hand control back if police froze this player while
             // they were mid-stun -- IsFrozen is the source of truth for
@@ -472,7 +476,6 @@ namespace RobEveryone.Player
                 characterController.enabled = true;
                 firstPersonController.enabled = true;
             }
-            if (animator != null) animator.enabled = true;
 
             isStunned = false;
         }
@@ -540,66 +543,5 @@ namespace RobEveryone.Player
             }
         }
 
-        private void BeginThirdPersonView(Quaternion rigYaw)
-        {
-            if (cameraTransform == null) return;
-
-            cameraOriginalParent = cameraTransform.parent;
-            cameraOriginalLocalPosition = cameraTransform.localPosition;
-            cameraOriginalLocalRotation = cameraTransform.localRotation;
-
-            // Rotated once, at the moment of impact -- kept fixed for the
-            // whole stun so the camera holds a stable facing/distance
-            // rather than re-orbiting as the ragdoll tumbles and rotates.
-            fixedCameraOffset = rigYaw * thirdPersonOffset;
-
-            cameraTransform.SetParent(null, true);
-
-            // Start exactly at the ideal framing (no lerp yet) -- the
-            // follow-lag in UpdateThirdPersonView only needs to kick in
-            // once the target actually starts moving away from here.
-            cameraTransform.position = hipsRigidbody.position + fixedCameraOffset;
-
-            // Turn the skin layer back ON for this camera, just for the
-            // cutaway -- otherwise the same Culling Mask that hides your
-            // body during normal play would also hide it here, the one
-            // moment you're actually meant to see it.
-            if (playerCamera != null)
-            {
-                cameraOriginalCullingMask = playerCamera.cullingMask;
-                playerCamera.cullingMask |= skinSpawner.SkinLayer.value;
-            }
-        }
-
-        private void UpdateThirdPersonView()
-        {
-            if (cameraTransform == null) return;
-
-            // Chases the target's current offset position, but with
-            // exponential lag (not a perfect every-frame snap) -- an
-            // instant-tracking camera cancels out any visible sign of real
-            // travel, since the character stays glued to the same spot in
-            // frame while the camera does all the moving with it. Lagging
-            // behind means the camera still visibly follows (doesn't feel
-            // static), but the character can be seen actually pulling away
-            // from/across frame as it travels, rather than staying frozen
-            // in the same spot on screen the whole time.
-            Vector3 desiredPosition = hipsRigidbody.position + fixedCameraOffset;
-            cameraTransform.position = Vector3.Lerp(cameraTransform.position, desiredPosition, cameraFollowSpeed * Time.deltaTime);
-
-            Vector3 lookTarget = hipsRigidbody.position + Vector3.up * lookAtHeightOffset;
-            cameraTransform.rotation = Quaternion.LookRotation((lookTarget - cameraTransform.position).normalized, Vector3.up);
-        }
-
-        private void EndThirdPersonView()
-        {
-            if (cameraTransform == null) return;
-
-            cameraTransform.SetParent(cameraOriginalParent, false);
-            cameraTransform.localPosition = cameraOriginalLocalPosition;
-            cameraTransform.localRotation = cameraOriginalLocalRotation;
-
-            if (playerCamera != null) playerCamera.cullingMask = cameraOriginalCullingMask;
-        }
     }
 }
