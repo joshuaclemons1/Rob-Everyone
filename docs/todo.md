@@ -214,3 +214,34 @@ happen soon" to "later stage."
   (`15`, matching `Kenney-CityKitSuburban`) before assuming a freshly
   imported pack (e.g. Industrial, Car Kit) "looks tiny" for some other
   reason.
+
+## Code-review nits (Stage 6 sabotage read-through)
+
+Minor, none blocking — surfaced reviewing the Phase 1/2 commits, worth
+folding into whatever pass revisits sabotage next.
+
+- **`PlayerImpactRelay` class comment is stale** — still says "Only the
+  server ever calls `RpcApplyImpact` (from CarDriver's own isServer-
+  gated impact detection)". It's now `private`, reached via
+  `ServerApplyImpact` / `ServerApplyPvpImpact`, and called from the
+  sabotage path too, not just `CarDriver`.
+- **Sabotage cooldowns never reset between rounds** —
+  `SabotageUseController.nextReadyTime` keys off `Time.time`, which is
+  continuous across the Lobby round-trip, so a Taser fired near the end
+  of a round can still be on cooldown at the start of the next. Short
+  windows, low impact, but a `ClearCooldowns()` called from round start
+  would be tidy.
+- **`ServerApplyPvpImpact` opens the steal window even when the stun
+  no-ops** — if the target is already stunned (e.g. by a car), the
+  inner `ServerApplyImpact` early-returns but `IsStealable` still gets
+  set. Probably fine/desirable (they're already down), but it's an
+  implicit decision worth making on purpose.
+- **Multi-attacker steal window race** — two PvP hits on the same
+  target start two independent `ClearStealableAfter` coroutines; the
+  first to fire closes the window early for the second attacker.
+- **Theft doesn't discriminate what it takes** —
+  `PlayerTheftTarget.Interact` uses plain `AddItem(stolen)` (a
+  partially-used item resets to full durability) and
+  `FindFirstOccupiedSlot` will happily steal an equipped sabotage item,
+  not just loot. Consider preferring highest-value loot and/or skipping
+  sabotage gear — a design call, not just a code one.
