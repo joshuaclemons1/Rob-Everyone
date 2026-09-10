@@ -130,16 +130,17 @@ background, ghost) stays put.
    **Raycast Target ON**. Make it the **first** child of `Hotbar` so it
    renders behind everything else. **Disable it** (uncheck the
    GameObject).
-10. Create a child of **`Hotbar`** (root) named **`DragGhost`** — an
-    empty RectTransform, **~140×140** (make it big enough to actually
-    read while dragging), **last** child of `Hotbar`. **Disable it.**
-    Under it:
-    - **`GhostImage`** — a **Raw Image** filling `DragGhost` (shows the
-      dragged item's live spinning model). **Raycast Target OFF.**
+10. Create a child of **`Hotbar`** (root — **not** `SlotRow`, or it'll
+    inherit `SlotRow`'s scale) named **`DragGhost`**, **last** child of
+    `Hotbar`. **Disable it.** Size/anchors don't matter — the code
+    forces them. Under it:
+    - **`GhostImage`** — a **Raw Image** (shows the dragged item's live
+      spinning model). **Raycast Target OFF.** Size doesn't matter, the
+      code stretches it to fill.
     - **`GhostLabel`** — a **TextMeshPro - Text**, centered,
-      **Raycast Target OFF**. Only shows for an item with no model, so
-      it'll rarely appear — put it below `GhostImage` or accept it's
-      hidden most of the time.
+      **Raycast Target OFF**. Only shows for an item with no model.
+    - Tune the on-screen size with **Ghost Size** on the `Inventory
+      Screen UI` component (default `160`).
 
 ### 2e. The victim row (for steal mode)
 

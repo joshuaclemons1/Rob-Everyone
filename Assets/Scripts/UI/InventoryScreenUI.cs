@@ -53,9 +53,10 @@ namespace RobEveryone.UI
         [SerializeField] private float transformLerpSpeed = 12f;
 
         [Header("Drag ghost")]
-        [SerializeField] private RectTransform dragGhost;      // container, follows the cursor; every Graphic under it RaycastTarget OFF
+        [SerializeField] private RectTransform dragGhost;      // container, follows the cursor; must be a child of Hotbar (not SlotRow)
         [SerializeField] private RawImage dragGhostImage;      // shows the dragged item's live spinning model
         [SerializeField] private TMP_Text dragGhostLabel;      // fallback name text when the item has no model
+        [SerializeField] private float ghostSize = 160f;       // on-screen px -- the code sizes the ghost, so the Editor rect doesn't matter
 
         [Header("Steal")]
         [SerializeField] private float stealBreakDistance = 6f; // walk this far from the victim and the screen closes
@@ -315,6 +316,20 @@ namespace RobEveryone.UI
             {
                 dragGhostLabel.text = item.ItemName;
                 dragGhostLabel.enabled = preview == null; // text only when there's no model to show
+            }
+
+            // Force the geometry in code so a mis-sized Editor rect (or a
+            // scaled parent) can't shrink it: centre-anchored, fixed px,
+            // scale 1, and the image stretched to fill.
+            dragGhost.anchorMin = dragGhost.anchorMax = dragGhost.pivot = new Vector2(0.5f, 0.5f);
+            dragGhost.sizeDelta = new Vector2(ghostSize, ghostSize);
+            dragGhost.localScale = Vector3.one;
+            if (dragGhostImage != null)
+            {
+                RectTransform ir = dragGhostImage.rectTransform;
+                ir.anchorMin = Vector2.zero;
+                ir.anchorMax = Vector2.one;
+                ir.offsetMin = ir.offsetMax = Vector2.zero;
             }
 
             dragGhost.gameObject.SetActive(true);
