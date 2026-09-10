@@ -11,9 +11,12 @@ namespace RobEveryone.Inventory
     public class InventoryCameraRig : MonoBehaviour
     {
         // In front of the character (local +Z is forward). Wide enough to
-        // frame roughly head-to-knee with room around them.
-        [SerializeField] private Vector3 frontOffset = new(0f, 1.5f, 4.0f);
-        [SerializeField] private float lookAtHeight = 1.1f;
+        // frame the whole character with room around them -- pull Z out
+        // further for more of the scene, or bump fieldOfView instead if
+        // there isn't clear space behind the player.
+        [SerializeField] private Vector3 frontOffset = new(0f, 1.7f, 6.0f);
+        [SerializeField] private float lookAtHeight = 1.0f;
+        [SerializeField] private float fieldOfView = 62f; // <= 0 leaves the camera's own FOV
         [SerializeField] private float blendDuration = 0.35f;
 
         private PlayerCameraRig rig;
@@ -30,7 +33,7 @@ namespace RobEveryone.Inventory
             if (rig == null) return;
             // Following (not a static pose) so the shot stays framed on
             // the character while they walk around with the screen open.
-            rig.CutToFollowing(FramePose, chaseSpeed: 0f, showOwnSkin: true, blendDuration);
+            rig.CutToFollowing(FramePose, chaseSpeed: 0f, showOwnSkin: true, blendDuration, fieldOfView);
         }
 
         private (Vector3 pos, Vector3 lookAt) FramePose()

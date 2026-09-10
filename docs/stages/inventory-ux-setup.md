@@ -49,17 +49,24 @@ Open `Assets/Prefabs/Player.prefab` in prefab edit mode.
    `Drop Height` `-0.4`, `Drop Key` `Q`. (Tuning knobs — adjust in
    Rest Point 1 so the item lands just in front of the character at
    about knee height.)
-3. **Add Component → Inventory Camera Rig.** `Front Offset` `(0, 1.5,
-   4.0)` (a wide front shot), `Look At Height` `1.1`, `Blend Duration`
-   `0.35`. (Tune the offset in Rest Point 2.)
+3. **Add Component → Inventory Camera Rig.** `Front Offset` `(0, 1.7,
+   6.0)`, `Look At Height` `1.0`, `Field Of View` `62`, `Blend Duration`
+   `0.35`. For a wider shot: pull `Front Offset` Z out further, or (if
+   the camera would clip into geometry behind the player) raise
+   `Field Of View` instead and keep Z shorter.
 4. **Player Ragdoll** — its old `Camera Transform` field is gone; the
    ragdoll cutaway now goes through `Player Camera Rig` too, so its
    in/out are smooth instead of snapping. `Third Person Offset` /
    `Look At Height Offset` / `Camera Follow Speed` are unchanged.
 5. Confirm **Player Theft Target** and **Player Impact Relay** are
    already on the prefab (Stage 6 Phase 2 Part 3). No new fields.
-6. Save. If the temporary **Debug Third Person Camera** (`T`) is still
-   on the Player, remove it — it fights the same camera.
+6. **Delete any second camera on the Player.** The prefab must have
+   **exactly one** camera (`PlayerCamera`, at eye height). If there's a
+   leftover `ThirdPersonCamera` child from the old **Debug Third Person
+   Camera** tool, delete that GameObject *and* the `Debug Third Person
+   Camera` component — with the script gone, nothing disables that
+   camera and it renders over the real one from chest height.
+7. Save.
 
 ---
 

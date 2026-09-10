@@ -28,7 +28,11 @@ namespace RobEveryone.UI
             if (display == null) display = GetComponent<HotbarSlotUI>();
         }
 
-        private void Start() => StartCoroutine(WaitForLocalPlayer());
+        private void Start()
+        {
+            Refresh(); // show "empty" right away, before the local player resolves
+            StartCoroutine(WaitForLocalPlayer());
+        }
 
         private IEnumerator WaitForLocalPlayer()
         {
@@ -59,9 +63,10 @@ namespace RobEveryone.UI
 
         private void Refresh()
         {
-            if (inventory == null || display == null) return;
+            if (display == null) return;
 
-            display.SetItem(inventory.WalletFilled
+            bool filled = inventory != null && inventory.WalletFilled;
+            display.SetItem(filled
                 ? new InventorySlot { Item = inventory.WalletItem, RemainingUses = inventory.WalletUses }
                 : (InventorySlot?)null);
         }

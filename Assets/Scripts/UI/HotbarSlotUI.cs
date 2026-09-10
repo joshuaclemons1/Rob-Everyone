@@ -78,6 +78,11 @@ namespace RobEveryone.UI
             rectTransform = GetComponent<RectTransform>();
             baseAnchoredX = rectTransform.anchoredPosition.x;
             baseWidth = rectTransform.sizeDelta.x;
+
+            // Clear whatever placeholder name/uses text the prefab (or a
+            // duplicated slot, e.g. the wallet box) shipped with, so a
+            // box shows nothing until something binds an item to it.
+            SetItem(null);
         }
 
         // Resizes and repositions this box to cover a span of physical

@@ -29,6 +29,8 @@ namespace RobEveryone.Player
         private Vector3 dockLocalPos;
         private Quaternion dockLocalRot;
         private int dockCullingMask;
+        private float dockFov;
+        private float cutFov = -1f; // <= 0 means leave the camera's own FOV alone
 
         private enum Phase { Docked, BlendingIn, Held, BlendingOut }
         private Phase phase = Phase.Docked;
@@ -52,21 +54,24 @@ namespace RobEveryone.Player
         }
 
         // Cut to a fixed world pose (facing `lookAt`) and hold it.
-        public void CutTo(Vector3 worldPos, Vector3 lookAt, bool showOwnSkin, float blend = -1f)
+        // fov > 0 swaps the camera's field of view for the cut.
+        public void CutTo(Vector3 worldPos, Vector3 lookAt, bool showOwnSkin, float blend = -1f, float fov = -1f)
         {
             liveTarget = null;
             staticPos = worldPos;
             staticLookAt = lookAt;
+            cutFov = fov;
             BeginCut(showOwnSkin, blend);
         }
 
         // Cut to a target re-evaluated every frame -- after the entry
         // blend, chase it with `chaseSpeed` exponential lag (PlayerRagdoll's
         // follow-with-lag feel); pass <= 0 to track it exactly.
-        public void CutToFollowing(Func<(Vector3 pos, Vector3 lookAt)> target, float chaseSpeed, bool showOwnSkin, float blend = -1f)
+        public void CutToFollowing(Func<(Vector3 pos, Vector3 lookAt)> target, float chaseSpeed, bool showOwnSkin, float blend = -1f, float fov = -1f)
         {
             liveTarget = target;
             followSpeed = chaseSpeed;
+            cutFov = fov;
             BeginCut(showOwnSkin, blend);
         }
 
@@ -96,7 +101,9 @@ namespace RobEveryone.Player
                 if (cam != null)
                 {
                     dockCullingMask = cam.cullingMask;
+                    dockFov = cam.fieldOfView;
                     if (showOwnSkin && skinSpawner != null) cam.cullingMask |= skinSpawner.SkinLayer.value;
+                    if (cutFov > 0f) cam.fieldOfView = cutFov;
                 }
             }
 
@@ -145,7 +152,11 @@ namespace RobEveryone.Player
                     camT.SetParent(dockParent, false);
                     camT.localPosition = dockLocalPos;
                     camT.localRotation = dockLocalRot;
-                    if (cam != null) cam.cullingMask = dockCullingMask;
+                    if (cam != null)
+                    {
+                        cam.cullingMask = dockCullingMask;
+                        cam.fieldOfView = dockFov;
+                    }
                     phase = Phase.Docked;
                     liveTarget = null;
                 }

@@ -74,6 +74,7 @@ namespace RobEveryone.UI
         private void Awake()
         {
             SetPanelsForClosed();
+            EndGhost(); // the DragGhost object often ships un-disabled -- hide it on load
             if (hotbarContainer != null)
             {
                 hotbarContainer.anchoredPosition = compactAnchoredPos;
