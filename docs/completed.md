@@ -104,6 +104,28 @@ status line inside an individual stage doc.
   states; `PlayerSkinSpawner.cs` shares one animator controller across
   every skin. (No dedicated stage doc yet — see the commit itself,
   `ec73123`, for the full change list.)
+- **Ragdoll get-up timing fix** — a car hit at force ~60 launches the
+  ragdoll ~20 m/s, but the old fixed 2 s stun timer let players stand
+  up mid-air / mid-tumble. `PlayerRagdoll` now holds a 3.5 s minimum
+  and then waits until the hips have been near-still for `settleHoldTime`
+  (hard-capped by `settleTimeoutExtra`) before ending. Tuning knobs on
+  `Player Ragdoll`. Playtested.
+- **Ragdoll carry / throw** *(code + Editor wiring done; two-Editor
+  playtest still to run at home)* — `E` hoists any ragdolled rival
+  (they stay floppy — hips pinned to a `CarryAnchor`, limbs flop), walk
+  them around with no bhop, `G` to set down gently, hold LMB to charge a
+  throw and release to launch them along your view. Carried players are
+  helpless: can't stand until a short delay after being dropped/thrown,
+  and can't be stolen from (carrying is a grief/relocate toy, not
+  body-passing to strip a friend). Carrying fills both hands — the
+  hotbar goes to no-slot-selected, and the Sell Station / Tab screen do
+  nothing until the body is down. Drops instantly if the carrier is
+  ragdolled or disconnects. `Carryable` + `CarryController`, with hooks
+  in `PlayerRagdoll` / `PlayerImpactRelay` / `PlayerTheftTarget` /
+  `FirstPersonController` / `PlayerInventory` / `HotbarController` /
+  `Interactor` / `SabotageUseController` / `SellStation` /
+  `RobEveryoneNetworkManager`. See
+  [ragdoll-carry-setup.md](stages/ragdoll-carry-setup.md).
 
 ## UI
 

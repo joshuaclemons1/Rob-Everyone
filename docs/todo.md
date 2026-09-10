@@ -17,8 +17,9 @@ happen soon" to "later stage."
    the character's hand; Animator gains sprint / carry-bulky /
    carry-body states.
 4. **Carry / throw ragdolled players** — un-ragdoll-too-fast bug fixed;
-   carry mechanic **code done**, Editor wiring + playtest remain
-   ([ragdoll-carry-setup.md](stages/ragdoll-carry-setup.md)).
+   carry mechanic **code done and Editor-wired on the Player prefab**.
+   Only the two-Editor playtest (Rest Points 1–5) remains — to be run
+   at home ([ragdoll-carry-setup.md](stages/ragdoll-carry-setup.md)).
 5. **Finish Stage 6 Phase 2** — Alarm Clock build + full two-Editor
    Phase 2 playtest.
 6. **Stage 5 real Steam overlay test** — parked until a second Steam
@@ -90,13 +91,19 @@ Detail for each below.
   owner's controller is disabled for the whole (possibly longer)
   ragdoll regardless, so it doesn't matter if the two drift on a big
   launch. Tuning knobs on `Player Ragdoll`. Retest with a fast car hit.
-- **Carry / throw ragdolled players** — **code done**, Editor wiring +
-  playtest remain: [ragdoll-carry-setup.md](stages/ragdoll-carry-setup.md).
+- **Carry / throw ragdolled players** — **code done and Editor-wired**
+  (`Carryable` + `CarryController` + `CarryAnchor` on the Player prefab,
+  fields hooked up). Only the two-Editor playtest — Rest Points 1–5 of
+  [ragdoll-carry-setup.md](stages/ragdoll-carry-setup.md) — is left,
+  and will be run at home.
   `E` on any ragdolled rival to hoist them (floppy in your hands),
   walk them around (no bhop while carrying), `G` to set down, hold LMB
   to charge a throw. `Carryable` / `CarryController` + hooks in
   `PlayerRagdoll` / `PlayerImpactRelay` / `PlayerTheftTarget` (theft
   protection) / `FirstPersonController` / `SabotageUseController`.
+  While carrying, both hands are full: the hotbar drops to **no slot
+  selected** (`1`–`5` / scroll dead), and the Sell Station and Tab
+  screen do nothing until the body is set down.
 
 ## Test when able
 
