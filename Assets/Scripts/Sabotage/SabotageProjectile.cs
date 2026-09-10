@@ -16,7 +16,7 @@ namespace RobEveryone.Sabotage
     // hit.
     [RequireComponent(typeof(Rigidbody))]
     [RequireComponent(typeof(NetworkIdentity))]
-    public class SabotageProjectile : NetworkBehaviour
+    public class SabotageProjectile : NetworkBehaviour, ILaunchable
     {
         [SerializeField] private float throwSpeed = 12f;
         [SerializeField] private float fuseSeconds = 2.5f;
@@ -40,8 +40,11 @@ namespace RobEveryone.Sabotage
         }
 
         [Server]
-        public void ServerLaunch(Vector3 direction, ItemDefinition item, NetworkIdentity throwerIdentity)
+        public void ServerLaunch(Vector3 direction, ItemDefinition item, NetworkIdentity throwerIdentity, int remainingUses)
         {
+            // remainingUses is irrelevant here -- Dynamite is consumed
+            // whole on throw (MaxUses == 0, untracked), never lands as a
+            // pickup.
             sourceItem = item;
             thrower = throwerIdentity;
             body.linearVelocity = direction * throwSpeed;
@@ -69,7 +72,7 @@ namespace RobEveryone.Sabotage
                     Vector3 direction = relay.transform.position - transform.position;
                     direction.y = 0f;
                     direction = direction.sqrMagnitude > 0.01f ? direction.normalized : Vector3.forward;
-                    relay.ServerApplyImpact(direction + Vector3.up * 0.5f, sourceItem.ImpactForce, sourceItem.StunDuration);
+                    relay.ServerApplyPvpImpact(direction + Vector3.up * 0.5f, sourceItem.ImpactForce, sourceItem.StunDuration);
                 }
             }
 

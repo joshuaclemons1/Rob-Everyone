@@ -3,12 +3,17 @@ using UnityEngine;
 namespace RobEveryone.Items
 {
     // None = ordinary loot, no use-behavior. Melee = swing at a target in
-    // range (Taser). Thrown = launched as a physics projectile
-    // (SabotageProjectile) that detonates after a fuse -- BlastRadius > 0
-    // makes it AOE (Dynamite), BlastRadius == 0 would be a single-target
-    // hit on landing. Deliberately not a separate enum value for AOE vs.
-    // single-target thrown -- that's just data on the same Thrown path.
-    public enum SabotageType { None, Melee, Thrown }
+    // range (Taser, Bat). Thrown = launched as a physics projectile that
+    // detonates after a fuse -- BlastRadius > 0 makes it AOE (Dynamite),
+    // BlastRadius == 0 would be a single-target hit on landing.
+    // Deliberately not a separate enum value for AOE vs. single-target
+    // thrown -- that's just data on the same Thrown path. Ranged = an
+    // instant server-validated hitscan at longer range (Tranquilizer
+    // Gun). [Flags] so an item can combine modes (Hammer is both Melee
+    // and Thrown) -- always check membership with HasFlag, never a plain
+    // == comparison, or a combined item silently matches nothing.
+    [System.Flags]
+    public enum SabotageType { None = 0, Melee = 1, Thrown = 2, Ranged = 4 }
 
     // One entry in the loot catalog -- name, sell value, hotbar icon, and
     // a reference to the world model/prefab it uses. Create one asset per
@@ -46,6 +51,11 @@ namespace RobEveryone.Items
         [SerializeField] private float range = 2.5f; // melee reach
         [SerializeField] private float blastRadius = 0f; // >0 = AOE on landing (Dynamite); 0 = single-target
         [SerializeField] private GameObject thrownProjectilePrefab; // only used when SabotageType == Thrown
+        // 0 = untracked/unlimited (Taser's cooldown is the limiter instead,
+        // Dynamite/Alarm Clock are consumed whole on use). >0 = this many
+        // uses before the slot empties -- Bat/Hammer durability, Tranq Gun
+        // ammo. See PlayerInventory's parallel slotUses SyncList.
+        [SerializeField] private int maxUses = 0;
 
         public string ItemName => itemName;
         public int Value => value;
@@ -61,5 +71,6 @@ namespace RobEveryone.Items
         public float Range => range;
         public float BlastRadius => blastRadius;
         public GameObject ThrownProjectilePrefab => thrownProjectilePrefab;
+        public int MaxUses => maxUses;
     }
 }

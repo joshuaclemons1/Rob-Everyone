@@ -18,3 +18,11 @@ MonoBehaviour:
   worldModelPrefab: {fileID: 2975823954638203268, guid: 261069f9b7a131b43b8034d3ee5fd70d, type: 3}
   worldModelScale: {x: 1.75, y: 1.75, z: 1.75}
   inventorySize: 1
+  sabotageType: 1
+  stunDuration: 3
+  impactForce: 25
+  cooldownSeconds: 0
+  range: 2.5
+  blastRadius: 0
+  thrownProjectilePrefab: {fileID: 0}
+  maxUses: 3

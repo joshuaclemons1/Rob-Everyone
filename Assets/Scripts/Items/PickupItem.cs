@@ -27,6 +27,13 @@ namespace RobEveryone.Items
         // only ever runs on the server's own correctly-set copy).
         [SerializeField] private ItemDefinition item;
 
+        // -1 = not overridden, AddItem seeds a fresh item.MaxUses as usual
+        // (every hand-placed/LootSpawnPoint-rolled pickup). Set >= 0 only
+        // by RetrievableProjectile's landing spawn, so a thrown-and-landed
+        // Hammer keeps its already-reduced durability instead of
+        // resetting to full when picked back up.
+        private int overrideUses = -1;
+
         [SyncVar(hook = nameof(OnItemNameChanged))]
         private string syncedItemName;
 
@@ -35,6 +42,7 @@ namespace RobEveryone.Items
 
         public int Value => item != null ? item.Value : 0;
         public string InteractionPrompt => item != null ? $"Take {item.ItemName} (${item.Value})" : "Take item";
+        public bool CanInteract => true;
 
         // Called by LootSpawnPoint right after it instantiates this
         // item's model at runtime, since a randomly-rolled pickup can't
@@ -43,6 +51,14 @@ namespace RobEveryone.Items
         public void Initialize(ItemDefinition definition)
         {
             item = definition;
+        }
+
+        // See RetrievableProjectile -- the only caller that needs a
+        // specific starting uses count rather than a fresh item.MaxUses.
+        public void Initialize(ItemDefinition definition, int startingUses)
+        {
+            item = definition;
+            overrideUses = startingUses;
         }
 
         // By now `item` is correctly set either way (Initialize already
@@ -70,7 +86,8 @@ namespace RobEveryone.Items
 
             // Only marked taken if a slot actually had room -- a full
             // 5-slot inventory just leaves it where it is.
-            if (inventory.AddItem(item))
+            bool added = overrideUses >= 0 ? inventory.AddItem(item, overrideUses) : inventory.AddItem(item);
+            if (added)
             {
                 taken = true;
             }

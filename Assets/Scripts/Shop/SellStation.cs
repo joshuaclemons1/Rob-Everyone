@@ -10,6 +10,7 @@ namespace RobEveryone.Shop
     public class SellStation : MonoBehaviour, IInteractable
     {
         public string InteractionPrompt => "Sell loot to the pawnshop owner";
+        public bool CanInteract => true;
 
         public void Interact(GameObject interactor)
         {

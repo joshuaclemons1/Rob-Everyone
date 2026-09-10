@@ -14,6 +14,10 @@ namespace RobEveryone.Inventory
     public struct InventorySlot
     {
         public ItemDefinition Item;
+        // Mirrors PlayerInventory's slotUses -- 0 for anything with
+        // ItemDefinition.MaxUses == 0 (untracked/unlimited), since it's
+        // never read unless MaxUses > 0.
+        public int RemainingUses;
     }
 
     // Tracks what a single player has stolen this round, in a real
@@ -65,6 +69,14 @@ namespace RobEveryone.Inventory
             NetworkClient.localPlayer != null ? NetworkClient.localPlayer.GetComponent<PlayerInventory>() : null;
 
         private readonly SyncList<string> slotItemNames = new();
+        // Parallel to slotItemNames, same index semantics -- a separate
+        // list rather than encoding the count into the name string, since
+        // every ContinuationMarker-sensitive comparison (ResolveHead,
+        // CmdSelectRelative, RebuildSlotsFromSync) does plain string
+        // equality against slotItemNames and would need reworking to
+        // tolerate an embedded delimiter. A continuation slot's entry is
+        // always 0 (unused, only the head index is ever read).
+        private readonly SyncList<int> slotUses = new();
         private readonly InventorySlot?[] slots = new InventorySlot?[SlotCount];
         // Parallel to slots[] -- 0 means "this index is covered by an
         // earlier head, don't draw a box here at all," N (>=1) means
@@ -119,12 +131,17 @@ namespace RobEveryone.Inventory
 
         private void Awake()
         {
-            for (int i = 0; i < SlotCount; i++) slotItemNames.Add(string.Empty);
+            for (int i = 0; i < SlotCount; i++)
+            {
+                slotItemNames.Add(string.Empty);
+                slotUses.Add(0);
+            }
             // SyncList<T>.OnChange is (Operation, index, item) -- 3
             // params, not the 4-param (old, new) shape a SyncVar hook
             // uses. Ignored here regardless; any change just triggers a
             // full rebuild rather than patching one slot.
             slotItemNames.OnChange += (op, index, item) => RebuildSlotsFromSync();
+            slotUses.OnChange += (op, index, item) => RebuildSlotsFromSync();
         }
 
         public override void OnStartServer()
@@ -174,7 +191,8 @@ namespace RobEveryone.Inventory
                 }
 
                 ItemDefinition item = currentOwner != null && catalog != null ? catalog.GetByName(currentOwner) : null;
-                slots[i] = item != null ? new InventorySlot { Item = item } : (InventorySlot?)null;
+                int uses = i < slotUses.Count ? slotUses[i] : 0;
+                slots[i] = item != null ? new InventorySlot { Item = item, RemainingUses = uses } : (InventorySlot?)null;
             }
 
             OnSlotsChanged?.Invoke();
@@ -193,7 +211,15 @@ namespace RobEveryone.Inventory
         // success. Server-only: called from Interactor's Command by way
         // of PickupItem.Interact, never directly by a client.
         [Server]
-        public bool AddItem(ItemDefinition item)
+        public bool AddItem(ItemDefinition item) => AddItem(item, item.MaxUses);
+
+        // overrideUses lets a picked-back-up item (a landed, already-used
+        // Hammer) keep its current remaining-uses count instead of
+        // resetting to full durability -- the plain AddItem(item) above
+        // covers every other pickup (a fresh world spawn always starts at
+        // MaxUses).
+        [Server]
+        public bool AddItem(ItemDefinition item, int overrideUses)
         {
             int size = item.InventorySize;
             int start = selectedSlot;
@@ -206,9 +232,11 @@ namespace RobEveryone.Inventory
             }
 
             slotItemNames[start] = item.ItemName; // SyncList write -- propagates to every client automatically
+            slotUses[start] = overrideUses;
             for (int offset = 1; offset < size; offset++)
             {
                 slotItemNames[start + offset] = ContinuationMarker;
+                slotUses[start + offset] = 0;
             }
 
             return true;
@@ -226,11 +254,29 @@ namespace RobEveryone.Inventory
             if (string.IsNullOrEmpty(slotItemNames[headIndex]) || slotItemNames[headIndex] == ContinuationMarker) return false;
 
             slotItemNames[headIndex] = string.Empty;
+            slotUses[headIndex] = 0;
             for (int i = headIndex + 1; i < SlotCount && slotItemNames[i] == ContinuationMarker; i++)
             {
                 slotItemNames[i] = string.Empty;
+                slotUses[i] = 0;
             }
             return true;
+        }
+
+        // Ticks down a slot with tracked durability/ammo (Bat, Hammer,
+        // Tranquilizer Gun) by one use, clearing the slot once it hits 0 --
+        // a no-op for an untracked item (MaxUses == 0, e.g. the Taser,
+        // whose limiter is CooldownSeconds instead). Server-only: called
+        // from SabotageUseController after a successful hit, never
+        // directly by a client.
+        [Server]
+        public void DecrementUses(int headIndex)
+        {
+            if (headIndex < 0 || headIndex >= SlotCount) return;
+            if (slotUses[headIndex] <= 0) return;
+
+            slotUses[headIndex]--;
+            if (slotUses[headIndex] <= 0) RemoveSlot(headIndex);
         }
 
         [Command]
@@ -281,7 +327,11 @@ namespace RobEveryone.Inventory
         [Server]
         public void ResetInventory()
         {
-            for (int i = 0; i < SlotCount; i++) slotItemNames[i] = string.Empty;
+            for (int i = 0; i < SlotCount; i++)
+            {
+                slotItemNames[i] = string.Empty;
+                slotUses[i] = 0;
+            }
         }
 
         // Banks the current carried value into Cash, then clears carried

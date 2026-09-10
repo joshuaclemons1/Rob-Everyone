@@ -119,10 +119,20 @@ namespace RobEveryone.AI
             }
         }
 
-        private void HandleAlertRaised(Vector3 lastKnownPosition)
+        private void HandleAlertRaised(Vector3 lastKnownPosition, PlayerInventory blamed)
         {
             if (!isServer) return;
             if (State == PoliceState.Chase) return;
+
+            // A framed alert (the Alarm Clock) already knows exactly who
+            // to blame -- skip straight to a real chase instead of just
+            // moving toward a position and hoping the next vision-cone
+            // check happens to spot them.
+            if (blamed != null)
+            {
+                EnterChase(blamed.transform);
+                return;
+            }
 
             State = PoliceState.Respond;
             agent.speed = chaseSpeed;

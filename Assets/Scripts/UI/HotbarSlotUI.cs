@@ -27,6 +27,10 @@ namespace RobEveryone.UI
         private const float StageSpacing = 50f;
 
         [SerializeField] private TextMeshProUGUI itemText;
+        // Shown only for an item with tracked durability/ammo
+        // (ItemDefinition.MaxUses > 0 -- Bat, Hammer, Tranquilizer Gun);
+        // hidden otherwise, same as every other item shown here today.
+        [SerializeField] private TextMeshProUGUI usesText;
         [SerializeField] private Image iconImage;
         [SerializeField] private RawImage modelImage;
         // Multiplier on the model's own bounding-sphere radius -- the
@@ -136,6 +140,13 @@ namespace RobEveryone.UI
             ItemDefinition item = slot.HasValue ? slot.Value.Item : null;
 
             if (itemText != null) itemText.text = item != null ? item.ItemName : "";
+
+            if (usesText != null)
+            {
+                bool showUses = item != null && item.MaxUses > 0;
+                usesText.text = showUses ? $"x{slot.Value.RemainingUses}" : "";
+                usesText.enabled = showUses;
+            }
 
             SetModel(item != null ? item.WorldModelPrefab : null);
             bool showingModel = modelInstance != null;

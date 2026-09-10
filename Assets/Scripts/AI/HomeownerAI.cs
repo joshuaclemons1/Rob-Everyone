@@ -57,8 +57,11 @@ namespace RobEveryone.AI
 
         // Static so any number of PoliceAI instances can respond without
         // being hand-wired to every homeowner in the Inspector. Carries the
-        // player's last-known position at the moment of the call.
-        public static event Action<Vector3> OnAlertRaised;
+        // player's last-known position at the moment of the call, plus who
+        // to blame -- null for an organic, vision-cone-triggered alert
+        // (every existing call site), a specific PlayerInventory for a
+        // framed one (ForceAlert, e.g. the Alarm Clock).
+        public static event Action<Vector3, PlayerInventory> OnAlertRaised;
 
         private void Update()
         {
@@ -127,8 +130,21 @@ namespace RobEveryone.AI
             {
                 Debug.Log($"{name} called the police!");
                 OnPoliceCalled?.Invoke();
-                OnAlertRaised?.Invoke(seenPlayer.position);
+                OnAlertRaised?.Invoke(seenPlayer.position, null); // organic sighting -- nobody specifically blamed
             }
+        }
+
+        // Bypasses the private, vision-cone-gated SetState -- lets an
+        // outside system (the Alarm Clock's detonation) force this
+        // Homeowner straight to Alerted and blame a specific player,
+        // rather than only reacting to its own sighting.
+        [Server]
+        public void ForceAlert(Vector3 position, PlayerInventory blamed)
+        {
+            state = HomeownerState.Alerted; // SyncVar assignment -- OnStateChanged fires on every client, same as SetState
+            Debug.Log($"{name} called the police! (framed: {(blamed != null ? blamed.name : "nobody")})");
+            OnPoliceCalled?.Invoke();
+            OnAlertRaised?.Invoke(position, blamed);
         }
 
         // Runs on every client (server included) whenever the SyncVar

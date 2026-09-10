@@ -30,6 +30,17 @@ namespace RobEveryone.Player
         [field: SyncVar]
         public bool IsStunned { get; private set; }
 
+        // Separate from IsStunned -- a car impact also sets IsStunned but
+        // shouldn't open a theft window (gameplay-design.md frames the
+        // steal mechanic as specifically "stunning a rival," i.e. PvP
+        // sabotage items only). Client-visible so PlayerTheftTarget's
+        // CanInteract can gate the "Steal item" prompt without a round
+        // trip; Interact() still re-validates server-side regardless.
+        [field: SyncVar]
+        public bool IsStealable { get; private set; }
+
+        private const float DefaultStealWindowSeconds = 6f;
+
         private void Awake()
         {
             ragdoll = GetComponent<PlayerRagdoll>();
@@ -47,10 +58,38 @@ namespace RobEveryone.Player
             StartCoroutine(ClearStunnedAfter(duration));
         }
 
+        // PvP sabotage hits (Taser/Bat/Hammer/Tranq Gun/Dynamite) call
+        // this instead of the plain ServerApplyImpact above -- everything
+        // else about the stun is identical, this just additionally opens
+        // the steal window. CarDriver keeps calling the plain version
+        // unchanged.
+        [Server]
+        public void ServerApplyPvpImpact(Vector3 direction, float force, float duration) => ServerApplyPvpImpact(direction, force, duration, DefaultStealWindowSeconds);
+
+        [Server]
+        public void ServerApplyPvpImpact(Vector3 direction, float force, float duration, float stealWindowSeconds)
+        {
+            ServerApplyImpact(direction, force, duration);
+            IsStealable = true;
+            StartCoroutine(ClearStealableAfter(stealWindowSeconds));
+        }
+
+        // Called by a successful theft (PlayerTheftTarget.Interact) so a
+        // second attacker can't also loot the same stun -- one theft per
+        // window, matching the design doc's "take one item" framing.
+        [Server]
+        public void ClearStealableNow() => IsStealable = false;
+
         private IEnumerator ClearStunnedAfter(float duration)
         {
             yield return new WaitForSeconds(duration);
             IsStunned = false;
+        }
+
+        private IEnumerator ClearStealableAfter(float seconds)
+        {
+            yield return new WaitForSeconds(seconds);
+            IsStealable = false;
         }
 
         [ClientRpc]

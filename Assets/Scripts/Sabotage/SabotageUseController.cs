@@ -45,19 +45,35 @@ namespace RobEveryone.Sabotage
         private void Update()
         {
             if (!isOwned) return;
-            if (Mouse.current == null || !Mouse.current.leftButton.wasPressedThisFrame) return;
+            if (Mouse.current == null) return;
 
             ItemDefinition item = ResolveSelectedItem();
             if (item == null) return;
 
-            switch (item.SabotageType)
+            if (Mouse.current.leftButton.wasPressedThisFrame)
             {
-                case SabotageType.Melee:
-                    TryUseMelee(item);
-                    break;
-                case SabotageType.Thrown:
+                // HasFlag, not a plain == comparison -- SabotageType is
+                // [Flags] so a dual-mode item (Hammer: Melee | Thrown)
+                // can match more than one case; an exact-value switch
+                // would match neither and silently do nothing. Left-click
+                // keeps its exact original priority for every existing
+                // item (Taser/Bat = Melee, Tranq Gun = Ranged, Dynamite =
+                // Thrown) -- Melee wins first for a dual-mode item too,
+                // matching a Hammer's "primary" action being its swing.
+                if (item.SabotageType.HasFlag(SabotageType.Melee)) TryUseMelee(item);
+                else if (item.SabotageType.HasFlag(SabotageType.Ranged)) TryUseRanged(item);
+                else if (item.SabotageType.HasFlag(SabotageType.Thrown)) TryUseThrown();
+            }
+            else if (Mouse.current.rightButton.wasPressedThisFrame)
+            {
+                // The explicit "throw" action, only meaningful for a
+                // dual-mode item (Hammer today) -- a Thrown-only item
+                // like Dynamite already throws on left-click, so this
+                // only adds new behavior, never changes existing.
+                if (item.SabotageType.HasFlag(SabotageType.Melee) && item.SabotageType.HasFlag(SabotageType.Thrown))
+                {
                     TryUseThrown();
-                    break;
+                }
             }
         }
 
@@ -69,6 +85,17 @@ namespace RobEveryone.Sabotage
             {
                 NetworkIdentity targetIdentity = hit.collider.GetComponentInParent<NetworkIdentity>();
                 if (targetIdentity != null && targetIdentity != netIdentity) CmdUseMelee(targetIdentity);
+            }
+        }
+
+        private void TryUseRanged(ItemDefinition item)
+        {
+            if (viewPoint == null) return;
+
+            if (Physics.Raycast(viewPoint.position, viewPoint.forward, out RaycastHit hit, item.Range, playerMask))
+            {
+                NetworkIdentity targetIdentity = hit.collider.GetComponentInParent<NetworkIdentity>();
+                if (targetIdentity != null && targetIdentity != netIdentity) CmdUseRanged(targetIdentity);
             }
         }
 
@@ -84,7 +111,7 @@ namespace RobEveryone.Sabotage
             if (targetIdentity == null) return;
 
             ItemDefinition item = ResolveSelectedItem();
-            if (item == null || item.SabotageType != SabotageType.Melee) return;
+            if (item == null || !item.SabotageType.HasFlag(SabotageType.Melee)) return;
             if (!TryConsumeCooldown(item)) return;
 
             PlayerImpactRelay targetRelay = targetIdentity.GetComponent<PlayerImpactRelay>();
@@ -97,22 +124,54 @@ namespace RobEveryone.Sabotage
             if (distance > item.Range + meleeRangeSlack) return;
 
             Vector3 direction = (targetIdentity.transform.position - transform.position).normalized;
-            targetRelay.ServerApplyImpact(direction, item.ImpactForce, item.StunDuration);
+            targetRelay.ServerApplyPvpImpact(direction, item.ImpactForce, item.StunDuration);
+            inventory.DecrementUses(inventory.SelectedSlot);
+        }
+
+        // Ranged is a hitscan, not a travelling projectile -- unlike
+        // melee's short reach, a long-range shot genuinely needs a real
+        // line-of-sight check server-side (not just a distance check), or
+        // a player could "shoot" through a wall by aiming at a target
+        // whose position the client happens to know.
+        [Command]
+        private void CmdUseRanged(NetworkIdentity targetIdentity)
+        {
+            if (targetIdentity == null) return;
+
+            ItemDefinition item = ResolveSelectedItem();
+            if (item == null || !item.SabotageType.HasFlag(SabotageType.Ranged)) return;
+            if (!TryConsumeCooldown(item)) return;
+
+            PlayerImpactRelay targetRelay = targetIdentity.GetComponent<PlayerImpactRelay>();
+            if (targetRelay == null || targetIdentity == netIdentity || targetRelay.IsStunned) return;
+
+            Vector3 origin = transform.position + Vector3.up * 1.5f;
+            Vector3 toTarget = targetIdentity.transform.position - origin;
+            if (toTarget.magnitude > item.Range) return;
+            if (!Physics.Raycast(origin, toTarget.normalized, out RaycastHit hit, toTarget.magnitude, playerMask)) return;
+            if (hit.collider.GetComponentInParent<NetworkIdentity>() != targetIdentity) return; // something else was in the way
+
+            targetRelay.ServerApplyPvpImpact(toTarget.normalized, item.ImpactForce, item.StunDuration);
+            inventory.DecrementUses(inventory.SelectedSlot);
         }
 
         [Command]
         private void CmdUseThrown(Vector3 direction)
         {
             ItemDefinition item = ResolveSelectedItem();
-            if (item == null || item.SabotageType != SabotageType.Thrown || item.ThrownProjectilePrefab == null) return;
+            if (item == null || !item.SabotageType.HasFlag(SabotageType.Thrown) || item.ThrownProjectilePrefab == null) return;
 
             int slotIndex = inventory.SelectedSlot;
+            // Read before RemoveSlot clears it -- a retrievable throw
+            // (Hammer) needs to carry its current durability onto the
+            // flying projectile so a landed pickup doesn't reset to full.
+            int remainingUses = inventory.Slots[slotIndex]?.RemainingUses ?? 0;
             if (!inventory.RemoveSlot(slotIndex)) return; // consumed on throw
 
             Vector3 origin = viewPoint != null ? viewPoint.position : transform.position + Vector3.up * 1.5f;
             GameObject projectile = Instantiate(item.ThrownProjectilePrefab, origin, Quaternion.LookRotation(direction));
             NetworkServer.Spawn(projectile);
-            projectile.GetComponent<SabotageProjectile>()?.ServerLaunch(direction.normalized, item, netIdentity);
+            projectile.GetComponent<ILaunchable>()?.ServerLaunch(direction.normalized, item, netIdentity, remainingUses);
         }
 
         private bool TryConsumeCooldown(ItemDefinition item)

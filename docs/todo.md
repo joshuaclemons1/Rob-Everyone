@@ -155,17 +155,34 @@ happen soon" to "later stage."
   the rescue) for the edge case where ragdoll physics carries a player
   off the map.
 - **Stage 6 Phase 2 — Bat, Hammer, Tranquilizer Gun, PvP steal-window,
-  Alarm Clock framing — not started.** Bat/Hammer/Tranq Gun all need a
-  new "remaining uses per slot" concept (durability/ammo) that doesn't
-  exist yet (today a slot is just an item-name string); Hammer's
-  thrown-and-retrievable mode needs a non-consumed projectile variant;
-  Tranquilizer Gun needs a new `SabotageType.Ranged` case with
-  server-side raycast re-validation; the steal-window builds on
-  `PlayerImpactRelay.IsStunned` (already in place) plus a per-victim
-  "stealable until" timestamp; the Alarm Clock's Homeowner-framing needs
-  a new `HomeownerAI.ForceAlert(position, blamedPlayer)` entry point and
-  extending `OnAlertRaised`'s signature so `PoliceAI` can prefer a framed
-  player over its own vision-cone scan. See
+  Alarm Clock framing — code done, Editor setup + playtesting not done
+  yet.** `ItemDefinition` gained `MaxUses` (per-slot durability/ammo) and
+  `SabotageType` became `[Flags]` (`Ranged` added, Hammer is
+  `Melee | Thrown`) — every exact-value `SabotageType` comparison across
+  `SabotageUseController` was rewritten to `HasFlag`. `PlayerInventory`
+  gained a parallel `slotUses` SyncList, an `AddItem(item, overrideUses)`
+  overload, and `DecrementUses`. `PlayerImpactRelay` gained `IsStealable`
+  + `ServerApplyPvpImpact` (a car impact still only calls the plain
+  `ServerApplyImpact` — no steal window from that). The E-key
+  `IInteractable` pipeline gained a `CanInteract` check, and a new
+  `PlayerTheftTarget` component makes a stunned player themself a valid
+  steal target through that same existing pipeline. New `ILaunchable`
+  interface abstracts "thing a thrown item spawns" — `SabotageProjectile`
+  (Dynamite, unchanged) and the new `RetrievableProjectile` (Hammer:
+  collision-triggered, lands and respawns as a real pickup carrying its
+  remaining uses via a new `PickupItem.Initialize(item, uses)` overload)
+  both implement it. `HomeownerAI` gained `ForceAlert(position, blamed)`
+  and `OnAlertRaised` now carries a `PlayerInventory` to blame (`null` for
+  every existing organic sighting); `PoliceAI.HandleAlertRaised` chases a
+  blamed player directly via `EnterChase` instead of just moving toward a
+  position. New `Assets/Scripts/Sabotage/AlarmClockProjectile.cs`
+  resolves who's nearby to frame and which Homeowner to alert. **Still
+  needed**: the Editor half, written up step by step in
+  [stage6-sabotage-items-phase2-setup.md](stages/stage6-sabotage-items-phase2-setup.md)
+  (hotbar uses-count UI, `PlayerTheftTarget` on the Player prefab,
+  building `HammerProjectile.prefab`/`AlarmClockProjectile.prefab` and
+  wiring them into each `ItemDefinition` + `NetworkManager`'s Spawnable
+  Prefabs) plus actual two-Editor playtesting. See
   [item-creation.md](stages/item-creation.md)'s Section 4b for the asset
   pipeline and `gameplay-design.md`'s Sabotage items section for each
   item's intended numbers.

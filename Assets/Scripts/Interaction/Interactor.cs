@@ -44,7 +44,8 @@ namespace RobEveryone.Interaction
 
             if (Physics.Raycast(viewPoint.position, viewPoint.forward, out RaycastHit hit, interactRange, interactableMask))
             {
-                return hit.collider.GetComponentInParent<IInteractable>();
+                IInteractable target = hit.collider.GetComponentInParent<IInteractable>();
+                if (target != null && target.CanInteract) return target;
             }
 
             return null;
