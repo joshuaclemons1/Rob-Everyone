@@ -84,8 +84,18 @@ status line inside an individual stage doc.
   crouch (resizes the `CharacterController` relative to original
   standing values, not recomputed from scratch, so standing height never
   drifts), jump, and real bhop-style air-strafe acceleration (id
-  Software's air-accelerate formula — chaining jump + air-strafe can
-  exceed sprint speed, the documented skill-ceiling tradeoff).
+  Software's air-accelerate formula).
+- **Player feel pass** — jump is instant now (the launch applies the
+  frame Space goes down; the old animation-anticipation delay is gone,
+  `PlayerAnimationDriver` just fires the clip). Bhop tuned toward Source
+  values (`airAcceleration` 100, `airWishSpeed` 1.0) with **hold-Space
+  autohop** and a hard `maxAirSpeed` ceiling (~2x sprint) so air-strafe
+  redirects momentum but can't run away with it. First-person now
+  renders your own body — `FirstPersonBodyTrim` scales the head to zero
+  on your copy only (grounded), plus the upper body while airborne (the
+  jump spring clips the camera otherwise), and restores everything while
+  `PlayerCameraRig` has the camera cut away. See
+  [player-feel-setup.md](stages/player-feel-setup.md).
 - **Player animation system** — `PlayerAnimationDriver.cs` drives
   movement-state animation blending and jump-anticipation timing;
   `DebugThirdPersonCamera.cs` toggles first/third-person for testing

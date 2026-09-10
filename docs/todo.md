@@ -8,60 +8,65 @@ happen soon" to "later stage."
 
 ## Priority order (the plan)
 
-1. **Inventory / UX** — Tab inventory screen, drop-with-Q, Prison Wallet
-   slot, steal-window rework. **Done and playtested** — see
-   [completed.md](completed.md); build steps in
-   [inventory-ux-setup.md](stages/inventory-ux-setup.md).
-2. **Player feel pass** (in progress) — instant jump (drop the
-   animation-sync delay), CS-style bhop + hold-to-autohop, first-person
-   visible body with the head trimmed (also prep for held-item-in-hands).
-3. **Finish Stage 6 Phase 2** — only the Alarm Clock build + a full
-   two-Editor Phase 2 playtest are left.
-4. **Stage 5 real Steam overlay test** — parked until a second Steam
+1. ~~**Inventory / UX**~~ — done and playtested
+   ([completed.md](completed.md)).
+2. ~~**Player feel pass**~~ — done: instant jump, CS bhop + autohop +
+   speed cap, first-person visible body
+   ([player-feel-setup.md](stages/player-feel-setup.md)).
+3. **Held item + carry/run animations** — selected hotbar item shows in
+   the character's hand; Animator gains sprint / carry-bulky /
+   carry-body states.
+4. **Ragdoll deeper dive** (in progress) — player un-ragdolls too fast
+   after a car hit, then the **carry / throw ragdolled players** mechanic
+   (design + build doc).
+5. **Finish Stage 6 Phase 2** — Alarm Clock build + full two-Editor
+   Phase 2 playtest.
+6. **Stage 5 real Steam overlay test** — parked until a second Steam
    account is available; not blocking anything else.
-5. **Stage 7 — full meta-game** (medium) — sabotage purchases, real
+7. **Stage 7 — full meta-game** (medium) — sabotage purchases, real
    Jail & Bail, sabotage-spending quota.
-6. **VoIP / proximity voice chat** (medium-low) — Steam's own voice API.
+8. **VoIP / proximity voice chat** (medium-low) — Steam's own voice API.
    Build guide: [voip-setup.md](stages/voip-setup.md).
-7. **Stage 8 — friend-group playtest** — depends on 1–5.
-8. **Art & audio** — more house variants (unblocks loot variety), all
-   SFX, ambient music, "Good House" tell, skin unlock-gating, HUD
-   result banner, environmental detail. Mostly Zach / asset work.
-9. **Housekeeping + code-review nits** — as they come up.
+9. **Stage 8 — friend-group playtest** — depends on 3–7.
+10. **Art & audio** — more house variants (unblocks loot variety), all
+    SFX, ambient music, "Good House" tell, skin unlock-gating, HUD
+    result banner, environmental detail. Mostly Zach / asset work.
+11. **Housekeeping + code-review nits** — as they come up.
 
 Detail for each below.
 
-## Do first — player feel pass (in progress)
+## Done — Inventory / UX + Player feel pass
 
-- **Instant jump** — the jump physics currently wait on an
-  animation-anticipation delay (`FirstPersonController.ScheduleJumpLaunch`
-  / `PlayerAnimationDriver.jumpAnticipationFraction`), which reads as
-  sluggish. The velocity should apply the frame Space goes down; the
-  animation is best-effort and never gates input.
-- **CS-style bhop + autohop** — air-strafe accel tuned to Source-ish
-  values (tight air-wishspeed cap, high air accel), horizontal speed
-  preserved across the jump frame (no ground friction tick while
-  jumping), and **holding Space auto-jumps** on landing instead of only
-  firing on the initial press.
-- **First-person visible body, head trimmed** — the owner's own skin
-  should render (so it's not a floating camera, and to prep for the
-  future "held hotbar item shows in your hands"), with the head bone
-  scaled out on the owner's copy only so the camera doesn't clip through
-  it. Remote copies keep the full head.
+- **Inventory / UX** — Tab / steal screen, drop-with-Q, Prison Wallet,
+  steal-window rework. **Playtested.**
+  [inventory-ux-setup.md](stages/inventory-ux-setup.md), detail in
+  [completed.md](completed.md). Deferred follow-ups (see the setup
+  doc's list): swap-on-drag, right-click quick-drop, real Steam names in
+  the "Steal from:" label, auto-banking an unretrieved wallet item,
+  making the wallet item off-limits to theft.
+- **Player feel pass** — instant jump (animation no longer gates it),
+  CS-style bhop with a `Max Air Speed` ceiling + hold-Space autohop,
+  first-person visible body with grounded/airborne bone trimming and a
+  restore while the camera's cut away.
+  [player-feel-setup.md](stages/player-feel-setup.md). Deferred
+  follow-ups: arm/shoulder clipping if it's bad (nudge camera / trim
+  more bones), a real separate first-person viewmodel.
 
-Follow-ups: arm/shoulder clipping in first person may need the camera
-nudged or more bones trimmed; a real separate first-person viewmodel is
-the "proper" version, deferred.
+## Do first — held item + carry/run animations
 
-## Inventory / UX — done
+- **Current hotbar item visible in your hands** — whatever slot is
+  selected shows its `WorldModelPrefab` held in the character's hand
+  (a hand/wrist bone socket), for you in first person (the body trim
+  keeps the arms) and for everyone else in third person. Ties into the
+  `FirstPersonBodyTrim` work and the eventual drop/throw-from-hand.
+- **Running + carry animation states** — the Animator only blends
+  Idle/Walk/Run/Jump right now. Needs at least: a proper sprint state
+  (distinct from Run), a "carrying something bulky" pose/gait
+  (multi-slot item held two-handed?), and — once the ragdoll carry
+  mechanic exists — a "carrying a body" state. Animator-controller work
+  plus clips.
 
-Tab / steal screen, drop-with-Q, Prison Wallet, steal-window rework.
-**Playtested and confirmed.** Build steps:
-[inventory-ux-setup.md](stages/inventory-ux-setup.md); full detail in
-[completed.md](completed.md). Deferred follow-ups (see the setup doc's
-own list): swap-on-drag, right-click quick-drop, real Steam names in the
-"Steal from:" label, auto-banking an unretrieved wallet item, making the
-wallet item off-limits to theft.
+## Do first — finish Stage 6 Phase 2
 
 ## Do first — finish Stage 6 Phase 2
 
@@ -77,13 +82,14 @@ wallet item off-limits to theft.
 
 ## Known bugs / deeper dives
 
-- **Player un-ragdolls too fast after a car hit** — sometimes before the
-  body even reaches the ground. `PlayerRagdoll.ImpactSequence` ends the
-  ragdoll after a fixed `duration` regardless of whether the body has
-  settled; the stun timing needs a real look (wait for the ragdoll to
-  come to rest / touch ground, or at least a longer/floor-gated
-  minimum), not just the current fixed timer. `PlayerImpactRelay` also
-  clears `IsStunned` on its own fixed `duration` — keep the two in sync.
+- ~~**Player un-ragdolls too fast after a car hit**~~ — fixed:
+  `defaultStunDuration` bumped to 3.5 s, and `ImpactSequence` now waits
+  past that until the hips have been near-still for `settleHoldTime`
+  (hard-capped at `+settleTimeoutExtra`), so you can't stand up
+  mid-air/mid-tumble. `IsStunned` stays a fixed server timer, but the
+  owner's controller is disabled for the whole (possibly longer)
+  ragdoll regardless, so it doesn't matter if the two drift on a big
+  launch. Tuning knobs on `Player Ragdoll`. Retest with a fast car hit.
 - **Carry / throw ragdolled players** (future feature) — pick up a
   ragdolled rival (`E` while they're stunned?), carry them, move them,
   and throw them. Networked. Ties into the steal-window and the

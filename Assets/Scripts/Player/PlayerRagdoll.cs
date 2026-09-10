@@ -36,8 +36,22 @@ namespace RobEveryone.Player
     [RequireComponent(typeof(PlayerSkinSpawner))]
     public class PlayerRagdoll : MonoBehaviour
     {
-        [SerializeField] private float defaultStunDuration = 2f;
+        // The minimum time you're down. The ragdoll never ends before
+        // this -- but it also never ends while the body is still
+        // tumbling/airborne, so a big launch can run longer (see the
+        // settle check in ImpactSequence).
+        [SerializeField] private float defaultStunDuration = 3.5f;
         public float DefaultStunDuration => defaultStunDuration;
+
+        [Header("Ragdoll settle")]
+        // Past defaultStunDuration, keep ragdolling until the hips have
+        // been this slow for settleHoldTime -- so you don't snap upright
+        // mid-air or mid-tumble. settleTimeoutExtra is the hard cap
+        // beyond defaultStunDuration in case the body wedges on geometry.
+        [SerializeField] private float settleSpeedThreshold = 0.7f;    // m/s
+        [SerializeField] private float settleAngularThreshold = 1.8f;  // rad/s
+        [SerializeField] private float settleHoldTime = 0.3f;
+        [SerializeField] private float settleTimeoutExtra = 4f;
 
         [Header("Third-person ragdoll view")]
         [SerializeField] private Vector3 thirdPersonOffset = new(0f, 2.5f, -5f);
@@ -449,12 +463,31 @@ namespace RobEveryone.Player
                     cameraFollowSpeed, showOwnSkin: true);
             }
 
-            float elapsed = 0f;
-            while (elapsed < duration)
+            // Stay down for at least `duration`, then wait for the body
+            // to actually stop moving before standing up -- otherwise a
+            // hard car launch snaps you upright while you're still in the
+            // air. Hard-capped at duration + settleTimeoutExtra so a body
+            // wedged on geometry can't trap you.
+            float minEndTime = Time.time + duration;
+            float hardCapTime = minEndTime + settleTimeoutExtra;
+            float settledSince = -1f;
+
+            while (true)
             {
                 UpdateBridgeBones();
-                elapsed += Time.deltaTime;
                 yield return null;
+
+                if (Time.time >= hardCapTime) break;
+
+                if (RagdollAtRest())
+                {
+                    if (settledSince < 0f) settledSince = Time.time;
+                }
+                else settledSince = -1f;
+
+                bool minPassed = Time.time >= minEndTime;
+                bool restedLongEnough = settledSince >= 0f && Time.time - settledSince >= settleHoldTime;
+                if (minPassed && restedLongEnough) break;
             }
 
             // Blend the camera back (it tracks the dock as EndRagdoll
@@ -479,6 +512,20 @@ namespace RobEveryone.Player
             }
 
             isStunned = false;
+        }
+
+        // "Has the body basically stopped" -- low linear and angular
+        // velocity on the hips. Deliberately not a ground raycast (the
+        // ragdoll colliders sit on the same layer as the world now, so a
+        // downward ray just hits the player's own legs): near-zero
+        // velocity sustained for settleHoldTime is a reliable enough
+        // proxy for "on a surface and at rest," and the hold time
+        // debounces the brief slow-down at the apex of a launch arc.
+        private bool RagdollAtRest()
+        {
+            if (hipsRigidbody == null) return true;
+            return hipsRigidbody.linearVelocity.sqrMagnitude < settleSpeedThreshold * settleSpeedThreshold
+                && hipsRigidbody.angularVelocity.sqrMagnitude < settleAngularThreshold * settleAngularThreshold;
         }
 
         private void BeginRagdoll(Vector3 direction, float force)
