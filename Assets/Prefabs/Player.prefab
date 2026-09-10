@@ -279,6 +279,8 @@ GameObject:
   - component: {fileID: 731733168042144547}
   - component: {fileID: 2818341471729743253}
   - component: {fileID: 4077930690409707039}
+  - component: {fileID: 1893013775215399496}
+  - component: {fileID: 4315552027403160315}
   m_Layer: 8
   m_Name: Player
   m_TagString: Untagged
@@ -577,3 +579,32 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
+--- !u!114 &1893013775215399496
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4564336539568727325}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: de41c0868b8945bea1f2df0bf47ccabb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Inventory.PlayerDropController
+  dropForward: 1
+  dropHeight: -0.4
+  dropKey: 31
+--- !u!114 &4315552027403160315
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4564336539568727325}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7d413276d194bfebfc7ba78164079a4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Inventory.InventoryCameraRig
+  frontOffset: {x: 0, y: 1.6, z: 2.2}
+  lookAtHeight: 1.3

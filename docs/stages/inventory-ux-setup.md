@@ -1,7 +1,9 @@
 # Inventory / UX — Editor setup (Tab screen, drop-with-Q, Prison Wallet)
 
-All the code is written. This is what to wire up by hand in the Unity
-Editor to bring it online. Everything below is Editor work.
+All the code is written. This is what to wire up by hand. Almost all of
+it is one pass on **`Assets/Prefabs/UI/Hotbar.prefab`** — it's a live
+prefab instance in both `SampleScene` and `Lobby`, so building the whole
+screen inside it means zero per-scene wiring beyond a Canvas check.
 
 **Always press Play from `MainMenu`** — `NetworkManager` only exists
 there.
@@ -12,25 +14,23 @@ there.
 
 | Script | Where it goes | Role |
 |---|---|---|
-| `PlayerInventory` (changed) | Player prefab (already there) | `MoveItem`/`TryPlaceAt` for drag-rearrange, `MoveToWallet`/`MoveFromWallet` (phase-gated), `DropSlot`, wallet SyncVars, `DisplayName` |
-| `PlayerDropController` (new) | Player prefab | `Q` → drop the selected slot into the world |
-| `InventoryCameraRig` (new) | Player prefab | swaps your camera to a static front-facing third-person shot while the screen is open |
-| `PlayerTheftTarget` (rewritten) | Player prefab (already there) | E on a stunned rival → opens the steal screen on your client; drag-driven transfer, one item per stun |
-| `PlayerImpactRelay` (changed) | Player prefab (already there) | steal window is now an expiry timestamp, not a coroutine (no code wiring) |
+| `PlayerInventory` (changed) | Player prefab (already there) | `MoveItem`/`TryPlaceAt` (drag-rearrange), `MoveToWallet`/`MoveFromWallet` (phase-gated), `CmdDropSelected`/`DropSlot`, wallet SyncVars, `DisplayName` |
+| `PlayerDropController` (new) | Player prefab | `Q` → `inventory.CmdDropSelected(...)` |
+| `InventoryCameraRig` (new) | Player prefab | front-facing static third-person camera while the screen is open |
+| `PlayerTheftTarget` (rewritten) | Player prefab (already there) | E on a stunned rival opens the steal screen; drag-driven transfer, one item per stun |
+| `PlayerImpactRelay` (changed) | Player prefab (already there) | steal window is an expiry timestamp now — no wiring |
 | `PickupItem` (changed) | item prefabs (already there) | a dropped item spins/bobs; house loot doesn't |
-| `InventoryScreenUI` (new) | HUD Canvas, each scene | the Tab / steal screen orchestrator |
+| `InventoryScreenUI` (new) | `Hotbar.prefab` root | the Tab / steal screen orchestrator |
 | `InventoryDragSlot` (new) | each slot box | drag source / drop target conduit |
-| `WalletSlotUI` (new) | HUD, each scene | the always-visible wallet box |
-| `HotbarUI` (changed) | Hotbar prefab | can now bind to an explicit inventory (for the victim row) |
+| `WalletSlotUI` (new) | `Hotbar.prefab` (wallet box) | the always-visible wallet box + lock indicator |
+| `HotbarUI` (changed) | `Hotbar.prefab` (main + victim rows) | can bind to an explicit inventory (`Bind To Local Player` toggle) |
 
-Design calls already baked in (from `gameplay-design.md` + your notes):
-you're **fully vulnerable** while the screen is open; the wallet takes
-**one item of any size**, placeable only mid-round, retrievable only in
-the Lobby, **locked once filled** for the round; a walleted item
-**survives being caught** and persists across rounds until you drag it
-out in the Lobby and sell it (it does *not* auto-bank — say the word if
-you want that); stealing is **drag one item from the rival's hotbar to
-yours**, one per stun.
+Design calls already baked in: **fully vulnerable** while the screen is
+open; wallet takes **one item of any size**, placeable only mid-round,
+retrievable only in the Lobby, **locked once filled**, **survives being
+caught**, persists across rounds until you drag it out in the Lobby and
+sell it (no auto-bank); stealing is **drag one item from the rival's
+hotbar to yours**, one per stun.
 
 ---
 
@@ -38,196 +38,190 @@ yours**, one per stun.
 
 Open `Assets/Prefabs/Player.prefab` in prefab edit mode.
 
-1. **Add Component → Player Drop Controller.**
-   - `Drop Forward` `1.0`, `Drop Height` `-0.4`, `Drop Key` `Q`.
-   - These are the "where does the dropped item appear" knobs — tune
-     them in Rest Point 2 until it lands just in front of the character
-     at about knee/waist height.
-2. **Add Component → Inventory Camera Rig.**
-   - `Front Offset` `(0, 1.6, 2.2)`, `Look At Height` `1.3`.
-   - No references to wire — it finds the camera and `PlayerSkinSpawner`
-     itself. Tune the offset in Rest Point 3 so you see your character
-     from the front, head-to-knee in frame.
+1. **Add Component → Player Drop Controller.** `Drop Forward` `1.0`,
+   `Drop Height` `-0.4`, `Drop Key` `Q`. (Tuning knobs — adjust in
+   Rest Point 1 so the item lands just in front of the character at
+   about knee height.)
+2. **Add Component → Inventory Camera Rig.** `Front Offset` `(0, 1.6,
+   2.2)`, `Look At Height` `1.3`. No references — it finds the camera
+   and `PlayerSkinSpawner` itself. (Tune in Rest Point 2.)
 3. Confirm **Player Theft Target** and **Player Impact Relay** are
-   already on the prefab (from `stage6-sabotage-items-phase2-setup.md`
-   Part 3). No new fields on either.
-4. Save the prefab.
-
-> If you still have the temporary **Debug Third Person Camera** (`T`
-> key) on the Player, don't use it and the Tab screen at the same time —
-> they both move the camera. Remove it whenever.
+   already on the prefab (Stage 6 Phase 2 Part 3). No new fields.
+4. Save. If the temporary **Debug Third Person Camera** (`T`) is still
+   on the Player, remove it — it fights the same camera.
 
 ---
 
-## Part 2 — The Prison Wallet box (both scenes)
+## Part 2 — Rebuild `Hotbar.prefab` into the inventory screen
 
-Do this in `SampleScene` first, then repeat in `Lobby` (same as the
-hotbar — both scenes keep their own HUD copy).
+Open `Assets/Prefabs/UI/Hotbar.prefab` in prefab edit mode. Current
+structure is `Hotbar` (root, has `Hotbar UI`) → `Slot0`…`Slot4`.
 
-1. Under the HUD Canvas, next to the `Hotbar`, create a UI **Image**
-   named `WalletBox`. Style it to read as a slightly-separated 6th slot
-   (a gap, a different tint, a small "vault" label — your call). Its
-   Image **Raycast Target** must be **ON**.
-2. As children of `WalletBox`:
-   - a **TextMeshPro - Text** `NameText` (item name),
-   - a **TextMeshPro - Text** `UsesText` (small, a corner — the `x2`
-     durability readout, same as the hotbar's),
-   - an object `EmptyHint` (a faint watermark / "empty" state — shown
-     when nothing's vaulted),
-   - an object `LockedIcon` (a small padlock — shown when the wallet is
-     filled *and* you're mid-round, i.e. it can't be swapped right now).
-3. On `WalletBox`, **Add Component → Wallet Slot UI**. Wire `Name Text`,
-   `Uses Text`, `Empty Hint`, `Locked Icon`.
-4. On `WalletBox`, **Add Component → Inventory Drag Slot**.
-   `Kind` = **My Wallet**, `Index` = `-1`.
+### 2a. Pull the slots into a container that can move
 
-### 🔴 Rest Point 1
-Play from MainMenu, host, loot a house. The `WalletBox` shows the empty
-hint. (It won't do anything else until Part 3 — the drag screen — is up.)
+The screen needs one child that rises + scales while the rest (dim
+background, ghost) stays put.
+
+1. Create an empty child of `Hotbar` named **`SlotRow`**. On its
+   RectTransform: same anchors/pivot as `Hotbar`, `Anchored Position`
+   `(0, 0)`, `Scale` `1`, size matching `Hotbar` (or stretch). The goal
+   is that `SlotRow` sits exactly where the slots already are.
+2. Drag `Slot0`…`Slot4` in the Hierarchy so they become children of
+   `SlotRow`. Their on-screen positions should not move — if they jump,
+   `SlotRow`'s RectTransform isn't lined up with the root; fix it and
+   redo.
+3. Move the **`Hotbar UI`** component from `Hotbar` (root) onto
+   `SlotRow`: Add Component → Hotbar UI on `SlotRow`, re-populate its
+   **Slots** array with `Slot0`…`Slot4` in order, leave **Bind To Local
+   Player** checked, then remove the old `Hotbar UI` from the root.
+
+### 2b. The wallet box
+
+4. Create a child of **`SlotRow`** named **`WalletBox`** (an **Image**).
+   Position it just past `Slot4` with a small gap so it reads as a
+   separate 6th slot. Style it like a slot box. **Raycast Target ON.**
+5. Children of `WalletBox`:
+   - `NameText` — **TextMeshPro - Text** (the item name)
+   - `UsesText` — **TextMeshPro - Text**, small, in a corner (the `x2`
+     durability readout)
+   - `EmptyHint` — any object shown while the wallet is empty (a faint
+     "vault" watermark)
+   - `LockedIcon` — a small padlock, shown while the wallet is filled
+     *and* you're mid-round
+6. On `WalletBox`: **Add Component → Wallet Slot UI** → wire `Name
+   Text`, `Uses Text`, `Empty Hint`, `Locked Icon`. Then **Add
+   Component → Inventory Drag Slot** → `Kind` = **My Wallet**, `Index`
+   `-1`.
+
+### 2c. Drag components on the 5 slots
+
+7. On each of `Slot0`…`Slot4`: **Add Component → Inventory Drag Slot**,
+   `Kind` = **My Hotbar**, `Index` = `0`…`4` to match. Each slot's
+   background Image needs **Raycast Target ON**.
+
+### 2d. Screen chrome
+
+8. Create a child of **`Hotbar`** (root, *not* `SlotRow`) named
+   **`DimBackground`** — a full-screen **Image**, dark, ~60% alpha,
+   **Raycast Target ON**. Make it the **first** child of `Hotbar` so it
+   renders behind everything else. **Disable it** (uncheck the
+   GameObject).
+9. Create a child of **`Hotbar`** (root) named **`DragGhost`** — a
+   small **Image**, semi-transparent, with a child **TextMeshPro - Text**
+   `GhostLabel`. **Raycast Target OFF** on both. Make it the **last**
+   child of `Hotbar`. **Disable it.**
+
+### 2e. The victim row (for steal mode)
+
+10. Create a child of **`Hotbar`** (root) named **`VictimRow`**.
+    **Disable it.** Position it above where `SlotRow` sits when
+    expanded (see 2g).
+11. Under `VictimRow`, create **`VictimSlots`** and give it 5 child slot
+    boxes — the fastest way is to select `Slot0`…`Slot4` under `SlotRow`,
+    Ctrl/Cmd+D to duplicate, drag the copies under `VictimSlots`, rename
+    them `VSlot0`…`VSlot4`.
+12. On `VictimSlots`: **Add Component → Hotbar UI**, populate **Slots**
+    with `VSlot0`…`VSlot4`, and **uncheck Bind To Local Player**.
+13. On each `VSlot0`…`VSlot4`: change its **Inventory Drag Slot** (copied
+    from the original) → `Kind` = **Victim Hotbar**, `Index` = `0`…`4`.
+14. Add a **TextMeshPro - Text** `VictimLabel` under `VictimRow` (above
+    the row) — text is set at runtime to `Steal from: <name>`.
+
+### 2f. The InventoryScreenUI component
+
+15. On the **`Hotbar`** root: **Add Component → Inventory Screen UI**.
+    Wire (all references are inside this prefab):
+    - **Dim Background** → `DimBackground`
+    - **Hotbar Container** → `SlotRow` (its RectTransform)
+    - **Victim Row** → `VictimRow`
+    - **Victim Hotbar UI** → `VictimSlots`'s `Hotbar UI`
+    - **Victim Label** → `VictimLabel`
+    - **My Hotbar Slots** → `Slot0`…`Slot4` (their `Inventory Drag
+      Slot`), in order
+    - **My Wallet Slot** → `WalletBox`'s `Inventory Drag Slot`
+    - **Victim Hotbar Slots** → `VSlot0`…`VSlot4` (their `Inventory Drag
+      Slot`), in order
+    - **Drag Ghost** → `DragGhost` (RectTransform), **Drag Ghost Label**
+      → `GhostLabel`
+    - **Steal Break Distance** → `6`
+
+### 2g. Compact vs. expanded transform
+
+16. Still on **Inventory Screen UI**:
+    - **Compact Anchored Pos** → copy `SlotRow`'s current **Anchored
+      Position** exactly (so it doesn't jump on load — should be
+      `(0, 0)` after 2a).
+    - **Compact Scale** → `1`.
+    - **Expanded Anchored Pos** → same X, a higher Y (start with
+      `(0, 250)` — "moves up a bit"; eyeball in Rest Point 2).
+    - **Expanded Scale** → `1.6`.
+    - **Transform Lerp Speed** → `12`.
+17. Position `VictimRow` so it sits above `SlotRow` *at the expanded
+    position/scale* — easiest to temporarily set `SlotRow`'s anchored
+    pos to the expanded value, place `VictimRow` above it, then set
+    `SlotRow` back.
+
+Save the prefab.
 
 ---
 
-## Part 3 — The Tab / steal screen (both scenes)
+## Part 3 — Per scene (SampleScene + Lobby)
 
-Again: `SampleScene` first, then `Lobby`. The **victim row** (Part 4) is
-`SampleScene`-only — skip it in the Lobby.
+The Hotbar prefab instance is already in both scenes, so it picks all
+of the above up automatically. Only check:
 
-### 3a. Canvas prerequisites
+1. The **Canvas** hosting the Hotbar has a **Graphic Raycaster**
+   component (Add Component if missing).
+2. The scene has an **EventSystem** (`GameObject → UI → Event System`
+   if missing — the HUD may not have needed one before).
+3. Play from MainMenu once and confirm the Hotbar still looks right
+   (nothing shifted from the `SlotRow` reparent) in both scenes.
 
-1. Select the Canvas that hosts the `Hotbar`. Make sure it has a
-   **Graphic Raycaster** (Add Component if not).
-2. Make sure the scene has an **EventSystem** (`GameObject → UI → Event
-   System` if not — the HUD may not have needed one until now).
+That's it — no per-scene component wiring.
 
-### 3b. Screen objects
+---
 
-Under that same Canvas:
+## Rest Points
 
-3. **`DimBackground`** — a full-screen **Image**, dark, ~60% alpha,
-   **Raycast Target ON**. **Start disabled.** In the hierarchy, place it
-   *directly above the `Hotbar`* in the sibling list, so the dim covers
-   the rest of the HUD (cash, timer, crosshair) but the hotbar, wallet,
-   victim row, and drag ghost — all below it — render on top.
-4. **`DragGhost`** — a small **Image** (semi-transparent), with a child
-   **TextMeshPro - Text** `GhostLabel`. **Raycast Target OFF** on both.
-   **Start disabled.** Put it *last* in the Canvas sibling list (renders
-   on top of everything).
-
-### 3c. Slot drag components
-
-5. On each of the Hotbar's 5 slot boxes (`Slot0`…`Slot4`):
-   **Add Component → Inventory Drag Slot**, `Kind` = **My Hotbar**,
-   `Index` = `0`…`4` to match. Each slot box's background Image needs
-   **Raycast Target ON**.
-
-### 3d. The InventoryScreenUI component
-
-6. On the **Canvas root** GameObject, **Add Component → Inventory Screen
-   UI**. Wire:
-   - **Dim Background** → `DimBackground`
-   - **Hotbar Container** → the `Hotbar`'s own **RectTransform**
-   - **My Hotbar Slots** → the 5 `Slot0`…`Slot4` objects (their
-     `InventoryDragSlot`), **in left-to-right order**
-   - **My Wallet Slot** → `WalletBox`'s `InventoryDragSlot`
-   - **Drag Ghost** → `DragGhost` (RectTransform), **Drag Ghost Label** →
-     `GhostLabel`
-   - **Victim Row / Victim Hotbar UI / Victim Hotbar Slots / Victim
-     Label** → leave empty here; filled in Part 4 (SampleScene only)
-   - **Steal Break Distance** → `6`
-7. **Hotbar transform (compact vs expanded):**
-   - **Compact Anchored Pos** → copy the `Hotbar` RectTransform's
-     *current* `Anchored Position` exactly (so it doesn't jump on load).
-   - **Compact Scale** → `1`.
-   - **Expanded Anchored Pos** → the same X, a higher Y (e.g. +250 —
-     "moves up a bit"). Eyeball it in Rest Point 4.
-   - **Expanded Scale** → `1.6`.
-   - **Transform Lerp Speed** → `12`.
-
-### 🔴 Rest Point 2 — drop
+### 🔴 Rest Point 1 — drop
 Host + join. Loot items into different slots, select each with the
-number keys, press **Q**. The item should appear just in front of your
-character, spinning and bobbing, and be visible + pick-up-able for the
-**other** player. A multi-slot item drops as one object and frees its
-whole span. House loot still sits still. Tune `Drop Forward` /
-`Drop Height` on the Player prefab if it lands somewhere awkward.
+number keys, press **Q**. The item appears just in front of your
+character, spinning and bobbing, visible + pick-up-able for the **other**
+player. A multi-slot item drops whole and frees its span. House loot
+still sits still. Tune `Drop Forward` / `Drop Height` on the Player
+prefab.
 
-### 🔴 Rest Point 3 — Tab screen basics
-Press **Tab**: camera swaps to a front view of your character, the
-hotbar rises + grows, the cursor appears, movement/look stop. **Tab** or
-**Esc** closes it and re-locks. Drag an item from one slot to another →
-it moves on **both** Editors. Drop onto an occupied slot → snaps back.
-While your screen is open the other player is unaffected. Tune the
-`Inventory Camera Rig` `Front Offset` and the Expanded transform values
-until it looks right.
+### 🔴 Rest Point 2 — Tab screen
+Press **Tab**: camera swaps to a front view of your character, `SlotRow`
+rises + grows, cursor appears, movement/look stop. **Tab** / **Esc**
+closes and re-locks. Drag an item between two slots → moves on **both**
+Editors. Drop onto an occupied slot → snaps back. The other player is
+unaffected while your screen is open. Tune `Inventory Camera Rig`'s
+`Front Offset` and the Expanded transform values.
 
-### 🔴 Rest Point 4 — the wallet
-In `SampleScene` (mid-round): Tab, drag a loot item onto the `WalletBox`
-→ it moves in, the padlock shows. Try to drag it back out → nothing
-happens (locked). Get caught by police → in the Lobby, the wallet item
-is still there. In the `Lobby` screen: drag it out of the wallet onto a
-hotbar slot, then sell it at the Sell Station. Confirm you **can't**
-stash into the wallet while in the Lobby, and **can't** retrieve while
+### 🔴 Rest Point 3 — wallet
+Mid-round (`SampleScene`): Tab, drag a loot item onto `WalletBox` → it
+moves in, the padlock shows, dragging it back out does nothing. Get
+caught → in the Lobby the wallet item is still there. In the Lobby
+screen: drag it out onto a hotbar slot, sell it at the Sell Station.
+Confirm you **can't** stash while in the Lobby and **can't** retrieve
 mid-round.
 
----
+### 🔴 Rest Point 4 — steal
+Two Editors. A tases B. While B is down, A looks at B, presses **E** →
+A's screen opens with B's hotbar on top ("Steal from: Player 2") and
+A's own below. A drags one item from B's row onto an empty slot → it
+transfers, the screen closes, A can't take a second from that stun.
+Confirm: dragging onto a full/too-small slot takes nothing (window
+stays open); walking >6 m from B or the ~6 s window lapsing closes A's
+screen; a third player pressing E during A's screen gets nothing.
 
-## Part 4 — The victim row (SampleScene only)
-
-The steal screen is the same screen, plus the rival's hotbar shown above
-yours.
-
-1. Under the HUD Canvas, create an empty `VictimRow`. **Start disabled.**
-2. Drag a **second instance of `Assets/Prefabs/UI/Hotbar.prefab`** in as
-   a child of `VictimRow`. Position it *above* where the expanded hotbar
-   sits.
-3. On that second Hotbar instance's **Hotbar UI** component, **uncheck
-   Bind To Local Player**.
-4. On each of its 5 slot boxes: **Add Component → Inventory Drag Slot**,
-   `Kind` = **Victim Hotbar**, `Index` = `0`…`4`.
-5. Add a **TextMeshPro - Text** `VictimLabel` to `VictimRow` (e.g. above
-   the row) — the text is set at runtime to `Steal from: <name>`.
-6. Back on the **Inventory Screen UI** component, wire the fields left
-   empty in Part 3:
-   - **Victim Row** → `VictimRow`
-   - **Victim Hotbar UI** → the second Hotbar instance's `Hotbar UI`
-   - **Victim Hotbar Slots** → its 5 `InventoryDragSlot`, in order
-   - **Victim Label** → `VictimLabel`
-
-### Interact mask
-The Player needs to be a valid raycast target for `Interactor`. Confirm
-the Player prefab's body/ragdoll colliders sit on a layer included in
-the **Interactor** component's **Interactable Mask** (default is
-Everything — only an issue if you've narrowed it).
-
-### 🔴 Rest Point 5 — steal
-Two Editors. Player A tases Player B. While B is down, A looks at B and
-presses **E** — A's steal screen opens: B's hotbar on top with
-"Steal from: Player 2", A's own hotbar below. A drags one item from B's
-row onto an empty slot of their own → it transfers, the screen closes,
-and A can't take a second item from that stun. Confirm:
-- dragging onto a full/too-small slot takes nothing (window stays open);
-- B's sabotage gear can be taken too (it's their hotbar — if you decide
-  gear should be off-limits, that's a one-line change in
-  `PlayerTheftTarget.CmdStealItem`, tell me);
-- walking >6 m from B, or the ~6 s window lapsing, closes A's screen;
-- a **third** player pressing E on the same stun while A's screen is
-  open gets nothing (one thief per stun).
-
----
-
-## Part 5 — full pass
-
-Two Editors, one full round, start to finish:
-
-1. Loot a house, Tab, rearrange, drop the item you don't want (`Q`), let
-   the other player pick it up.
-2. Stash your best item in the wallet, get caught, confirm it survives
-   into the Lobby, drag it out, sell it.
-3. Stun the other player, steal one item, confirm the transfer and the
-   one-per-stun limit.
-4. Confirm none of Tab / drag / drop / steal desyncs position, camera,
-   Cash, or the hotbar between the two Editors, and that after every
-   close the cursor re-locks and movement/look come back.
+### 🔴 Rest Point 5 — full pass
+One full round, two Editors: loot → Tab → rearrange → drop the junk
+(`Q`) → other player grabs it; stash your best item, get caught, confirm
+it survives, retrieve + sell it in the Lobby; stun the other player,
+steal one item. Confirm nothing desyncs position / camera / Cash /
+hotbar, and every close re-locks the cursor and restores movement.
 
 Then tell me and it goes in `completed.md`.
 
@@ -235,12 +229,11 @@ Then tell me and it goes in `completed.md`.
 
 ## Follow-ups (tracked, not blocking)
 
-- **Swap-on-drag** for the equal-`InventorySize` case (currently
-  drag-onto-occupied just fails).
-- **Right-click a slot in the Tab screen** = quick-drop.
-- **Real Steam persona names** in the "Steal from:" label (currently
-  "Player 1 / Player 2" by join order).
-- **Auto-bank an unretrieved wallet item** at the shop phase, if that
-  feels better than it persisting.
-- **Wallet item off-limits to theft**, if playtesting says stealing gear
-  is annoying.
+- Swap-on-drag for the equal-`InventorySize` case.
+- Right-click a Tab slot = quick-drop.
+- Real Steam persona names in the "Steal from:" label (currently
+  "Player N" by join order).
+- Auto-bank an unretrieved wallet item at the shop phase, if it feels
+  better than persisting.
+- Wallet item off-limits to theft, if stealing gear plays badly (a
+  one-liner in `PlayerTheftTarget.CmdStealItem`).
