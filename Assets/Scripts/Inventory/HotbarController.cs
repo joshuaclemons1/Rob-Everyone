@@ -1,3 +1,4 @@
+using RobEveryone.Player;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -19,15 +20,21 @@ namespace RobEveryone.Inventory
     public class HotbarController : MonoBehaviour
     {
         private PlayerInventory inventory;
+        private CarryController carry;
 
         private void Awake()
         {
             inventory = GetComponent<PlayerInventory>();
+            carry = GetComponent<CarryController>();
         }
 
         private void Update()
         {
             if (!inventory.isOwned || RobEveryone.UI.InventoryScreenUI.MenuOpen) return;
+            // Hands full while carrying a body -- no slot is selected and
+            // the number keys / scroll do nothing (PlayerInventory forces
+            // SelectedSlot to -1 for the duration).
+            if (carry != null && carry.IsCarrying) return;
 
             if (Keyboard.current != null)
             {

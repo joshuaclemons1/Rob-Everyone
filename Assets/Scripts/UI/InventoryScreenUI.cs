@@ -68,6 +68,7 @@ namespace RobEveryone.UI
         private InventoryCameraRig cameraRig;
         private PlayerImpactRelay myRelay;
         private PlayerTheftTarget myTheft;
+        private CarryController myCarry;
 
         private PlayerInventory stealVictim;
         private NetworkIdentity stealVictimIdentity;
@@ -125,7 +126,9 @@ namespace RobEveryone.UI
         // ---- open / close ----------------------------------------------
 
         private bool CanOpenSelf() =>
-            fpc != null && !fpc.IsFrozen && (myRelay == null || !myRelay.IsStunned);
+            fpc != null && !fpc.IsFrozen
+            && (myRelay == null || !myRelay.IsStunned)
+            && (myCarry == null || !myCarry.IsCarrying); // hands full carrying a body
 
         private void OpenSelf()
         {
@@ -139,6 +142,7 @@ namespace RobEveryone.UI
         public void OpenSteal(PlayerInventory victim)
         {
             if (victim == null) return;
+            if (myCarry != null && myCarry.IsCarrying) return; // can't rob anyone with your hands full
             stealVictim = victim;
             stealVictimIdentity = victim.GetComponent<NetworkIdentity>();
 
@@ -373,6 +377,7 @@ namespace RobEveryone.UI
             cameraRig = p.GetComponent<InventoryCameraRig>();
             myRelay = p.GetComponent<PlayerImpactRelay>();
             myTheft = p.GetComponent<PlayerTheftTarget>();
+            myCarry = p.GetComponent<CarryController>();
         }
 
         private bool VictimStillStealable()

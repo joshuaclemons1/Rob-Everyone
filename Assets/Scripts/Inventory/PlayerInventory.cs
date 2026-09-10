@@ -90,9 +90,16 @@ namespace RobEveryone.Inventory
         public IReadOnlyList<InventorySlot?> Slots => slots;
         public IReadOnlyList<int> SlotSpanLengths => slotSpanLength;
 
+        // -1 means "no slot selected" -- the state while carrying a body
+        // (hands full, can't hold a hotbar item). Otherwise a valid head
+        // slot. Anything indexing Slots[SelectedSlot] must range-check.
         [SyncVar(hook = nameof(OnSelectedSlotChangedHook))]
         private int selectedSlot;
         public int SelectedSlot => selectedSlot;
+
+        // Remembers what was selected before a carry so it can come back
+        // when the body is dropped.
+        private int slotBeforeCarry;
 
         // A human-readable label for this player -- shown as "Rob X" /
         // "Steal from: X" in the theft flow. Set by
@@ -478,6 +485,24 @@ namespace RobEveryone.Inventory
         [Command]
         public void CmdDropSelected(Vector3 position, Quaternion rotation) =>
             DropSlot(selectedSlot, position, rotation);
+
+        // Called by CarryController when a carry starts/ends. While
+        // carrying: no slot is selected (SelectedSlot == -1) and
+        // HotbarController ignores the number keys / scroll. On release,
+        // the pre-carry selection comes back.
+        [Server]
+        public void SetCarryHold(bool held)
+        {
+            if (held)
+            {
+                if (selectedSlot >= 0) slotBeforeCarry = selectedSlot;
+                selectedSlot = -1;
+            }
+            else
+            {
+                selectedSlot = Mathf.Clamp(slotBeforeCarry, 0, SlotCount - 1);
+            }
+        }
 
         [Command]
         public void CmdSelectSlot(int index) => SelectSlot(index);

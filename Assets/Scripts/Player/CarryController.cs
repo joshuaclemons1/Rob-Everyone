@@ -1,5 +1,6 @@
 using Mirror;
 using RobEveryone.Interaction;
+using RobEveryone.Inventory;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -17,6 +18,7 @@ namespace RobEveryone.Player
     [RequireComponent(typeof(Interactor))]
     [RequireComponent(typeof(FirstPersonController))]
     [RequireComponent(typeof(PlayerRagdoll))]
+    [RequireComponent(typeof(PlayerInventory))]
     public class CarryController : NetworkBehaviour
     {
         [SerializeField] private Transform viewPoint;
@@ -37,6 +39,7 @@ namespace RobEveryone.Player
         private Interactor interactor;
         private FirstPersonController fpc;
         private PlayerRagdoll ownRagdoll;
+        private PlayerInventory ownInventory;
         private float chargeStart = -1f;
 
         private void Awake()
@@ -44,6 +47,7 @@ namespace RobEveryone.Player
             interactor = GetComponent<Interactor>();
             fpc = GetComponent<FirstPersonController>();
             ownRagdoll = GetComponent<PlayerRagdoll>();
+            ownInventory = GetComponent<PlayerInventory>();
         }
 
         private void Update()
@@ -62,6 +66,7 @@ namespace RobEveryone.Player
             fpc.CarryingSomething = carried != null;
 
             if (fpc.IsFrozen || ownRagdoll.IsRagdolling) return;
+            if (RobEveryone.UI.InventoryScreenUI.MenuOpen) return; // the Tab/steal screen owns input
 
             if (carried == null)
             {
@@ -125,6 +130,7 @@ namespace RobEveryone.Player
 
             c.ServerAttach(netIdentity);
             carried = target;
+            if (ownInventory != null) ownInventory.SetCarryHold(true); // hands full -- no hotbar item
         }
 
         [Command]
@@ -137,6 +143,7 @@ namespace RobEveryone.Player
 
             NetworkIdentity victim = carried;
             carried = null;
+            if (ownInventory != null) ownInventory.SetCarryHold(false); // restore the pre-carry selection
 
             Carryable c = victim.GetComponent<Carryable>();
             if (c != null) c.ServerDetach();

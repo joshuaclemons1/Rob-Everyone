@@ -40,7 +40,9 @@ namespace RobEveryone.Sabotage
 
         private ItemDefinition ResolveSelectedItem()
         {
-            InventorySlot? slot = inventory.Slots[inventory.SelectedSlot];
+            int i = inventory.SelectedSlot;
+            if (i < 0 || i >= PlayerInventory.SlotCount) return null; // -1 = nothing selected (e.g. carrying a body)
+            InventorySlot? slot = inventory.Slots[i];
             return slot?.Item;
         }
 

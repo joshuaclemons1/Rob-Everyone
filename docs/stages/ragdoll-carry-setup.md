@@ -13,13 +13,16 @@ then a two-Editor playtest. **Always press Play from `MainMenu`.**
 | `PlayerImpactRelay` (changed) | Player prefab | relays the throw impulse to every client. |
 | `PlayerTheftTarget` (changed) | Player prefab | **carried players can't be stolen from** — carrying is a grief/relocate toy, not strip-mining or body-passing. |
 | `FirstPersonController` (changed) | Player prefab | `CarryingSomething` kills air-control + autohop (no bhop while carrying); walk/sprint stay normal. |
-| `SabotageUseController` (changed) | Player prefab | suppressed while carrying (LMB is the throw). |
-| `Interactor` / `PickupItem` / `PlayerDropController` (changed) | Player prefab | no loot pickup or item-drop while carrying — hands full. |
+| `SabotageUseController` (changed) | Player prefab | suppressed while carrying (LMB is the throw); range-checks `SelectedSlot` now it can be `-1`. |
+| `PlayerInventory` / `HotbarController` (changed) | Player prefab | carrying forces `SelectedSlot` to `-1` (no slot selected); `1`–`5` and scroll are dead until the body is dropped, then the old slot returns. |
+| `Interactor` / `PickupItem` / `PlayerDropController` / `SellStation` (changed) | Player prefab / Lobby | no loot pickup, item-drop, or selling while carrying — hands full. |
+| `InventoryScreenUI` (changed) | Hotbar prefab | Tab won't open your own inventory or a steal screen while carrying. |
 | `RobEveryoneNetworkManager` (changed) | MainMenu | drops the body if the carrier disconnects mid-carry. |
 
 Design (from the Q&A): `E` on *any* ragdolled rival (car or sabotage);
-carrying is a light inconvenience except no bhop and you drop the body
-instantly if you're ragdolled; the body stays floppy in your hands; a
+carrying is a light inconvenience — no bhop, no hotbar item (both hands
+are on the body), and you drop it instantly if you're ragdolled; the
+body stays floppy in your hands; a
 carried player can't be stolen from and can't get up until a bit after
 being dropped/thrown; the point is relocating rivals off the exit and
 dumping them into hazards.
@@ -91,10 +94,15 @@ the map boundary.
   re-stun with a fresh sabotage hit → stealing works again.
 - A **can't bhop** while carrying (hold Space does nothing; a single
   jump is fine but builds no air speed). Walk/sprint feel normal.
+- While A carries B, **A's hotbar has no slot selected** — the
+  highlight is gone, `1`–`5` and the scroll wheel do nothing, and
+  `PlayerInventory.SelectedSlot` reads `-1`. Drop B and the slot A had
+  before the grab comes back.
 - A **can't pick up loot or drop a hotbar item** while carrying (hands
-  full — no "Take" prompt on items, `Q` does nothing). World
-  interactions (`E` on a Sell Station / Ready Spot) and hotbar
-  *selection* still work; sabotage LMB/RMB does not (that's the throw).
+  full — no "Take" prompt on items, `Q` does nothing). `E` on a **Ready
+  Spot** still works, but the **Sell Station does nothing** (no selected
+  item to hand over), and **Tab won't open** A's own inventory or a
+  steal screen. Sabotage LMB/RMB does not fire either (that's the throw).
 - A disconnects mid-carry → B drops.
 
 ### 🔴 Rest Point 5 — full pass

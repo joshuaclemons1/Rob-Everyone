@@ -1,6 +1,7 @@
 using Mirror;
 using RobEveryone.Items;
 using RobEveryone.Player;
+using RobEveryone.Shop;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -56,9 +57,10 @@ namespace RobEveryone.Interaction
                 IInteractable target = hit.collider.GetComponentInParent<IInteractable>();
                 if (target == null || !target.CanInteract) return null;
 
-                // Hands full -- can't pick loot up while carrying a body.
-                // Other interactions (Sell Station, Ready Spot) are fine.
-                if (target is PickupItem && carry != null && carry.IsCarrying) return null;
+                // Hands full while carrying a body -- can't pick loot up
+                // or sell it (no hotbar item to hand over). Ready Spot is
+                // still fine.
+                if (carry != null && carry.IsCarrying && (target is PickupItem || target is SellStation)) return null;
 
                 return target;
             }

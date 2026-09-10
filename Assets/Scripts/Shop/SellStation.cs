@@ -1,5 +1,6 @@
 using RobEveryone.Interaction;
 using RobEveryone.Inventory;
+using RobEveryone.Player;
 using UnityEngine;
 
 namespace RobEveryone.Shop
@@ -14,6 +15,10 @@ namespace RobEveryone.Shop
 
         public void Interact(GameObject interactor)
         {
+            // Can't hand loot over with your hands full carrying someone.
+            CarryController carry = interactor.GetComponent<CarryController>();
+            if (carry != null && carry.IsCarrying) return;
+
             PlayerInventory inventory = interactor.GetComponent<PlayerInventory>();
             if (inventory == null) return;
 
