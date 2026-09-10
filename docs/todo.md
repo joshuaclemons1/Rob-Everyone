@@ -6,6 +6,28 @@ docs (several of which had drifted stale — see
 [completed.md](completed.md)'s note on that). Roughly ordered by "should
 happen soon" to "later stage."
 
+## Priority order (the plan)
+
+1. **Inventory / UX** (high) — Tab inventory screen, drop-with-Q, Prison
+   Wallet slot, and the steal-window rework. Gates how looting a downed
+   player actually feels. Build guide:
+   [inventory-ux-setup.md](stages/inventory-ux-setup.md).
+2. **Finish Stage 6 Phase 2** — only the Alarm Clock build + a full
+   two-Editor Phase 2 playtest are left.
+3. **Stage 5 real Steam overlay test** — parked until a second Steam
+   account is available; not blocking anything else.
+4. **Stage 7 — full meta-game** (medium) — sabotage purchases, real
+   Jail & Bail, sabotage-spending quota.
+5. **VoIP / proximity voice chat** (medium-low) — Steam's own voice API.
+   Build guide: [voip-setup.md](stages/voip-setup.md).
+6. **Stage 8 — friend-group playtest** — depends on 1–4.
+7. **Art & audio** — more house variants (unblocks loot variety), all
+   SFX, ambient music, "Good House" tell, skin unlock-gating, HUD
+   result banner, environmental detail. Mostly Zach / asset work.
+8. **Housekeeping + code-review nits** — as they come up.
+
+Detail for each below.
+
 ## Do first — inventory / UX (high priority)
 
 This gates how looting a downed player actually feels. Stage 6's PvP
@@ -29,17 +51,18 @@ way to rearrange or drop what you end up carrying.
   later.
 - **Prison Wallet slot** — gameplay-design.md's 6th, separate inventory
   slot: holds exactly 1 item of any size/value, immune to whatever
-  happens to the other 5 when caught. Deliberately not built alongside
-  `InventorySize` (see [item-creation.md](stages/item-creation.md)) since
-  it needs its own design pass through `PoliceAI`/`RoundManager`'s catch
-  handling (what does "immune" actually do to a caught player's
-  inventory) and `SellStation` (can you sell straight out of the wallet,
-  or does it need moving to a normal slot first) -- not just a UI slot.
+  happens to the other 5 when caught. The design calls that held it up
+  (what "immune" does to a caught player's inventory; whether you can
+  sell straight out of the wallet) are settled in
+  [inventory-ux-setup.md](stages/inventory-ux-setup.md) Part 1b — wallet
+  is separate `SyncVar`s that `ResetInventory` never touches, and you
+  drag it to a hotbar slot before selling.
 - **Revisit the steal-window design** — the code-review nits at the
   bottom of this doc (theft not discriminating loot from equipped
   sabotage gear, resetting a used item's durability, the multi-attacker
-  race) are all in `PlayerTheftTarget`/`PlayerImpactRelay` and worth
-  settling in the same pass as the inventory screen.
+  race) are all in `PlayerTheftTarget`/`PlayerImpactRelay`;
+  [inventory-ux-setup.md](stages/inventory-ux-setup.md) Part 4 folds them
+  into the same pass.
 
 ## Do first — finish Stage 6 Phase 2
 
@@ -182,16 +205,15 @@ way to rearrange or drop what you end up carrying.
 - **Stage 8 — playtest with the friend group** — not started, depends on
   Stage 4-6 existing.
 - **VoIP / in-game proximity voice chat (medium-low priority)** — not
-  started, not designed yet. Steamworks.NET exposes Steam's own voice API (`SteamUser`
-  `StartVoiceRecording`/`GetVoiceData`/`DecompressVoice`), which would
-  fit naturally alongside the existing FizzySteamworks transport
-  (`stage5-steam-multiplayer.md`) without pulling in a separate
-  networking library — worth checking that route first before reaching
-  for a third-party voice SDK. Proximity (falls off/mutes with distance,
-  scoped per player like `HomeownerAI`/`PoliceAI`'s vision checks) vs.
-  always-on team-wide chat is an open design question, not just an
-  implementation one — probably worth a real design pass alongside
-  Stage 8 rather than bolting it on ad hoc.
+  started. Full build plan now written up:
+  [voip-setup.md](stages/voip-setup.md) — Steam's own voice API
+  (`SteamUser.*Voice*`, already available via the Stage 5 Steamworks.NET
+  install) captured locally, relayed as ordinary Mirror Rpcs over the
+  FizzySteamworks connection, played back through a 3D `AudioSource` on
+  each speaker's player object so distance attenuation is automatic. The
+  doc settles the design calls (proximity not team-wide, push-to-talk,
+  unreliable channel, never hear yourself); the "team channel" toggle
+  stays a Stage 8 question.
 
 ## Housekeeping
 

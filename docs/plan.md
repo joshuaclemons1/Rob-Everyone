@@ -54,7 +54,11 @@ Full stage-by-stage how-to walkthroughs (procedural reference, not status
 [stage5-steam-multiplayer.md](stages/stage5-steam-multiplayer.md),
 [item-creation.md](stages/item-creation.md) (turning
 `Assets/Art/Items/`'s 33 raw models into spawnable loot with
-size-tiered exclusion, done between Stage 4 Parts 3 and 4).
+size-tiered exclusion, done between Stage 4 Parts 3 and 4),
+[inventory-ux-setup.md](stages/inventory-ux-setup.md) (Tab inventory
+screen, drop-with-Q, Prison Wallet, steal-window rework — planned, not
+built) and [voip-setup.md](stages/voip-setup.md) (Steam proximity voice
+chat — planned, not built).
 Style/asset reference (palette, sourced packs, remaining art to-do) is in
 [art-info.md](art-info.md); UI/menu element spec is in
 [ui-design.md](stages/ui-design.md); main menu build docs are
