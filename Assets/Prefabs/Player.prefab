@@ -278,6 +278,7 @@ GameObject:
   - component: {fileID: 5108621698250719031}
   - component: {fileID: 731733168042144547}
   - component: {fileID: 2818341471729743253}
+  - component: {fileID: 4077930690409707039}
   m_Layer: 8
   m_Name: Player
   m_TagString: Untagged
@@ -561,3 +562,18 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   meleeRangeSlack: 0.5
+--- !u!114 &4077930690409707039
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4564336539568727325}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 05bb65b607262ad448f158496871337f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Sabotage.PlayerTheftTarget
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
