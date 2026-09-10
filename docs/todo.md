@@ -16,9 +16,9 @@ happen soon" to "later stage."
 3. **Held item + carry/run animations** — selected hotbar item shows in
    the character's hand; Animator gains sprint / carry-bulky /
    carry-body states.
-4. **Ragdoll deeper dive** (in progress) — player un-ragdolls too fast
-   after a car hit, then the **carry / throw ragdolled players** mechanic
-   (design + build doc).
+4. **Carry / throw ragdolled players** — un-ragdoll-too-fast bug fixed;
+   the carry mechanic is designed and written up
+   ([ragdoll-carry-setup.md](stages/ragdoll-carry-setup.md)), not built.
 5. **Finish Stage 6 Phase 2** — Alarm Clock build + full two-Editor
    Phase 2 playtest.
 6. **Stage 5 real Steam overlay test** — parked until a second Steam
@@ -90,12 +90,12 @@ Detail for each below.
   owner's controller is disabled for the whole (possibly longer)
   ragdoll regardless, so it doesn't matter if the two drift on a big
   launch. Tuning knobs on `Player Ragdoll`. Retest with a fast car hit.
-- **Carry / throw ragdolled players** (future feature) — pick up a
-  ragdolled rival (`E` while they're stunned?), carry them, move them,
-  and throw them. Networked. Ties into the steal-window and the
-  `PlayerCameraRig`/`PlayerImpactRelay` state. Not scoped yet — needs a
-  design pass (can a carried player still be stolen from? does carrying
-  slow you? what stops a griefing carry-chain?).
+- **Carry / throw ragdolled players** — designed and written up:
+  [ragdoll-carry-setup.md](stages/ragdoll-carry-setup.md). `E` on any
+  ragdolled rival to hoist them (floppy in your hands), walk them
+  around (no bhop while carrying), hold LMB to charge a throw. Carried
+  players are theft-protected and can't stand until a bit after being
+  dropped/thrown. 5 code Parts + Editor wiring, not built yet.
 
 ## Test when able
 

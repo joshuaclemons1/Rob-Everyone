@@ -58,7 +58,9 @@ size-tiered exclusion, done between Stage 4 Parts 3 and 4),
 [inventory-ux-setup.md](stages/inventory-ux-setup.md) (Tab inventory
 screen, drop-with-Q, Prison Wallet, steal-window rework — done),
 [player-feel-setup.md](stages/player-feel-setup.md) (instant jump,
-bhop/autohop, first-person visible body — code done, tuning open) and
+bhop/autohop, first-person visible body — done),
+[ragdoll-carry-setup.md](stages/ragdoll-carry-setup.md) (pick up / carry
+/ charge-throw downed players — designed, not built) and
 [voip-setup.md](stages/voip-setup.md) (Steam proximity voice chat —
 planned, not built).
 Style/asset reference (palette, sourced packs, remaining art to-do) is in
