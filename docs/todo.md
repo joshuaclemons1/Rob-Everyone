@@ -193,6 +193,17 @@ happen soon" to "later stage."
   design.
 - **Stage 8 — playtest with the friend group** — not started, depends on
   Stage 4-6 existing.
+- **VoIP / in-game proximity voice chat** — not started, not designed
+  yet. Steamworks.NET exposes Steam's own voice API (`SteamUser`
+  `StartVoiceRecording`/`GetVoiceData`/`DecompressVoice`), which would
+  fit naturally alongside the existing FizzySteamworks transport
+  (`stage5-steam-multiplayer.md`) without pulling in a separate
+  networking library — worth checking that route first before reaching
+  for a third-party voice SDK. Proximity (falls off/mutes with distance,
+  scoped per player like `HomeownerAI`/`PoliceAI`'s vision checks) vs.
+  always-on team-wide chat is an open design question, not just an
+  implementation one — probably worth a real design pass alongside
+  Stage 8 rather than bolting it on ad hoc.
 
 ## Housekeeping
 
