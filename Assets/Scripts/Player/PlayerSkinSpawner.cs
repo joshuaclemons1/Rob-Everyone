@@ -23,12 +23,16 @@ namespace RobEveryone.Player
         [SerializeField] private PlayerColorPalette palette;
         [SerializeField] private LayerMask skinLayer;
         // On the owner's own copy only, these bones get scaled to zero so
-        // the first-person camera (which now renders your body -- it's
-        // not a floating nothing, and it's the anchor for the future
-        // "held hotbar item in your hands") doesn't clip through your own
-        // head. Every other client's copy of you keeps the full model.
-        // Exact bone-name match; the Quaternius rig calls it "Head".
-        [SerializeField] private string[] firstPersonHiddenBones = { "Head", "Head_end" };
+        // the first-person camera (which renders your body now -- it's not
+        // a floating nothing, and it's the anchor for the future "held
+        // hotbar item in your hands") doesn't clip through your own model.
+        // Grounded = just the head (you can still look down and see your
+        // torso/arms/legs); airborne = the whole upper body too, since
+        // the jump animation's spring pushes it into the camera. Every
+        // other client's copy of you keeps the full model. Exact
+        // bone-name match; Quaternius names them Head / Torso.
+        [SerializeField] private string[] firstPersonHiddenBonesGrounded = { "Head", "Head_end" };
+        [SerializeField] private string[] firstPersonHiddenBonesAirborne = { "Head", "Head_end", "Torso" };
         // Shared across every skin -- only BaseCharacter.fbx actually has
         // baked-in clips (Idle/Walk/Run/Jump/etc.), the other 51 are bare
         // meshes on the *identical* Generic rig topology, so one
@@ -101,14 +105,15 @@ namespace RobEveryone.Player
             WidenSkinnedMeshBounds(SkinInstance.transform);
             ConfigureAnimator(SkinInstance.transform);
 
-            // Owner-only: trim the head so first person isn't a floating
-            // camera and doesn't clip through the model. isOwned is
-            // reliable here -- the owner path (OnStartLocalPlayer) always
-            // has it true, and the remote path (OnCosmeticsChanged) is
-            // guarded to non-owners.
-            if (isOwned && firstPersonHiddenBones != null && firstPersonHiddenBones.Length > 0)
+            // Owner-only: trim the head (and, airborne, the upper body)
+            // so first person isn't a floating camera and doesn't clip
+            // through the model. isOwned is reliable here -- the owner
+            // path (OnStartLocalPlayer) always has it true, the remote
+            // path (OnCosmeticsChanged) is guarded to non-owners.
+            if (isOwned)
             {
-                SkinInstance.AddComponent<FirstPersonBodyTrim>().Apply(SkinInstance.transform, firstPersonHiddenBones);
+                SkinInstance.AddComponent<FirstPersonBodyTrim>()
+                    .Apply(SkinInstance.transform, firstPersonHiddenBonesGrounded, firstPersonHiddenBonesAirborne);
             }
 
             PlayerColorizer colorizer = SkinInstance.GetComponent<PlayerColorizer>();
@@ -180,8 +185,8 @@ namespace RobEveryone.Player
 
         // Every skin (yours and everyone else's) goes on the ordinary
         // always-rendered Default layer now -- your own body is meant to
-        // be visible in first person (head trimmed, see
-        // firstPersonHiddenBones). `skinLayer` is kept as a field for
+        // be visible in first person (trimmed, see FirstPersonBodyTrim).
+        // `skinLayer` is kept as a field for
         // PlayerRagdoll/PlayerCameraRig's culling-mask toggle, which is
         // now a harmless no-op since Default is always in the mask
         // anyway; left in place rather than ripping it out of two other

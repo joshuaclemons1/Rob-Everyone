@@ -236,6 +236,11 @@ Beyond the current walk + mouse-look (`FirstPersonController.cs`):
   ceiling reward, not a menu-toggle ability — the "drawback" is inherent
   (it requires making the noise of sprinting/jumping repeatedly, so it's
   not stealthy), so it's a genuine tradeoff rather than a free upgrade.
+  There *is* a hard speed ceiling (`FirstPersonController.maxAirSpeed`,
+  ~2x sprint) — air-strafing keeps redirecting your momentum but can't
+  push past it, so a good bhopper is fast-and-slippery, not
+  uncatchable. Holding Space auto-jumps on landing so the timing isn't a
+  frame-perfect chore.
 
 ## Map & player scaling
 

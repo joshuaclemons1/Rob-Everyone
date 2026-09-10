@@ -49,6 +49,10 @@ namespace RobEveryone.Player
         // Movement section: a skill-ceiling reward, not a menu toggle).
         [SerializeField] private float airAcceleration = 100f;
         [SerializeField] private float airWishSpeed = 1.0f;
+        // Hard ceiling on horizontal speed -- air-strafing can't push you
+        // past this. ~2x sprint reads as "clearly bhopping" without
+        // getting silly. Set very high to remove the cap.
+        [SerializeField] private float maxAirSpeed = 16f;
 
         private CharacterController controller;
         private float verticalVelocity;
@@ -275,6 +279,13 @@ namespace RobEveryone.Player
                 {
                     float accelSpeed = Mathf.Min(airAcceleration * airWishSpeed * Time.deltaTime, addSpeedCap);
                     horizontalVelocity += wishDir * accelSpeed;
+                }
+
+                // Hard ceiling -- air-strafing keeps redirecting your
+                // velocity but can't push the magnitude past this.
+                if (horizontalVelocity.sqrMagnitude > maxAirSpeed * maxAirSpeed)
+                {
+                    horizontalVelocity = horizontalVelocity.normalized * maxAirSpeed;
                 }
             }
 

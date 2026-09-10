@@ -16,18 +16,23 @@ Mostly code. The Editor side is a handful of Inspector values on the
 - **Autohop.** `First Person Controller` → **Hold To Auto Hop** (default
   on): holding Space re-jumps the instant you land. Turn it off for
   jump-only-on-press.
-- **CS-style air control.** `Air Acceleration` `100`, `Air Wish Speed`
-  `1.0` (was `12` / `3`). The tight wish-speed cap is the point —
-  holding W in the air doesn't accelerate you; you gain speed by
-  air-strafing (turn the view while holding a strafe key). Ground
-  friction is skipped on the jump frame, so a clean bhop keeps its
-  speed straight through the hop. No total-speed cap, by design.
-- **First-person visible body, head trimmed.** Your own skin renders now
+- **CS-style air control, with a speed ceiling.** `Air Acceleration`
+  `100`, `Air Wish Speed` `1.0` (was `12` / `3`). The tight wish-speed
+  cap is the point — holding W in the air doesn't accelerate you; you
+  gain speed by air-strafing (turn the view while holding a strafe key).
+  Ground friction is skipped on the jump frame so a clean bhop keeps its
+  speed through the hop. **`Max Air Speed`** (`16`, ~2x sprint) is a
+  hard ceiling — air-strafing keeps redirecting momentum but can't push
+  past it.
+- **First-person visible body, trimmed.** Your own skin renders now
   (it's not a floating camera, and it's the anchor for the future
-  held-hotbar-item-in-hands). On *your* copy only, the head bone is
-  scaled to zero so the camera doesn't clip through it — every other
-  client sees your full model. New `FirstPersonBodyTrim` component,
-  added at runtime by `PlayerSkinSpawner`.
+  held-hotbar-item-in-hands). On *your* copy only, `FirstPersonBodyTrim`
+  (added at runtime by `PlayerSkinSpawner`) scales bones to zero:
+  **grounded** just the head (look down, see your torso/arms/legs);
+  **airborne** the whole upper body too (the jump spring pushes it into
+  the camera otherwise). It restores everything while the camera is cut
+  away (Tab / steal screen, ragdoll stun show a full third-person view).
+  Every other client sees the complete model.
 
 ## Editor
 
@@ -39,14 +44,17 @@ Mostly code. The Editor side is a handful of Inspector values on the
      feel. Lower Air Wish Speed = harder to gain speed; higher = easier
      (too high and holding W just accelerates you, which kills the
      skill element).
+   - **Max Air Speed** `16` — the hard bhop ceiling. Raise/lower to
+     taste; set huge to uncap.
    - **Jump Height** — unchanged; the animation follows it now.
 2. **Player Animation Driver** — **Jump Anticipation Fraction**: `0` for
    no squat, or leave at `0.2` and accept the squat plays mid-rise.
-3. **Player Skin Spawner** — new **First Person Hidden Bones** array,
-   pre-filled with `Head` and `Head_end` (the Quaternius bone names).
-   If a skin's head bone is named differently, add it here —
-   `FirstPersonBodyTrim` logs a warning naming the skin if nothing
-   matched.
+3. **Player Skin Spawner** — two arrays, **First Person Hidden Bones
+   Grounded** (`Head`, `Head_end`) and **... Airborne** (`Head`,
+   `Head_end`, `Torso`). If a skin's bones are named differently, add
+   them — `FirstPersonBodyTrim` logs a warning naming the skin if
+   nothing matched. If the airborne collapse looks bad, try just
+   `Torso`, or swap it for `Neck` + `Shoulder.L`/`Shoulder.R`.
 4. No layer changes. The owner's skin is on **Default** now like
    everyone else's (`skinLayer` is kept only for `PlayerRagdoll`/
    `PlayerCameraRig`'s now-no-op culling toggle).
