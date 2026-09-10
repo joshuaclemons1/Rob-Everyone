@@ -1,3 +1,4 @@
+using System.Collections;
 using Mirror;
 using UnityEngine;
 
@@ -22,21 +23,40 @@ namespace RobEveryone.Player
     {
         private PlayerRagdoll ragdoll;
 
+        // Server-queryable "is this player currently stunned" flag --
+        // PlayerRagdoll can't hold this itself (plain MonoBehaviour, no
+        // SyncVar), but sabotage systems need to check it server-side
+        // (e.g. don't stack a second stun on an already-stunned target).
+        [field: SyncVar]
+        public bool IsStunned { get; private set; }
+
         private void Awake()
         {
             ragdoll = GetComponent<PlayerRagdoll>();
         }
 
         [Server]
-        public void ServerApplyImpact(Vector3 direction, float force)
+        public void ServerApplyImpact(Vector3 direction, float force) => ServerApplyImpact(direction, force, ragdoll.DefaultStunDuration);
+
+        [Server]
+        public void ServerApplyImpact(Vector3 direction, float force, float duration)
         {
-            RpcApplyImpact(direction, force);
+            if (IsStunned) return; // no stacking a second hit on top of an active stun
+            IsStunned = true;
+            RpcApplyImpact(direction, force, duration);
+            StartCoroutine(ClearStunnedAfter(duration));
+        }
+
+        private IEnumerator ClearStunnedAfter(float duration)
+        {
+            yield return new WaitForSeconds(duration);
+            IsStunned = false;
         }
 
         [ClientRpc]
-        private void RpcApplyImpact(Vector3 direction, float force)
+        private void RpcApplyImpact(Vector3 direction, float force, float duration)
         {
-            ragdoll.ApplyImpact(direction, force);
+            ragdoll.ApplyImpact(direction, force, duration);
         }
     }
 }

@@ -2,6 +2,14 @@ using UnityEngine;
 
 namespace RobEveryone.Items
 {
+    // None = ordinary loot, no use-behavior. Melee = swing at a target in
+    // range (Taser). Thrown = launched as a physics projectile
+    // (SabotageProjectile) that detonates after a fuse -- BlastRadius > 0
+    // makes it AOE (Dynamite), BlastRadius == 0 would be a single-target
+    // hit on landing. Deliberately not a separate enum value for AOE vs.
+    // single-target thrown -- that's just data on the same Thrown path.
+    public enum SabotageType { None, Melee, Thrown }
+
     // One entry in the loot catalog -- name, sell value, hotbar icon, and
     // a reference to the world model/prefab it uses. Create one asset per
     // item type (Assets/Data/Items/ -- right-click -> Create -> Rob
@@ -30,11 +38,28 @@ namespace RobEveryone.Items
         // slot-finding logic is written to handle.
         [SerializeField, Min(1)] private int inventorySize = 1;
 
+        [Header("Sabotage (leave Type as None for regular loot)")]
+        [SerializeField] private SabotageType sabotageType = SabotageType.None;
+        [SerializeField] private float stunDuration = 2f;
+        [SerializeField] private float impactForce = 40f;
+        [SerializeField] private float cooldownSeconds = 0f; // 0 = no recharge needed
+        [SerializeField] private float range = 2.5f; // melee reach
+        [SerializeField] private float blastRadius = 0f; // >0 = AOE on landing (Dynamite); 0 = single-target
+        [SerializeField] private GameObject thrownProjectilePrefab; // only used when SabotageType == Thrown
+
         public string ItemName => itemName;
         public int Value => value;
         public Sprite Icon => icon;
         public GameObject WorldModelPrefab => worldModelPrefab;
         public Vector3 WorldModelScale => worldModelScale;
         public int InventorySize => Mathf.Max(1, inventorySize);
+
+        public SabotageType SabotageType => sabotageType;
+        public float StunDuration => stunDuration;
+        public float ImpactForce => impactForce;
+        public float CooldownSeconds => cooldownSeconds;
+        public float Range => range;
+        public float BlastRadius => blastRadius;
+        public GameObject ThrownProjectilePrefab => thrownProjectilePrefab;
     }
 }

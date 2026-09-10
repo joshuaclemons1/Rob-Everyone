@@ -36,7 +36,8 @@ namespace RobEveryone.Player
     [RequireComponent(typeof(PlayerSkinSpawner))]
     public class PlayerRagdoll : MonoBehaviour
     {
-        [SerializeField] private float stunDuration = 2f;
+        [SerializeField] private float defaultStunDuration = 2f;
+        public float DefaultStunDuration => defaultStunDuration;
 
         [Header("Third-person ragdoll view")]
         [SerializeField] private Transform cameraTransform;
@@ -425,14 +426,16 @@ namespace RobEveryone.Player
             return null;
         }
 
-        public void ApplyImpact(Vector3 direction, float force)
+        public void ApplyImpact(Vector3 direction, float force) => ApplyImpact(direction, force, defaultStunDuration);
+
+        public void ApplyImpact(Vector3 direction, float force, float duration)
         {
             if (!initialized) TryInitializeRagdoll();
             if (isStunned || hipsRigidbody == null) return;
-            StartCoroutine(ImpactSequence(direction, force));
+            StartCoroutine(ImpactSequence(direction, force, duration));
         }
 
-        private IEnumerator ImpactSequence(Vector3 direction, float force)
+        private IEnumerator ImpactSequence(Vector3 direction, float force, float duration)
         {
             isStunned = true;
 
@@ -449,7 +452,7 @@ namespace RobEveryone.Player
             BeginThirdPersonView(rigYaw);
 
             float elapsed = 0f;
-            while (elapsed < stunDuration)
+            while (elapsed < duration)
             {
                 UpdateThirdPersonView();
                 UpdateBridgeBones();
@@ -460,8 +463,15 @@ namespace RobEveryone.Player
             EndThirdPersonView();
             EndRagdoll();
 
-            characterController.enabled = true;
-            firstPersonController.enabled = true;
+            // Don't hand control back if police froze this player while
+            // they were mid-stun -- IsFrozen is the source of truth for
+            // "should this player be able to act right now," so the stun
+            // ending shouldn't silently override it.
+            if (!firstPersonController.IsFrozen)
+            {
+                characterController.enabled = true;
+                firstPersonController.enabled = true;
+            }
             if (animator != null) animator.enabled = true;
 
             isStunned = false;

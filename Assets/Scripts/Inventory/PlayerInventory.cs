@@ -214,6 +214,25 @@ namespace RobEveryone.Inventory
             return true;
         }
 
+        // Consumes a used item (e.g. a thrown Dynamite) -- clears the head
+        // slot and, like AddItem, its whole continuation span so a bulky
+        // item's used-up slots don't stay stuck occupied. Server-only:
+        // called from SabotageUseController's Command, never directly by
+        // a client.
+        [Server]
+        public bool RemoveSlot(int headIndex)
+        {
+            if (headIndex < 0 || headIndex >= SlotCount) return false;
+            if (string.IsNullOrEmpty(slotItemNames[headIndex]) || slotItemNames[headIndex] == ContinuationMarker) return false;
+
+            slotItemNames[headIndex] = string.Empty;
+            for (int i = headIndex + 1; i < SlotCount && slotItemNames[i] == ContinuationMarker; i++)
+            {
+                slotItemNames[i] = string.Empty;
+            }
+            return true;
+        }
+
         [Command]
         public void CmdSelectSlot(int index) => SelectSlot(index);
 

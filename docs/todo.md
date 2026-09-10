@@ -127,8 +127,34 @@ happen soon" to "later stage."
   invite test (Rest Point 4) still needs a second Steam account — see
   the top of this doc's "In progress" section.
 - **Stage 6 — sabotage items** — taser, hammer, alarm clock, bat,
-  networked. Not started (Stage 4/5's networking foundation is now
-  ready for this).
+  tranquilizer gun, dynamite (AOE stun/ragdoll). **Assets done**: all 6
+  have a prefab (`NetworkIdentity`/`PickupItem`/fitted collider) +
+  `ItemDefinition` (scale tuned, in `ItemCatalog`, registered as
+  Spawnable Prefabs) — mechanically real, spawnable, pick-up-able,
+  networked. Hammer's role is decided: dual-mode like the Bat but also
+  throwable, same durability pool either way (see `gameplay-design.md`).
+  **Phase 1 code landed**: `ItemDefinition` gained a `SabotageType`
+  (Melee/Thrown) plus stun/force/cooldown/range/blastRadius/projectile
+  fields; `PlayerRagdoll`/`PlayerImpactRelay` now take a configurable
+  stun duration and `PlayerImpactRelay.IsStunned` is a real server-synced
+  flag (also fixes a bug where a police-frozen player mid-stun could get
+  control handed back early); new `Assets/Scripts/Sabotage/` folder
+  (`SabotageUseController`, `SabotageProjectile`) wires left-click to
+  melee/throw. Taser and Dynamite are the 2 items wired through this
+  path end to end. **Still needed before this is playable**: the Editor
+  half, written up step by step in
+  [stage6-sabotage-items-setup.md](stages/stage6-sabotage-items-setup.md)
+  (add `SabotageUseController` to the Player prefab, tune Taser/
+  Dynamite's new sabotage fields, build the `DynamiteProjectile.prefab`
+  and register it in `NetworkManager`'s Spawnable Prefabs, hand-place
+  test pickups) plus actual two-Editor playtesting — none of that has
+  been done yet. Bat/Hammer/Tranquilizer
+  Gun/the PvP steal-window/Alarm Clock framing are Phase 2, not started
+  (Hammer's thrown-and-retrievable mode and Bat/Hammer/Tranq Gun's
+  durability/ammo all need a new "remaining uses per slot" concept that
+  doesn't exist yet). See [item-creation.md](stages/item-creation.md)'s
+  Section 4b for the asset pipeline and `gameplay-design.md`'s Sabotage
+  items section for each item's intended numbers.
 - **Stage 7 — full meta-game** — the v1 shop/lobby loop and batch economy
   above are a deliberately scoped-down slice. Still missing: sabotage
   purchases, real Jail & Bail (rescue/bond/self-bail), the personal

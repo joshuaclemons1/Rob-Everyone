@@ -293,6 +293,26 @@ once Stage 4 testing starts, this is the first thing to check.
 
 ---
 
+## 4b. Sabotage items — same tool, separate menu command
+
+`ItemPrefabBatchTool.cs` also has **`Rob Everyone → Batch Create
+Sabotage Items`**, a second `[MenuItem]` sharing all the same prefab/
+`ItemDefinition` creation logic as Section 4 above, but reading from a
+separate `SabotageItems` array instead of `Items`. Source models live in
+the same flat `Assets/Art/Items/` folder (including `.glb` now, not just
+`.fbx`/`.obj` — `FindSourceModel` checks all three extensions).
+
+**These are not loot** — gameplay-design.md's Sabotage items section
+describes shop-purchased/PvP-won tools (taser, hammer, bat, alarm
+clock), not things found lying in a house. Do **not** drag any of these
+into `LootTable_Small`/`_Medium`/`_Large`. The batch tool only builds
+the mechanical pieces (prefab + `ItemDefinition`, same as any loot item)
+— actual sabotage behavior (stun, PvP theft window, durability,
+recharge, the alarm clock's environmental trigger) is separate, not-yet-
+built Stage 6 gameplay code. Values assigned are rough placeholders,
+since gameplay-design.md's own "Open questions" leaves sabotage pricing
+undecided.
+
 ## 5. Test
 
 Once at least a few items from each size tier are wired up: play a round,

@@ -113,8 +113,48 @@ namespace RobEveryone.EditorTools
             new("Safe", "Safe", 250, 5), // the whole inventory, on purpose -- the jackpot item
         };
 
+        // Sabotage tools (gameplay-design.md's Sabotage items section), not
+        // loot -- deliberately kept out of the Items array/menu command
+        // above and MUST NOT be dragged into any LootTable_Small/Medium/
+        // Large. These are meant to be shop-purchased (Stage 7's actual
+        // shop UI doesn't exist yet) or won as PvP theft, never randomly
+        // found in a house alongside a laptop or a watch. Values below are
+        // rough placeholders -- gameplay-design.md's own "Open questions"
+        // section explicitly leaves "sabotage item numeric tuning...
+        // prices" undecided; real stun duration/recharge/durability/
+        // single-use mechanics are Stage 6 work, not built by this tool.
+        private static readonly ItemSpec[] SabotageItems =
+        {
+            new("AlarmClock", "Alarm Clock", 15),
+            new("Hammer_01", "Hammer", 25),
+            new("Baseball", "Baseball Bat", 30),
+            new("TaserX26", "Taser", 50),
+            // Ranged, limited-ammo alternative to the melee Taser --
+            // 1-2 shots (no recharge, unlike Taser), much longer 30-45s
+            // stun. Higher value reflects that rarity/power. See
+            // gameplay-design.md's Sabotage items section for the numbers.
+            new("Pistol_02", "Tranquilizer Gun", 120),
+            // AOE PvP -- stuns/ragdolls every player caught in its blast
+            // radius, not just one target like the Taser/Tranquilizer Gun.
+            // Highest value here on purpose: hitting multiple rivals at
+            // once is the most powerful effect any current sabotage item
+            // has. See gameplay-design.md's Sabotage items section.
+            new("Dynamite", "Dynamite", 150),
+        };
+
         [MenuItem("Rob Everyone/Batch Create Loot Items")]
         public static void RunBatch()
+        {
+            RunBatchInternal(Items, "Loot");
+        }
+
+        [MenuItem("Rob Everyone/Batch Create Sabotage Items")]
+        public static void RunSabotageBatch()
+        {
+            RunBatchInternal(SabotageItems, "Sabotage");
+        }
+
+        private static void RunBatchInternal(ItemSpec[] items, string label)
         {
             EnsureFolder(PrefabOutputFolder);
             EnsureFolder(ItemDefinitionOutputFolder);
@@ -124,7 +164,7 @@ namespace RobEveryone.EditorTools
             int skipped = 0;
             int failed = 0;
 
-            foreach (ItemSpec spec in Items)
+            foreach (ItemSpec spec in items)
             {
                 try
                 {
@@ -140,7 +180,7 @@ namespace RobEveryone.EditorTools
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
-            Debug.Log($"ItemPrefabBatchTool: {prefabsCreated} prefabs created, {itemDefsCreated} ItemDefinitions created, {skipped} already existed (skipped), {failed} failed. Check the Console above for exactly which, if any, failed.");
+            Debug.Log($"ItemPrefabBatchTool ({label}): {prefabsCreated} prefabs created, {itemDefsCreated} ItemDefinitions created, {skipped} already existed (skipped), {failed} failed. Check the Console above for exactly which, if any, failed.");
         }
 
         private static void ProcessItem(ItemSpec spec, ref int prefabsCreated, ref int itemDefsCreated, ref int skipped)
@@ -297,7 +337,7 @@ namespace RobEveryone.EditorTools
         // above) instead of silently picking the wrong thing.
         private static GameObject FindSourceModel(string fileNameWithoutExtension)
         {
-            foreach (string ext in new[] { "fbx", "obj" })
+            foreach (string ext in new[] { "fbx", "obj", "glb" })
             {
                 string path = $"{SourceFolder}/{fileNameWithoutExtension}.{ext}";
                 GameObject asset = AssetDatabase.LoadAssetAtPath<GameObject>(path);

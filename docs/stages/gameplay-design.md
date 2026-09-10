@@ -147,9 +147,30 @@ item should have both a **benefit and a drawback**, e.g.:
   uses).
 - Alarm Clock — environmental, frames a rival via a nearby Homeowner, but
   is **single-use**.
-- Hammer — could be PvP or environmental (e.g. breaking a shortcut) —
-  exact role still open, pick whichever creates the least overlap with
-  the other three once the full tier list is drafted.
+- Hammer — direct PvP, similar to the Bat (knockout-tier, limited
+  **durability**), but **dual-mode**: swing it as a melee hit like the
+  Bat, or throw it at a player for a ranged hit instead. Same durability
+  pool either way (a thrown Hammer that lands still counts a use, and can
+  be picked back up and thrown/swung again until it breaks). The
+  melee-vs-ranged choice is the differentiator from the Bat, not a
+  separate power tier.
+- Tranquilizer Gun — ranged PvP stun, ~30-45 seconds (much longer than
+  the Taser's "quick" stun), but only carries **1-2 shots and doesn't
+  recharge** — a rare, high-impact tool rather than a repeatable one like
+  the Taser. Deliberately *not* a lethal weapon — stun only, matching the
+  non-lethal tone of every other PvP item here.
+- Dynamite — direct PvP, but **AOE**: stuns and ragdolls **every player**
+  caught in its blast radius, not just one target like the Taser/
+  Tranquilizer Gun (an actual explosive, unlike every other item here —
+  the ragdoll reaction should read as a knockdown/blast-throw, not
+  anything graphic, matching the non-lethal tone the rest of the tier
+  keeps). Ragdoll duration is *extended* — longer than a car impact's
+  stun (`PlayerRagdoll.cs`'s existing `stunDuration`), closer to the
+  Tranquilizer Gun's 30-45s range. Highest-value item in this tier so
+  far, given it's the only one that can hit multiple rivals in one use.
+  (Supersedes an earlier "Firecracker" concept for this same slot — an
+  alarm-triggering environmental item instead of an AOE PvP one — dropped
+  once a dynamite model was sourced instead.)
 
 Exact full item list, tier breakdown, and numeric tuning (stun duration,
 recharge times, prices) are **not decided yet** — this is a placeholder
