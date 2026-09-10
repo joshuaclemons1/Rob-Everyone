@@ -104,6 +104,11 @@ background, ghost) stays put.
    background Image needs **Raycast Target ON**.
 5. Change the `Inventory Drag Slot` it copied over: `Kind` = **My
    Wallet**, `Index` `-1`.
+   Make it *read* as separate from the 5 hotbar slots (nothing touches
+   its background at runtime, so this sticks): a small gap after `Slot4`,
+   plus an **Outline** component on its Image (accent colour, e.g. gold
+   `#E8B84B`, `Effect Distance` `(3, -3)`) and/or a faint warm tint on
+   the Image `Color`.
 6. Two small child **Image** objects on `WalletBox` (both start
    disabled), positioned in a corner:
    - **`LockedIcon`** — Image, `Source Image` = `Assets/Art/UI/Icon_Lock`
