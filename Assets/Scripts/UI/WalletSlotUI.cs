@@ -8,24 +8,31 @@ namespace RobEveryone.UI
     // The always-visible Prison Wallet box on the HUD, next to the
     // hotbar. Shows what's vaulted (gameplay-design.md's "carry slots
     // readout") so you don't need Tab open to know what you'd keep if
-    // caught. The box itself is a HotbarSlotUI (same 3D-model preview as
-    // a hotbar slot) which this just feeds; put an InventoryDragSlot
-    // (Kind = MyWallet) on the same GameObject for the drag half.
+    // caught.
+    //
+    // The box IS a hotbar slot box -- it must be built by duplicating a
+    // Slot so it comes with a fully-wired HotbarSlotUI (model preview
+    // stage + text refs). This just feeds that HotbarSlotUI the wallet
+    // item; put an InventoryDragSlot (Kind = MyWallet) on the same
+    // GameObject for the drag half.
     //
     // Locked indicator: once something's in the wallet during a gameplay
-    // round it can't be swapped out until the shop phase -- the lock icon
-    // makes that legible rather than the drag just silently failing.
+    // round it can't be swapped out until the shop phase -- the lock
+    // object makes that legible rather than the drag just silently
+    // failing. It's any small child object you make (an Image, or a TMP
+    // set to a padlock glyph) -- nothing to download.
     [RequireComponent(typeof(HotbarSlotUI))]
     public class WalletSlotUI : MonoBehaviour
     {
-        [SerializeField] private HotbarSlotUI display;   // usually this same GameObject's HotbarSlotUI
-        [SerializeField] private GameObject lockedIcon;  // shown when filled during a gameplay round
+        [SerializeField] private GameObject lockedIcon;
 
+        private HotbarSlotUI display;
         private PlayerInventory inventory;
 
         private void Awake()
         {
-            if (display == null) display = GetComponent<HotbarSlotUI>();
+            display = GetComponent<HotbarSlotUI>(); // always this box's own
+            if (lockedIcon != null) lockedIcon.SetActive(false);
         }
 
         private void Start()
@@ -53,12 +60,10 @@ namespace RobEveryone.UI
 
         private void Update()
         {
-            // Lock state depends on the round phase, not a wallet event.
-            if (inventory != null && lockedIcon != null)
-            {
-                bool inRound = GameFlowManager.Instance != null && GameFlowManager.Instance.InGameplayScene;
-                lockedIcon.SetActive(inventory.WalletFilled && inRound);
-            }
+            if (lockedIcon == null || inventory == null) return;
+
+            bool inRound = GameFlowManager.Instance != null && GameFlowManager.Instance.InGameplayScene;
+            lockedIcon.SetActive(inventory.WalletFilled && inRound);
         }
 
         private void Refresh()

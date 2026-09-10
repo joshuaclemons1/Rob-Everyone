@@ -70,6 +70,7 @@ namespace RobEveryone.UI
 
         private PlayerInventory stealVictim;
         private NetworkIdentity stealVictimIdentity;
+        private Canvas ghostCanvas;
 
         private void Awake()
         {
@@ -322,7 +323,23 @@ namespace RobEveryone.UI
 
         public void MoveGhost(Vector2 screenPos)
         {
-            if (dragGhost != null && dragGhost.gameObject.activeSelf) dragGhost.position = screenPos;
+            if (dragGhost == null || !dragGhost.gameObject.activeSelf) return;
+
+            // Screen-Space-Camera canvases (this HUD is one) need the
+            // screen point converted through the canvas camera -- a raw
+            // world-space assignment would drop the ghost at Z=0 in the
+            // world, nowhere near the cursor.
+            Canvas canvas = ghostCanvas != null ? ghostCanvas : (ghostCanvas = dragGhost.GetComponentInParent<Canvas>());
+            RectTransform parent = dragGhost.parent as RectTransform;
+            if (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay && canvas.worldCamera != null && parent != null)
+            {
+                if (RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, screenPos, canvas.worldCamera, out Vector2 local))
+                    dragGhost.localPosition = local;
+            }
+            else
+            {
+                dragGhost.position = screenPos;
+            }
         }
 
         public void EndGhost()

@@ -74,6 +74,7 @@ namespace RobEveryone.UI
         {
             currentSpinSpeed = normalSpinSpeed;
             if (modelImage != null) BuildPreviewStage();
+            else Debug.LogWarning($"HotbarSlotUI on '{name}' has no Model Image assigned -- it can't show the spinning item preview. If this is a duplicated slot (e.g. the wallet box), re-point its Model Image / Item Text / Uses Text at its own children.", this);
 
             rectTransform = GetComponent<RectTransform>();
             baseAnchoredX = rectTransform.anchoredPosition.x;

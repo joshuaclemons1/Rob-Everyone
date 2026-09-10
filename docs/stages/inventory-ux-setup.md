@@ -95,19 +95,22 @@ background, ghost) stays put.
 
 ### 2b. The wallet box
 
-4. **Duplicate `Slot0`** (Ctrl/Cmd+D), drag the copy to be the last
-   child of `SlotRow`, rename it **`WalletBox`**. Position it just past
-   `Slot4` with a small gap so it reads as a separate 6th slot. It keeps
-   the `Hotbar Slot UI` from the duplicate — that's the point: the
-   wallet shows the same spinning 3D model preview as a hotbar slot.
-   Its background Image needs **Raycast Target ON**.
-5. Remove the `Inventory Drag Slot` the duplicate came with and re-add
-   it (or just change it): `Kind` = **My Wallet**, `Index` `-1`.
-6. Add a small **padlock** child object `LockedIcon` (shown while the
-   wallet is filled *and* you're mid-round).
-7. On `WalletBox`: **Add Component → Wallet Slot UI** → wire **Display**
-   = this same GameObject's `Hotbar Slot UI`, **Locked Icon** =
-   `LockedIcon`.
+4. **Duplicate `Slot0`** (Ctrl/Cmd+D) — *don't* build this from a plain
+   Image; it has to carry a fully-wired `Hotbar Slot UI` (its
+   `Model Image`, `Item Text`, `Uses Text` fields pointing at its own
+   children — automatic on a duplicate) or the model preview won't
+   render. Drag the copy to be the last child of `SlotRow`, rename it
+   **`WalletBox`**, position it just past `Slot4` with a small gap. Its
+   background Image needs **Raycast Target ON**.
+5. Change the `Inventory Drag Slot` it copied over: `Kind` = **My
+   Wallet**, `Index` `-1`.
+6. Add a **`LockedIcon`** child — any small object shown while the
+   wallet is filled *and* you're mid-round. **Nothing to download**: a
+   `TextMeshPro - Text` set to `🔒` (or `LOCKED`), or an `Image` with any
+   lock-ish sprite, or even a small tinted square. Start it disabled.
+7. On `WalletBox`: **Add Component → Wallet Slot UI** → wire **Locked
+   Icon** = `LockedIcon`. (It finds its own `Hotbar Slot UI` — no
+   Display field to wire.)
 
 ### 2c. Drag components on the 5 slots
 
@@ -123,14 +126,15 @@ background, ghost) stays put.
    renders behind everything else. **Disable it** (uncheck the
    GameObject).
 10. Create a child of **`Hotbar`** (root) named **`DragGhost`** — an
-    empty RectTransform (~72×72), **last** child of `Hotbar`.
-    **Disable it.** Under it:
+    empty RectTransform, **~140×140** (make it big enough to actually
+    read while dragging), **last** child of `Hotbar`. **Disable it.**
+    Under it:
     - **`GhostImage`** — a **Raw Image** filling `DragGhost` (shows the
       dragged item's live spinning model). **Raycast Target OFF.**
-    - **`GhostLabel`** — a **TextMeshPro - Text**, centered, small font,
+    - **`GhostLabel`** — a **TextMeshPro - Text**, centered,
       **Raycast Target OFF**. Only shows for an item with no model, so
-      it'll rarely appear — but keep it from overlapping `GhostImage`
-      (put it below, or just accept it's hidden most of the time).
+      it'll rarely appear — put it below `GhostImage` or accept it's
+      hidden most of the time.
 
 ### 2e. The victim row (for steal mode)
 
