@@ -13,9 +13,12 @@ happen soon" to "later stage."
 2. ~~**Player feel pass**~~ — done: instant jump, CS bhop + autohop +
    speed cap, first-person visible body
    ([player-feel-setup.md](stages/player-feel-setup.md)).
-3. **Held item + carry/run animations** — selected hotbar item shows in
-   the character's hand; Animator gains sprint / carry-bulky /
-   carry-body states.
+3. **Held item + carry/run animations** — carry gait + pick-up / shoot /
+   swing one-shots **code done**; controller rebuild (one menu click) +
+   playtest open
+   ([player-animations-setup.md](stages/player-animations-setup.md)).
+   Still open: the selected hotbar item actually showing in the
+   character's hand (needs a hand bone socket + the held model).
 4. **Carry / throw ragdolled players** — un-ragdoll-too-fast bug fixed;
    carry mechanic **code done and Editor-wired on the Player prefab**.
    Only the two-Editor playtest (Rest Points 1–5) remains — to be run
@@ -60,12 +63,16 @@ Detail for each below.
   (a hand/wrist bone socket), for you in first person (the body trim
   keeps the arms) and for everyone else in third person. Ties into the
   `FirstPersonBodyTrim` work and the eventual drop/throw-from-hand.
-- **Running + carry animation states** — the Animator only blends
-  Idle/Walk/Run/Jump right now. Needs at least: a proper sprint state
-  (distinct from Run), a "carrying something bulky" pose/gait
-  (multi-slot item held two-handed?), and — once the ragdoll carry
-  mechanic exists — a "carrying a body" state. Animator-controller work
-  plus clips.
+- **Running + carry animation states** — **code done**, controller
+  rebuild + playtest open
+  ([player-animations-setup.md](stages/player-animations-setup.md)). The
+  `Assets > Rob Everyone > Rebuild Player Animator` tool builds a carry
+  gait (Walk_Carry / Run_Carry + a frozen carry-idle pose) into the base
+  layer and an upper-body Action layer for pick-up / one-handed shoot
+  (Taser, Tranq Gun) / bat swing (Bat, Hammer), all networked. Deferred
+  from this pass: a distinct sprint state (Run is doing double duty), a
+  "carrying something bulky" two-handed gait for multi-slot loot, and
+  `RecieveHit` is wired but unused until a non-ragdoll hit exists.
 
 ## Do first — finish Stage 6 Phase 2
 

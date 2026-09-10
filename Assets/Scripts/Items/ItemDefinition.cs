@@ -15,6 +15,14 @@ namespace RobEveryone.Items
     [System.Flags]
     public enum SabotageType { None = 0, Melee = 1, Thrown = 2, Ranged = 4 }
 
+    // Which arm animation the character plays when this item is used --
+    // decoupled from SabotageType because the mapping isn't 1:1 (the
+    // Taser is Melee-typed but reads better as a point-and-zap Shoot; a
+    // thrown Dynamite reuses the Swing clip as a close-enough lob). None
+    // = no arm animation at all (plain loot, or a use that shouldn't
+    // gesture). Consumed by PlayerAnimationDriver's Action layer.
+    public enum UseAnimation { None, Swing, Shoot }
+
     // One entry in the loot catalog -- name, sell value, hotbar icon, and
     // a reference to the world model/prefab it uses. Create one asset per
     // item type (Assets/Data/Items/ -- right-click -> Create -> Rob
@@ -56,6 +64,10 @@ namespace RobEveryone.Items
         // uses before the slot empties -- Bat/Hammer durability, Tranq Gun
         // ammo. See PlayerInventory's parallel slotUses SyncList.
         [SerializeField] private int maxUses = 0;
+        // Arm animation on use -- Swing for the Bat/Hammer (and thrown
+        // items, close enough), Shoot for the Tranq Gun and Taser, None
+        // for anything that shouldn't gesture. See UseAnimation above.
+        [SerializeField] private UseAnimation useAnimation = UseAnimation.None;
 
         public string ItemName => itemName;
         public int Value => value;
@@ -72,5 +84,6 @@ namespace RobEveryone.Items
         public float BlastRadius => blastRadius;
         public GameObject ThrownProjectilePrefab => thrownProjectilePrefab;
         public int MaxUses => maxUses;
+        public UseAnimation UseAnimation => useAnimation;
     }
 }

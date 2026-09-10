@@ -3,6 +3,17 @@ using UnityEngine;
 
 namespace RobEveryone.Player
 {
+    // Which one-shot arm animation to fire on the Animator's Action
+    // layer. The int values ARE the ActionType blend-tree thresholds the
+    // PlayerAnimatorBuilder wires up -- keep them in sync with that tool.
+    public enum PlayerActionAnim
+    {
+        PickUp = 0,      // grabbing loot or hoisting a downed rival
+        Shoot = 1,       // Tranq Gun / Taser point-and-zap
+        Swing = 2,       // Bat / Hammer melee (and thrown items, close enough)
+        ReceiveHit = 3,  // non-ragdoll flinch -- reserved, nothing fires it yet
+    }
+
     // Drives the skin's Animator from FirstPersonController's movement
     // state -- Speed blends Idle/Walk/Run, Grounded gates whether Jump can
     // play, and Jump fires the instant a jump is actually triggered rather
@@ -51,14 +62,27 @@ namespace RobEveryone.Player
         // frame" on its own.
         [SerializeField, Range(0f, 0.9f)] private float jumpAnticipationFraction = 0.2f;
 
+        // How fast the upper-body Action layer fades in when a one-shot
+        // fires and back out when it's done (weight units per second).
+        [SerializeField] private float actionBlendSpeed = 8f;
+
         private static readonly int SpeedParam = Animator.StringToHash("Speed");
         private static readonly int GroundedParam = Animator.StringToHash("Grounded");
         private static readonly int JumpParam = Animator.StringToHash("Jump");
         private static readonly int JumpSpeedParam = Animator.StringToHash("JumpSpeed");
+        private static readonly int CarryingParam = Animator.StringToHash("Carrying");
+        private static readonly int ActionParam = Animator.StringToHash("Action");
+        private static readonly int ActionTypeParam = Animator.StringToHash("ActionType");
 
         private FirstPersonController firstPersonController;
         private PlayerSkinSpawner skinSpawner;
+        private CarryController carryController;
         private Animator animator;
+        // The "Action" layer (upper-body one-shots) -- index resolved once
+        // the Animator exists; -1 until then / if the controller has no
+        // such layer (an un-rebuilt controller still animates, just
+        // without the arm one-shots).
+        private int actionLayerIndex = -1;
 
         // Client-authoritative (Sync Direction: Client To Server on this
         // component in the Inspector) -- the owner writes these directly
@@ -74,6 +98,7 @@ namespace RobEveryone.Player
         {
             firstPersonController = GetComponent<FirstPersonController>();
             skinSpawner = GetComponent<PlayerSkinSpawner>();
+            carryController = GetComponent<CarryController>();
         }
 
         private void Start()
@@ -108,6 +133,9 @@ namespace RobEveryone.Player
             animator = skinSpawner.SkinInstance.GetComponentInChildren<Animator>(true);
             if (animator == null) return false;
 
+            actionLayerIndex = animator.GetLayerIndex("Action");
+            if (actionLayerIndex >= 0) animator.SetLayerWeight(actionLayerIndex, 0f);
+
             if (isOwned) firstPersonController.Jumped += HandleJumped;
             return true;
         }
@@ -120,6 +148,19 @@ namespace RobEveryone.Player
         private void Update()
         {
             if (!TryResolveAnimator() || !animator.enabled) return;
+
+            // Carrying is server-authoritative and already replicated
+            // (CarryController.carried is a plain SyncVar), so every copy
+            // -- owner and observers -- can read it straight off without
+            // this driver syncing anything itself.
+            animator.SetBool(CarryingParam, carryController != null && carryController.IsCarrying);
+
+            // Fade the upper-body Action layer in while its one-shot is
+            // playing and back out once the state machine has fallen back
+            // to the empty default. Runs on every copy so observers see
+            // the pickup/shoot/swing an Rpc fired the same as the owner.
+            UpdateActionLayerWeight();
+
             if (!isOwned) return; // non-owner copies are driven by the SyncVar hooks below instead
 
             animator.SetFloat(SpeedParam, firstPersonController.HorizontalSpeed);
@@ -205,6 +246,59 @@ namespace RobEveryone.Player
 
             animator.SetFloat(JumpSpeedParam, speedMultiplier);
             animator.SetTrigger(JumpParam);
+        }
+
+        // ---- upper-body one-shots (pick up / shoot / swing) ------------
+
+        // Called by the owner's own controllers (Interactor, CarryController,
+        // SabotageUseController) the frame an action is committed locally.
+        // Fires the clip here immediately for responsiveness, then relays
+        // to every other client the same way HandleJumped does.
+        public void PlayAction(PlayerActionAnim anim)
+        {
+            if (!isOwned) return;
+            TriggerAction(anim);
+            CmdPlayAction((int)anim);
+        }
+
+        [Command]
+        private void CmdPlayAction(int anim) => RpcPlayAction(anim);
+
+        [ClientRpc(includeOwner = false)]
+        private void RpcPlayAction(int anim) => TriggerAction((PlayerActionAnim)anim);
+
+        private void TriggerAction(PlayerActionAnim anim)
+        {
+            if (!TryResolveAnimator() || actionLayerIndex < 0) return;
+            animator.SetFloat(ActionTypeParam, (int)anim);
+            animator.SetTrigger(ActionParam);
+        }
+
+        private void UpdateActionLayerWeight()
+        {
+            if (actionLayerIndex < 0) return;
+
+            // The Action state (and its blend tree) carry the "Action"
+            // tag; the fall-back "None" state is empty and untagged.
+            // We hold full weight through the first ~85% of the clip,
+            // then let the weight fade carry the arm back to the base
+            // pose over its tail -- so the crossback blends Action ->
+            // base directly and never routes through the empty None
+            // state (which writes nothing and would pop).
+            AnimatorStateInfo cur = animator.GetCurrentAnimatorStateInfo(actionLayerIndex);
+            bool inAction = cur.IsTag("Action") && (cur.normalizedTime % 1f) < 0.85f;
+            if (!inAction && animator.IsInTransition(actionLayerIndex))
+            {
+                inAction = animator.GetNextAnimatorStateInfo(actionLayerIndex).IsTag("Action");
+            }
+
+            float target = inAction ? 1f : 0f;
+            float current = animator.GetLayerWeight(actionLayerIndex);
+            if (!Mathf.Approximately(current, target))
+            {
+                animator.SetLayerWeight(actionLayerIndex,
+                    Mathf.MoveTowards(current, target, actionBlendSpeed * Time.deltaTime));
+            }
         }
     }
 }

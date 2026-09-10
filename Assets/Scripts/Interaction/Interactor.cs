@@ -26,12 +26,14 @@ namespace RobEveryone.Interaction
 
         private IInteractable currentTarget;
         private CarryController carry;
+        private PlayerAnimationDriver animDriver;
 
         public IInteractable CurrentTarget => currentTarget;
 
         private void Awake()
         {
             carry = GetComponent<CarryController>();
+            animDriver = GetComponent<PlayerAnimationDriver>();
         }
 
         private void Update()
@@ -44,7 +46,14 @@ namespace RobEveryone.Interaction
             if (currentTarget != null && Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
             {
                 NetworkIdentity targetIdentity = (currentTarget as Component)?.GetComponentInParent<NetworkIdentity>();
-                if (targetIdentity != null) CmdInteract(targetIdentity);
+                if (targetIdentity != null)
+                {
+                    // A reach-down grab reads right for loot; a Sell
+                    // Station / Ready Spot is just a touch, no wind-up.
+                    if (currentTarget is PickupItem && animDriver != null)
+                        animDriver.PlayAction(PlayerActionAnim.PickUp);
+                    CmdInteract(targetIdentity);
+                }
             }
         }
 

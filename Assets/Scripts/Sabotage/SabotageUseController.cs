@@ -26,6 +26,7 @@ namespace RobEveryone.Sabotage
 
         private PlayerInventory inventory;
         private CarryController carry;
+        private PlayerAnimationDriver animDriver;
 
         // Server-only, per-attacker cooldown tracking, keyed by item name
         // (not by slot index -- a cooldown belongs to the item type, not
@@ -36,6 +37,20 @@ namespace RobEveryone.Sabotage
         {
             inventory = GetComponent<PlayerInventory>();
             carry = GetComponent<CarryController>();
+            animDriver = GetComponent<PlayerAnimationDriver>();
+        }
+
+        // Fire the arm one-shot the item asks for, on press, regardless of
+        // whether the swing/shot actually connects -- a whiffed swing
+        // should still animate. None = no gesture.
+        private void PlayUseAnimation(ItemDefinition item)
+        {
+            if (animDriver == null) return;
+            switch (item.UseAnimation)
+            {
+                case UseAnimation.Swing: animDriver.PlayAction(PlayerActionAnim.Swing); break;
+                case UseAnimation.Shoot: animDriver.PlayAction(PlayerActionAnim.Shoot); break;
+            }
         }
 
         private ItemDefinition ResolveSelectedItem()
@@ -57,6 +72,7 @@ namespace RobEveryone.Sabotage
 
             if (Mouse.current.leftButton.wasPressedThisFrame)
             {
+                PlayUseAnimation(item);
                 // HasFlag, not a plain == comparison -- SabotageType is
                 // [Flags] so a dual-mode item (Hammer: Melee | Thrown)
                 // can match more than one case; an exact-value switch
@@ -77,6 +93,7 @@ namespace RobEveryone.Sabotage
                 // only adds new behavior, never changes existing.
                 if (item.SabotageType.HasFlag(SabotageType.Melee) && item.SabotageType.HasFlag(SabotageType.Thrown))
                 {
+                    PlayUseAnimation(item);
                     TryUseThrown();
                 }
             }

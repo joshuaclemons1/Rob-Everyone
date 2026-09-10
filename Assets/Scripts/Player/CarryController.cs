@@ -40,6 +40,7 @@ namespace RobEveryone.Player
         private FirstPersonController fpc;
         private PlayerRagdoll ownRagdoll;
         private PlayerInventory ownInventory;
+        private PlayerAnimationDriver animDriver;
         private float chargeStart = -1f;
 
         private void Awake()
@@ -48,6 +49,7 @@ namespace RobEveryone.Player
             fpc = GetComponent<FirstPersonController>();
             ownRagdoll = GetComponent<PlayerRagdoll>();
             ownInventory = GetComponent<PlayerInventory>();
+            animDriver = GetComponent<PlayerAnimationDriver>();
         }
 
         private void Update()
@@ -74,6 +76,7 @@ namespace RobEveryone.Player
                     && interactor.CurrentTarget == null
                     && TryFindCarryable(out NetworkIdentity target))
                 {
+                    if (animDriver != null) animDriver.PlayAction(PlayerActionAnim.PickUp);
                     CmdGrab(target);
                 }
                 return;
