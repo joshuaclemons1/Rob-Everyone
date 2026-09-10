@@ -277,6 +277,7 @@ GameObject:
   - component: {fileID: 1967144369423650791}
   - component: {fileID: 5108621698250719031}
   - component: {fileID: 731733168042144547}
+  - component: {fileID: 2818341471729743253}
   m_Layer: 8
   m_Name: Player
   m_TagString: Untagged
@@ -319,13 +320,13 @@ CharacterController:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Height: 2
+  m_Height: 3
   m_Radius: 0.5
   m_SlopeLimit: 45
   m_StepOffset: 0.3
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Center: {x: 0, y: 0.5, z: 0}
 --- !u!114 &8013788330810076474
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -423,7 +424,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 521251d4a76f473fb070948d565ee8ab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Player.PlayerRagdoll
-  stunDuration: 6
+  defaultStunDuration: 2
   cameraTransform: {fileID: 5007650497626963964}
   thirdPersonOffset: {x: 0, y: 2.5, z: -5}
   lookAtHeightOffset: 0.5
@@ -540,3 +541,23 @@ MonoBehaviour:
   rotationSensitivity: 0.01
   positionPrecision: 0.01
   scalePrecision: 0.01
+--- !u!114 &2818341471729743253
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4564336539568727325}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4cc6b32df51253d47b5545d435046e95, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Sabotage.SabotageUseController
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  viewPoint: {fileID: 5007650497626963964}
+  playerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  meleeRangeSlack: 0.5

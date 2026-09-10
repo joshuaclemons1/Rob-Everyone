@@ -105,7 +105,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
   sceneId: 0
-  _assetId: 1650587503
+  _assetId: 895051005
   serverOnly: 0
   visibility: 0
   hasSpawned: 0
@@ -124,4 +124,4 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  item: {fileID: 0}
+  item: {fileID: 11400000, guid: 2a94309ca660b1748809b2fcc8a78aeb, type: 2}

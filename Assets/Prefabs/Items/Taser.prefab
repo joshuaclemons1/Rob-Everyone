@@ -145,4 +145,4 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  item: {fileID: 0}
+  item: {fileID: 11400000, guid: 937d0135a1fadfe40858bf6f8855aa23, type: 2}

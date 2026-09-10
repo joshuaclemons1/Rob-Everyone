@@ -106,8 +106,9 @@ happen soon" to "later stage."
   Not built.
 - **Skin unlock-gating** — every configured skin is currently pickable;
   the design calls for unlocks eventually (`ui-design.md`).
-- **Sabotage item icons + models + SFX** — taser, hammer, alarm clock,
-  bat. Blocked on Stage 6 actually starting (see below).
+- **Sabotage item icons + SFX** — models exist (`Assets/Art/Items/`),
+  but `Icon` is still unset on every sabotage `ItemDefinition`, and no
+  use/impact SFX exist for the Taser or Dynamite yet.
 - **HUD result banner** — `RoundUI.cs`'s `resultText` is still plain
   text. Lower priority now that round-end flows into a loading screen +
   Lobby scene rather than lingering on this screen — worth re-scoping
@@ -126,35 +127,48 @@ happen soon" to "later stage."
   test AppID 480. Editor setup done through Part 3; the real overlay
   invite test (Rest Point 4) still needs a second Steam account — see
   the top of this doc's "In progress" section.
-- **Stage 6 — sabotage items** — taser, hammer, alarm clock, bat,
-  tranquilizer gun, dynamite (AOE stun/ragdoll). **Assets done**: all 6
-  have a prefab (`NetworkIdentity`/`PickupItem`/fitted collider) +
-  `ItemDefinition` (scale tuned, in `ItemCatalog`, registered as
-  Spawnable Prefabs) — mechanically real, spawnable, pick-up-able,
-  networked. Hammer's role is decided: dual-mode like the Bat but also
-  throwable, same durability pool either way (see `gameplay-design.md`).
-  **Phase 1 code landed**: `ItemDefinition` gained a `SabotageType`
-  (Melee/Thrown) plus stun/force/cooldown/range/blastRadius/projectile
-  fields; `PlayerRagdoll`/`PlayerImpactRelay` now take a configurable
-  stun duration and `PlayerImpactRelay.IsStunned` is a real server-synced
-  flag (also fixes a bug where a police-frozen player mid-stun could get
-  control handed back early); new `Assets/Scripts/Sabotage/` folder
-  (`SabotageUseController`, `SabotageProjectile`) wires left-click to
-  melee/throw. Taser and Dynamite are the 2 items wired through this
-  path end to end. **Still needed before this is playable**: the Editor
-  half, written up step by step in
-  [stage6-sabotage-items-setup.md](stages/stage6-sabotage-items-setup.md)
-  (add `SabotageUseController` to the Player prefab, tune Taser/
-  Dynamite's new sabotage fields, build the `DynamiteProjectile.prefab`
-  and register it in `NetworkManager`'s Spawnable Prefabs, hand-place
-  test pickups) plus actual two-Editor playtesting — none of that has
-  been done yet. Bat/Hammer/Tranquilizer
-  Gun/the PvP steal-window/Alarm Clock framing are Phase 2, not started
-  (Hammer's thrown-and-retrievable mode and Bat/Hammer/Tranq Gun's
-  durability/ammo all need a new "remaining uses per slot" concept that
-  doesn't exist yet). See [item-creation.md](stages/item-creation.md)'s
-  Section 4b for the asset pipeline and `gameplay-design.md`'s Sabotage
-  items section for each item's intended numbers.
+- **Stage 6 Phase 1 — sabotage foundation, Taser + Dynamite — done and
+  tested.** All 6 items have a prefab + `ItemDefinition`, in
+  `ItemCatalog`/Spawnable Prefabs. `ItemDefinition` gained a
+  `SabotageType` (Melee/Thrown) plus stun/force/cooldown/range/
+  blastRadius/projectile fields; `PlayerRagdoll`/`PlayerImpactRelay` take
+  a configurable stun duration, with `PlayerImpactRelay.IsStunned` as a
+  real server-synced flag (also fixed the bug where a police-frozen
+  player mid-stun could get control handed back early); new
+  `Assets/Scripts/Sabotage/` folder (`SabotageUseController`,
+  `SabotageProjectile`) wires left-click to melee/throw, confirmed
+  working two-Editor (Taser melee hit/cooldown/no-restack, Dynamite
+  throw/AOE/consumed-on-use, all per
+  [stage6-sabotage-items-setup.md](stages/stage6-sabotage-items-setup.md)'s
+  Part 7). Also fixed along the way: `Player.prefab`'s
+  `CharacterController` (`Height`/`Center`) was undersized for its own
+  camera height, so head-height hits (Taser, and implicitly Police
+  vision/anything else raycasting the player) silently missed — now
+  `Height: 3, Center: (0, 0.5, 0)`, chosen so the capsule top clears eye
+  height with margin while the origin (and camera, a fixed child offset
+  from it) lands at exactly the original height; `DynamiteProjectile.prefab`
+  had its `NetworkTransformReliable` left at the default Client-To-Server
+  sync instead of Server-To-Client, breaking it for non-host clients; and
+  `GameFlowManager` gained a periodic server-side fall-through safety net
+  (any player below Y `-20` gets teleported to a spawn point, skipping
+  anyone still mid-ragdoll so `PlayerRagdoll.EndRagdoll` doesn't fight
+  the rescue) for the edge case where ragdoll physics carries a player
+  off the map.
+- **Stage 6 Phase 2 — Bat, Hammer, Tranquilizer Gun, PvP steal-window,
+  Alarm Clock framing — not started.** Bat/Hammer/Tranq Gun all need a
+  new "remaining uses per slot" concept (durability/ammo) that doesn't
+  exist yet (today a slot is just an item-name string); Hammer's
+  thrown-and-retrievable mode needs a non-consumed projectile variant;
+  Tranquilizer Gun needs a new `SabotageType.Ranged` case with
+  server-side raycast re-validation; the steal-window builds on
+  `PlayerImpactRelay.IsStunned` (already in place) plus a per-victim
+  "stealable until" timestamp; the Alarm Clock's Homeowner-framing needs
+  a new `HomeownerAI.ForceAlert(position, blamedPlayer)` entry point and
+  extending `OnAlertRaised`'s signature so `PoliceAI` can prefer a framed
+  player over its own vision-cone scan. See
+  [item-creation.md](stages/item-creation.md)'s Section 4b for the asset
+  pipeline and `gameplay-design.md`'s Sabotage items section for each
+  item's intended numbers.
 - **Stage 7 — full meta-game** — the v1 shop/lobby loop and batch economy
   above are a deliberately scoped-down slice. Still missing: sabotage
   purchases, real Jail & Bail (rescue/bond/self-bail), the personal

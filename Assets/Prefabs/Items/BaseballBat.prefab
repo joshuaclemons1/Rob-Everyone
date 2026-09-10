@@ -124,4 +124,4 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  item: {fileID: 0}
+  item: {fileID: 11400000, guid: fa14f759d0aa86a40a20f09ac3a60ae4, type: 2}

@@ -57,6 +57,20 @@ namespace RobEveryone.Core
         public int BatchNumber => batchNumber;
         public int RoundInBatch => roundInBatch;
 
+        // Catches a player left below the map -- normally impossible, but
+        // ragdoll physics (a car impact, a Dynamite blast) can carry
+        // someone past a boundary or through a thin/missing collider
+        // while EndRagdoll's own raycast-to-ground has nothing under it to
+        // find, leaving them wherever they happened to be when the stun
+        // timer ran out. A slow periodic sweep (not every frame -- falling
+        // to -20 takes real time, no need to check 60x/sec) rather than a
+        // trigger volume, since a trigger would need to cover every map's
+        // boundary by hand; this instead catches *any* way a player ends
+        // up below the world, on any map, for free.
+        [SerializeField] private float fallSafetyThresholdY = -20f;
+        [SerializeField] private float fallSafetyCheckInterval = 1f;
+        private float nextFallSafetyCheck;
+
         private void Awake()
         {
             if (Instance != null)
@@ -91,6 +105,59 @@ namespace RobEveryone.Core
         public override void OnStopServer()
         {
             SceneManager.sceneLoaded -= HandleSceneLoaded;
+        }
+
+        private void Update()
+        {
+            if (!isServer) return;
+            if (Time.time < nextFallSafetyCheck) return;
+            nextFallSafetyCheck = Time.time + fallSafetyCheckInterval;
+
+            foreach (PlayerInventory player in PlayerInventory.AllPlayers)
+            {
+                if (player.transform.position.y >= fallSafetyThresholdY) continue;
+
+                // Still ragdolling -- EndRagdoll will reposition them
+                // based on the ragdoll body's own (separate) physics once
+                // the stun ends, which would fight a rescue attempted
+                // now. Leave them be; if they're still below the
+                // threshold once the stun clears, the next tick catches
+                // them then.
+                PlayerImpactRelay relay = player.GetComponent<PlayerImpactRelay>();
+                if (relay != null && relay.IsStunned) continue;
+
+                RescuePlayer(player.transform);
+            }
+        }
+
+        // Reuses PositionPlayer's own host-vs-remote split (see its
+        // comment) rather than duplicating a second, subtly different
+        // teleport path -- any spawn point is fine here (unlike
+        // PositionPlayer's round-start distribution across several, this
+        // is an emergency catch-all, not a fairness concern).
+        [Server]
+        private void RescuePlayer(Transform player)
+        {
+            PlayerSpawnPoint[] spawns = FindObjectsByType<PlayerSpawnPoint>(FindObjectsSortMode.None);
+            if (spawns.Length == 0) return;
+
+            Transform spawn = spawns[0].transform;
+
+            NetworkIdentity identity = player.GetComponent<NetworkIdentity>();
+            bool remote = identity != null && !identity.isLocalPlayer && identity.connectionToClient != null;
+
+            if (remote)
+            {
+                TargetPositionPlayer(identity.connectionToClient, spawn.position, spawn.rotation);
+                return;
+            }
+
+            WithCharacterControllerDisabled(player, () =>
+            {
+                NetworkTransformReliable netTransform = player.GetComponent<NetworkTransformReliable>();
+                if (netTransform != null) netTransform.ServerTeleport(spawn.position, spawn.rotation);
+                else player.SetPositionAndRotation(spawn.position, spawn.rotation);
+            });
         }
 
         // Separate from the server-only subscription above -- wiring a
