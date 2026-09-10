@@ -1,4 +1,3 @@
-using Mirror;
 using RobEveryone.UI;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -7,9 +6,11 @@ namespace RobEveryone.Inventory
 {
     // Press Q: drop whatever's in your currently selected hotbar slot
     // into the world just in front of you, floating at pickup height
-    // (PlayerInventory.SelectedSlot is already resolved to a head, so a
-    // multi-slot item drops whole). Mirrors HotbarController's "owner
-    // polls Keyboard.current, mutation goes through a Command" shape.
+    // (PlayerInventory.SelectedSlot is server-authoritative and already
+    // resolved to a head, so a multi-slot item drops whole). Mirrors
+    // HotbarController's "owner polls Keyboard.current, mutation goes
+    // through a Command on PlayerInventory" shape -- a plain MonoBehaviour
+    // can't declare a [Command] itself.
     //
     // The dropped item has no Rigidbody (like all loot), so it just
     // hangs where it's placed -- PickupItem's `dropped` flag makes it
@@ -34,13 +35,7 @@ namespace RobEveryone.Inventory
             Vector3 flatForward = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
             Vector3 pos = transform.position + flatForward * dropForward + Vector3.up * dropHeight;
             Quaternion rot = Quaternion.LookRotation(flatForward, Vector3.up);
-            CmdDrop(inventory.SelectedSlot, pos, rot);
-        }
-
-        [Command]
-        private void CmdDrop(int headIndex, Vector3 position, Quaternion rotation)
-        {
-            inventory.DropSlot(headIndex, position, rotation);
+            inventory.CmdDropSelected(pos, rot);
         }
     }
 }

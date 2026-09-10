@@ -468,6 +468,17 @@ namespace RobEveryone.Inventory
             NetworkServer.Spawn(instance);
         }
 
+        // Drops whatever's in the (server-authoritative) selected slot.
+        // The client supplies only where -- position/rotation computed
+        // from its own player transform, which it already owns via
+        // NetworkTransform. Called from PlayerDropController (a plain
+        // MonoBehaviour -- a [Command] has to live on a NetworkBehaviour,
+        // same reason HotbarController calls CmdSelectSlot here rather
+        // than owning it).
+        [Command]
+        public void CmdDropSelected(Vector3 position, Quaternion rotation) =>
+            DropSlot(selectedSlot, position, rotation);
+
         [Command]
         public void CmdSelectSlot(int index) => SelectSlot(index);
 
