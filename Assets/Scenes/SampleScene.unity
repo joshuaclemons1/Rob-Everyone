@@ -277,6 +277,50 @@ Transform:
   - {fileID: 1166062470}
   m_Father: {fileID: 867420597}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &20802771
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 20802772}
+  - component: {fileID: 20802773}
+  m_Layer: 0
+  m_Name: PlayerSpawnPoint_6
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &20802772
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 20802771}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: 1, z: -0, w: 0}
+  m_LocalPosition: {x: 33.25, y: 1, z: 97.75}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1183727237}
+  m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
+--- !u!114 &20802773
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 20802771}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9230c111bbbef84ebc9cd0ef68c706d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Core.PlayerSpawnPoint
 --- !u!1001 &30051301
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1489,6 +1533,50 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 4786e3007522b4a0993b6f46b32a44f3, type: 3}
+--- !u!1 &147647354
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 147647355}
+  - component: {fileID: 147647356}
+  m_Layer: 0
+  m_Name: PlayerSpawnPoint_4
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &147647355
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 147647354}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: 1, z: -0, w: 0}
+  m_LocalPosition: {x: 42, y: 1, z: 97.75}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1183727237}
+  m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
+--- !u!114 &147647356
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 147647354}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9230c111bbbef84ebc9cd0ef68c706d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Core.PlayerSpawnPoint
 --- !u!1001 &150903224
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5113,8 +5201,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 416787903}
+  - component: {fileID: 416787904}
   m_Layer: 0
-  m_Name: PlayerSpawnPoint
+  m_Name: PlayerSpawnPoint_1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5128,13 +5217,25 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 416787902}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
-  m_LocalPosition: {x: 40.5, y: 1, z: 92.75}
+  m_LocalRotation: {x: -0, y: 1, z: -0, w: 0}
+  m_LocalPosition: {x: 42, y: 1, z: 92.75}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1183727237}
   m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
+--- !u!114 &416787904
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 416787902}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9230c111bbbef84ebc9cd0ef68c706d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Core.PlayerSpawnPoint
 --- !u!4 &417930190 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: a95ff9cdf971743d9ada9f790dc4b737, type: 3}
@@ -15554,6 +15655,43 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 1975776119}
   m_SourcePrefab: {fileID: 100100000, guid: f82b9f347436f5943ba61f9e67a0732b, type: 3}
+--- !u!1 &1183727236
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1183727237}
+  m_Layer: 0
+  m_Name: PlayerSpawnPoints
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1183727237
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1183727236}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 416787903}
+  - {fileID: 1915053104}
+  - {fileID: 1547102026}
+  - {fileID: 147647355}
+  - {fileID: 1609561385}
+  - {fileID: 20802772}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1185946860
 GameObject:
   m_ObjectHideFlags: 0
@@ -20586,8 +20724,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1547102026}
+  - component: {fileID: 1547102027}
   m_Layer: 0
-  m_Name: PlayerSpawnPoint
+  m_Name: PlayerSpawnPoint_3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -20601,13 +20740,25 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1547102025}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
-  m_LocalPosition: {x: 35.5, y: 1, z: 92.75}
+  m_LocalRotation: {x: -0, y: 1, z: -0, w: 0}
+  m_LocalPosition: {x: 33.25, y: 1, z: 92.75}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1183727237}
   m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
+--- !u!114 &1547102027
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1547102025}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9230c111bbbef84ebc9cd0ef68c706d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Core.PlayerSpawnPoint
 --- !u!1001 &1550778744
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -21697,6 +21848,50 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 4786e3007522b4a0993b6f46b32a44f3, type: 3}
   m_PrefabInstance: {fileID: 609858759}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1609561384
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1609561385}
+  - component: {fileID: 1609561386}
+  m_Layer: 0
+  m_Name: PlayerSpawnPoint_5
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1609561385
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1609561384}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: 1, z: -0, w: 0}
+  m_LocalPosition: {x: 37.5, y: 1, z: 97.75}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1183727237}
+  m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
+--- !u!114 &1609561386
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1609561384}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9230c111bbbef84ebc9cd0ef68c706d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Core.PlayerSpawnPoint
 --- !u!1 &1611637847
 GameObject:
   m_ObjectHideFlags: 0
@@ -25471,8 +25666,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1915053104}
+  - component: {fileID: 1915053105}
   m_Layer: 0
-  m_Name: PlayerSpawnPoint
+  m_Name: PlayerSpawnPoint_2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -25486,13 +25682,25 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1915053103}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
+  m_LocalRotation: {x: -0, y: 1, z: -0, w: 0}
   m_LocalPosition: {x: 37.5, y: 1, z: 92.75}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1183727237}
   m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
+--- !u!114 &1915053105
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1915053103}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9230c111bbbef84ebc9cd0ef68c706d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Core.PlayerSpawnPoint
 --- !u!4 &1917117442 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 0ac270ebfb767401396ad9eb21117629, type: 3}
@@ -28533,6 +28741,4 @@ SceneRoots:
   - {fileID: 1808652745}
   - {fileID: 728616786}
   - {fileID: 1099526219}
-  - {fileID: 416787903}
-  - {fileID: 1915053104}
-  - {fileID: 1547102026}
+  - {fileID: 1183727237}

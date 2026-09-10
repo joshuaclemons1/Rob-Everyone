@@ -11,10 +11,21 @@ namespace RobEveryone.Items
     //
     // How big the spawned model renders comes entirely from
     // ItemDefinition.WorldModelScale, the same for every spawn point that
-    // ever rolls that item -- Spawn() actively cancels out this object's
-    // own lossy (inherited) scale so that holds true even under a house
-    // whose room/floor geometry was stretched non-uniformly to fit its
-    // footprint, which would otherwise distort anything parented under it.
+    // ever rolls that item.
+    //
+    // The spawned item is deliberately NOT parented under this spawn
+    // point, even though it visually sits exactly here -- Mirror's spawn
+    // message replicates an object's *local* transform and reconstructs
+    // it with no parent at all on every client (ad-hoc Transform
+    // parenting isn't something NetworkServer.Spawn tracks or restores).
+    // Since Instantiate(prefab, transform.position, ..., transform) sets
+    // world position equal to this spawn point's own, the resulting
+    // *local* position relative to that parent is always (0,0,0) --
+    // which is exactly what got sent and re-applied as if it were world
+    // position, landing the item at the world origin on every other
+    // client. Confirmed bug: loot appeared to simply not exist for a
+    // client, when it had actually spawned correctly, just at (0,0,0)
+    // instead of in the house.
     //
     // Networking (Stage 4): server-only (OnStartServer instead of Start)
     // -- every client needs to see the *same* rolled item, not each
@@ -47,18 +58,18 @@ namespace RobEveryone.Items
             if (lootTable == null) return;
 
             ItemDefinition item = lootTable.GetRandomItem();
-            if (item == null || item.WorldModelPrefab == null) return;
+            if (item == null || item.WorldModelPrefab == null)
+            {
+                Debug.LogWarning($"[LootSpawnPoint] '{gameObject.name}' rolled a null item or one with no WorldModelPrefab -- nothing spawned.");
+                return;
+            }
 
-            GameObject instance = Instantiate(item.WorldModelPrefab, transform.position, transform.rotation, transform);
+            GameObject instance = Instantiate(item.WorldModelPrefab, transform.position, transform.rotation);
 
-            // Divide out this object's own inherited scale so the result
-            // is always exactly item.WorldModelScale in world terms, no
-            // matter how distorted the parent hierarchy happens to be.
-            Vector3 parentScale = transform.lossyScale;
-            instance.transform.localScale = new Vector3(
-                item.WorldModelScale.x / parentScale.x,
-                item.WorldModelScale.y / parentScale.y,
-                item.WorldModelScale.z / parentScale.z);
+            // No parent (see class comment), so localScale *is* world
+            // scale directly -- no need to compensate for an inherited
+            // parent distortion the way a parented child would.
+            instance.transform.localScale = item.WorldModelScale;
 
             // Most item models already carry their own collider (matching
             // how they're built as ordinary decorative prefabs elsewhere)

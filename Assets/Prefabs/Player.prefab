@@ -274,6 +274,7 @@ GameObject:
   - component: {fileID: 1268120610448829632}
   - component: {fileID: 7958064152181470687}
   - component: {fileID: 1292215316417540458}
+  - component: {fileID: 1967144369423650791}
   - component: {fileID: 5108621698250719031}
   - component: {fileID: 731733168042144547}
   m_Layer: 8
@@ -473,6 +474,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fd13ef2a5af7bfd45811d0c5e5f9fbc0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Inventory.HotbarController
+--- !u!114 &1967144369423650791
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4564336539568727325}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8bd53a6808b1457ca693a0ba5cbc151, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Player.PlayerImpactRelay
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
 --- !u!114 &5108621698250719031
 MonoBehaviour:
   m_ObjectHideFlags: 0

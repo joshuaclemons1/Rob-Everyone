@@ -132,6 +132,46 @@ namespace RobEveryone.Player
             Cursor.lockState = CursorLockMode.Locked;
         }
 
+        // Called by GameFlowManager right after it teleports this player
+        // via NetworkTransform's CmdTeleport/ServerTeleport. Without this,
+        // verticalVelocity keeps whatever it accumulated before the
+        // teleport (gravity runs every frame regardless of position, and
+        // controller.isGrounded can't yet know it's standing on solid
+        // ground again the instant after an externally-set position) --
+        // HandleMove then applies that stale, often quite negative
+        // velocity on the very next frame, pulling the character down
+        // through the floor right after landing at the correct spot.
+        // Confirmed bug: a brand-new connection's first-ever placement
+        // (falling from its default spawn transform for the one frame
+        // GameFlowManager deliberately waits before teleporting it) sank
+        // well below the intended height immediately after teleporting.
+        public void ResetMotion()
+        {
+            verticalVelocity = 0f;
+            horizontalVelocity = Vector3.zero;
+        }
+
+        // OnStartClient (not OnStartAuthority) -- this needs to run for
+        // every copy on every client, including the non-owned ones, since
+        // it's specifically *disabling* things for those. Without this,
+        // every client ends up with one active Camera/AudioListener per
+        // connected player instead of just their own -- Unity picks
+        // whichever one renders last as what actually reaches the screen,
+        // which in practice ends up being the same one on every client
+        // (confirmed bug: host's own view got hijacked by the joining
+        // client's camera, making it look like the host couldn't control
+        // anything -- they could, they just couldn't see it).
+        public override void OnStartClient()
+        {
+            if (isOwned) return;
+
+            Camera cam = GetComponentInChildren<Camera>(true);
+            if (cam != null) cam.enabled = false;
+
+            AudioListener listener = GetComponentInChildren<AudioListener>(true);
+            if (listener != null) listener.enabled = false;
+        }
+
         private void Update()
         {
             // Remote players' copies exist so NetworkTransform has

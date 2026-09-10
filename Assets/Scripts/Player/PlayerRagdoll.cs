@@ -87,21 +87,42 @@ namespace RobEveryone.Player
             if (cameraTransform != null) playerCamera = cameraTransform.GetComponent<Camera>();
         }
 
+        // True once TryInitializeRagdoll has either fully succeeded or hit
+        // a genuinely unfixable setup problem (a skin with no RagdollHips
+        // marker) -- left false while only waiting on the skin itself to
+        // exist yet, so ApplyImpact's own retry keeps trying instead of
+        // giving up permanently.
+        private bool initialized;
+
         private void Start()
         {
-            // Start, not Awake -- guarantees PlayerSkinSpawner's own Awake
-            // (which does the actual Instantiate) has already run.
+            // Doesn't guarantee success -- see TryInitializeRagdoll's own
+            // comment. ApplyImpact calls it again for exactly that reason.
+            TryInitializeRagdoll();
+        }
+
+        // The skin isn't guaranteed to exist yet the first time this runs
+        // -- the owner's own copy spawns its skin synchronously, but a
+        // remote player's copy only gets one once its cosmetics SyncVars
+        // finish a real Client -> Server -> other Clients round trip
+        // (PlayerSkinSpawner.OnCosmeticsChanged), which routinely takes
+        // longer than Start()'s single frame. A one-shot attempt here
+        // that just gives up left ApplyImpact permanently unable to do
+        // anything for that player -- confirmed bug: a car driving
+        // through a remote player produced no knockdown at all, on any
+        // client, because hipsRigidbody was never actually set.
+        private void TryInitializeRagdoll()
+        {
+            if (initialized) return;
+
             GameObject skin = skinSpawner.SkinInstance;
-            if (skin == null)
-            {
-                Debug.LogWarning("PlayerRagdoll found no skin instance from PlayerSkinSpawner -- check the Player Skin Roster is assigned and has at least one entry.", this);
-                return;
-            }
+            if (skin == null) return; // not ready yet -- ApplyImpact will retry
 
             RagdollHips hips = skin.GetComponentInChildren<RagdollHips>(true);
             if (hips == null)
             {
                 Debug.LogWarning($"PlayerRagdoll: the currently selected skin ({skin.name}) has no RagdollHips marker -- it needs the Ragdoll Wizard run on its prefab, with the Pelvis bone marked. Impacts will do nothing until then.", this);
+                initialized = true; // a genuine content problem, not a timing one -- retrying won't fix it
                 return;
             }
 
@@ -120,6 +141,8 @@ namespace RobEveryone.Player
             FindBridgeBones(skin.transform);
             BuildHierarchyPatches(skin.transform, hipsRigidbody.transform);
             IgnoreSelfCollisions();
+
+            initialized = true;
         }
 
         // CharacterJoint.enableCollision (false by default, and never set
@@ -404,6 +427,7 @@ namespace RobEveryone.Player
 
         public void ApplyImpact(Vector3 direction, float force)
         {
+            if (!initialized) TryInitializeRagdoll();
             if (isStunned || hipsRigidbody == null) return;
             StartCoroutine(ImpactSequence(direction, force));
         }

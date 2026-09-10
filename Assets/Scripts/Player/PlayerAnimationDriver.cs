@@ -78,14 +78,38 @@ namespace RobEveryone.Player
 
         private void Start()
         {
-            // Start, not Awake -- guarantees PlayerSkinSpawner's own Awake
-            // (which does the actual Instantiate) has already run.
-            if (skinSpawner.SkinInstance == null) return;
+            // Doesn't guarantee success -- see TryResolveAnimator's own
+            // comment. Every place below that needs the Animator calls it
+            // again instead of trusting a one-shot field set here, so a
+            // skin that arrives later (the common case for a non-owner)
+            // still gets picked up instead of this driver being
+            // permanently stuck unable to touch the Animator.
+            TryResolveAnimator();
+        }
+
+        // The skin (and its Animator) isn't guaranteed to exist yet the
+        // first time this runs -- the owner's own copy spawns its skin
+        // synchronously in OnStartLocalPlayer, but a non-owner's copy only
+        // gets one once its cosmetics SyncVars finish a real Client ->
+        // Server -> other Clients round trip (PlayerSkinSpawner's
+        // OnCosmeticsChanged), which routinely takes longer than a single
+        // frame. Resolving lazily like this, from every call site that
+        // needs animator instead of just once in Start, means a skin that
+        // shows up late still gets wired up correctly the next time any
+        // of them run, rather than this driver silently never animating a
+        // remote player for the rest of its lifetime (confirmed bug: a
+        // joining client's character stuck permanently in whatever pose
+        // it spawned in, on every other client's screen).
+        private bool TryResolveAnimator()
+        {
+            if (animator != null) return true;
+            if (skinSpawner.SkinInstance == null) return false;
 
             animator = skinSpawner.SkinInstance.GetComponentInChildren<Animator>(true);
-            if (animator == null) return;
+            if (animator == null) return false;
 
             if (isOwned) firstPersonController.Jumped += HandleJumped;
+            return true;
         }
 
         private void OnDestroy()
@@ -95,7 +119,7 @@ namespace RobEveryone.Player
 
         private void Update()
         {
-            if (animator == null || !animator.enabled) return;
+            if (!TryResolveAnimator() || !animator.enabled) return;
             if (!isOwned) return; // non-owner copies are driven by the SyncVar hooks below instead
 
             animator.SetFloat(SpeedParam, firstPersonController.HorizontalSpeed);
@@ -118,19 +142,19 @@ namespace RobEveryone.Player
 
         private void OnSyncedSpeedChanged(float _, float newValue)
         {
-            if (isOwned || animator == null) return;
+            if (isOwned || !TryResolveAnimator()) return;
             animator.SetFloat(SpeedParam, newValue);
         }
 
         private void OnSyncedGroundedChanged(bool _, bool newValue)
         {
-            if (isOwned || animator == null) return;
+            if (isOwned || !TryResolveAnimator()) return;
             animator.SetBool(GroundedParam, newValue);
         }
 
         private void HandleJumped()
         {
-            if (animator == null || !animator.enabled) return;
+            if (!TryResolveAnimator() || !animator.enabled) return;
 
             float delay = ComputeJumpTiming(out float speedMultiplier);
 
@@ -177,7 +201,7 @@ namespace RobEveryone.Player
         [ClientRpc(includeOwner = false)]
         private void RpcPlayJump(float speedMultiplier)
         {
-            if (animator == null) return;
+            if (!TryResolveAnimator()) return;
 
             animator.SetFloat(JumpSpeedParam, speedMultiplier);
             animator.SetTrigger(JumpParam);

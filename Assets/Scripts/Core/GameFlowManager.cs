@@ -146,7 +146,23 @@ namespace RobEveryone.Core
             // this player's object, which means its PlayerInventory's own
             // OnStartServer has already added it to AllPlayers -- so it's
             // the last entry, and that's the index to place it at.
-            PositionPlayer(playerIdentity.transform, PlayerInventory.AllPlayers.Count - 1);
+            StartCoroutine(PositionNewPlayerNextFrame(playerIdentity, PlayerInventory.AllPlayers.Count - 1));
+        }
+
+        // A one-frame delay before the very first PositionPlayer call for
+        // a brand-new connection -- unlike every later reposition
+        // (HandleSceneLoaded, on an already-established player that's had
+        // plenty of time to settle), this player's own spawn message may
+        // not have fully finished reaching every observer (including its
+        // own owner) in the same server frame it was created, and
+        // PositionPlayer's TargetRpc -> CmdTeleport -> RpcTeleport chain
+        // needs that to already be solid. Confirmed bug: a position
+        // mismatch between clients specifically on this first-join
+        // placement, not on later scene transitions.
+        private IEnumerator PositionNewPlayerNextFrame(NetworkIdentity playerIdentity, int index)
+        {
+            yield return null;
+            PositionPlayer(playerIdentity.transform, index);
         }
 
         [Server]
@@ -208,6 +224,21 @@ namespace RobEveryone.Core
             readySpot.OnAllPlayersReady += HandleAllPlayersReady;
         }
 
+        // NetworkTransformReliable on the Player prefab is Client To
+        // Server (owner-authoritative, per stage4-multiplayer-mirror.md
+        // Part 1 -- matches FirstPersonController already being fully
+        // client-predicted). That means a direct server-side write to
+        // player.position only actually sticks for the host's own player
+        // (host and server are the same process, so "the server's write"
+        // and "the owner's own simulated position" are the same thing
+        // there) -- for a real remote connection, the server changing
+        // this Transform never reaches that client at all, since it's not
+        // the authoritative source for that object. Confirmed bug: a
+        // joining client spawned wherever they happened to be left over
+        // from the Lobby instead of at a PlayerSpawnPoint. So a remote
+        // player has to be told to move *itself* via TargetRpc instead --
+        // the same way it already moves itself for normal input -- and
+        // only the host's own player gets positioned directly here.
         [Server]
         private void PositionPlayer(Transform player, int index)
         {
@@ -216,12 +247,104 @@ namespace RobEveryone.Core
 
             Transform spawn = spawns[index % spawns.Length].transform;
 
+            NetworkIdentity identity = player.GetComponent<NetworkIdentity>();
+            bool remote = identity != null && !identity.isLocalPlayer && identity.connectionToClient != null;
+
+            if (remote)
+            {
+                TargetPositionPlayer(identity.connectionToClient, spawn.position, spawn.rotation);
+                return;
+            }
+
+            // Host's own player -- same process as the server, so
+            // ServerTeleport both moves it and (via RpcTeleport to every
+            // other client) resets everyone else's interpolation buffer
+            // for it too.
+            WithCharacterControllerDisabled(player, () =>
+            {
+                NetworkTransformReliable netTransform = player.GetComponent<NetworkTransformReliable>();
+                if (netTransform != null) netTransform.ServerTeleport(spawn.position, spawn.rotation);
+                else player.SetPositionAndRotation(spawn.position, spawn.rotation);
+            });
+        }
+
+        [TargetRpc]
+        private void TargetPositionPlayer(NetworkConnectionToClient target, Vector3 position, Quaternion rotation)
+        {
+            StartCoroutine(PositionLocalPlayerWhenReady(position, rotation));
+        }
+
+        // Mirrors WireLocalCameraToCanvases' own reasoning above -- this
+        // TargetRpc can arrive before NetworkClient.localPlayer is set on
+        // this client (e.g. right after a fresh join, or if this RPC beats
+        // this client's own scene-load/player-reference bookkeeping), and
+        // a one-shot null check would just silently drop the reposition
+        // instead of retrying.
+        private IEnumerator PositionLocalPlayerWhenReady(Vector3 position, Quaternion rotation)
+        {
+            float timeout = Time.time + 5f;
+            while (NetworkClient.localPlayer == null && Time.time < timeout) yield return null;
+
+            if (NetworkClient.localPlayer == null)
+            {
+                Debug.LogWarning("[GameFlowManager] TargetPositionPlayer timed out waiting for NetworkClient.localPlayer.");
+                yield break;
+            }
+
+            Transform player = NetworkClient.localPlayer.transform;
+
+            // A raw Transform.position set here moves the object locally,
+            // but NetworkTransform's own interpolation/delta-compression
+            // snapshot buffer on this object never gets told about it --
+            // every *other* client watching this player would then either
+            // smoothly (and across a scene change, nonsensically) slide
+            // from the old position toward the new one, or read stale
+            // snapshots that don't match where the object actually is.
+            // Confirmed bug: a position mismatch between clients after
+            // this reposition. CmdTeleport is Mirror's own API for
+            // exactly this -- client-authoritative teleport that also
+            // resets the buffer on every observer via RpcTeleport.
+            //
+            // CmdTeleport is a [Command] -- when *this* client calls it,
+            // the method body doesn't run here at all, only on the
+            // server, which then broadcasts RpcTeleport back out to
+            // everyone (including this same client) to actually apply
+            // it. That round trip means this client's own local position
+            // doesn't move until it completes, even though the server
+            // and every other client are already correct -- Mirror's own
+            // NetworkTransformBase.CmdTeleport source carries a TODO
+            // acknowledging exactly this gap, recommending the caller
+            // also set the position directly for immediate local
+            // correctness. Confirmed bug: the clone's own camera stayed
+            // at a stale position (a fixed, non-drifting offset -- not
+            // a sync/interpolation issue) until that round trip caught
+            // up, which in practice is what you'd end up standing at.
+            WithCharacterControllerDisabled(player, () =>
+            {
+                player.SetPositionAndRotation(position, rotation);
+
+                NetworkTransformReliable netTransform = player.GetComponent<NetworkTransformReliable>();
+                if (netTransform != null) netTransform.CmdTeleport(position, rotation);
+            });
+        }
+
+        private static void WithCharacterControllerDisabled(Transform player, System.Action action)
+        {
             // Disable/re-enable around the position change so the
             // CharacterController doesn't try to resolve the jump as a
             // collision -- same reasoning as DoorTeleporter.
             CharacterController controller = player.GetComponent<CharacterController>();
             if (controller != null) controller.enabled = false;
-            player.SetPositionAndRotation(spawn.position, spawn.rotation);
+
+            // See FirstPersonController.ResetMotion's own comment -- any
+            // velocity accumulated before this teleport (gravity runs
+            // every frame regardless of position) would otherwise keep
+            // being applied right after landing at the correct spot,
+            // pulling the character down through the floor.
+            FirstPersonController fpc = player.GetComponent<FirstPersonController>();
+            if (fpc != null) fpc.ResetMotion();
+
+            action();
             if (controller != null) controller.enabled = true;
         }
 

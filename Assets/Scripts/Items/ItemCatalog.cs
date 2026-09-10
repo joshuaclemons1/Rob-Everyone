@@ -16,6 +16,20 @@ namespace RobEveryone.Items
     {
         [SerializeField] private List<ItemDefinition> items = new();
 
+        // Self-registers so anything can resolve a name back to an
+        // ItemDefinition (e.g. PickupItem, which would otherwise need
+        // this same catalog wired individually onto all 34+ item
+        // prefabs) without needing its own serialized reference -- relies
+        // on PlayerInventory's existing reference to this asset to make
+        // sure it's actually loaded in memory (a ScriptableObject asset
+        // nothing references never gets loaded at all).
+        public static ItemCatalog Instance { get; private set; }
+
+        private void OnEnable()
+        {
+            Instance = this;
+        }
+
         public ItemDefinition GetByName(string itemName)
         {
             if (string.IsNullOrEmpty(itemName)) return null;

@@ -40,6 +40,16 @@ namespace RobEveryone.AI
         // straight up in place. It's only meant to help the knockdown
         // topple, not compete with the actual horizontal shove.
         [SerializeField] private float impactUpwardBias = 0.7f;
+        // A single drive-through fires OnTriggerEnter once for the
+        // player's own collider *and* once more for each of their
+        // ragdoll's limb colliders (arms/legs), since
+        // GetComponentInParent finds the same PlayerInventory from any of
+        // them -- without this cooldown, one real hit applied the impact
+        // (and played the SFX) up to 9 times over, launching the player
+        // far harder than intended.
+        [SerializeField] private float impactCooldown = 0.5f;
+
+        private readonly Dictionary<PlayerInventory, float> lastImpactTime = new();
 
         private List<Transform> waypoints;
         private Transform originPoint;
@@ -123,6 +133,9 @@ namespace RobEveryone.AI
 
             PlayerInventory player = other.GetComponentInParent<PlayerInventory>();
             if (player == null) return;
+
+            if (lastImpactTime.TryGetValue(player, out float last) && Time.time - last < impactCooldown) return;
+            lastImpactTime[player] = Time.time;
 
             RpcPlayImpactSfx();
 

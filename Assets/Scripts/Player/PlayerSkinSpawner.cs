@@ -161,14 +161,19 @@ namespace RobEveryone.Player
             }
         }
 
-        // Everything on the skin goes on a dedicated layer (assign it to
-        // whatever layer your own PlayerCamera excludes from its Culling
-        // Mask) -- that's what makes "others see your body, you don't see
-        // your own" work, instead of SetActive(false), which would hide it
-        // from every camera, not just your own.
+        // skinLayer is specifically "hidden from its owner's own camera"
+        // (see PlayerRagdoll, which briefly re-adds it to your own
+        // camera's culling mask during a stun so you can see yourself
+        // ragdoll) -- every player's camera excludes this same layer, so
+        // only *your own* skin instance can go on it. Every other
+        // player's skin has to stay on an ordinary, always-rendered layer
+        // (Default), or nobody's camera would ever render anyone's body,
+        // not just its owner's -- SetActive(false) isn't an option either,
+        // same reasoning as the original single-player version of this
+        // comment: that would hide it from every camera, not just one.
         private void SetLayerRecursively(Transform root)
         {
-            int layer = LayerMaskToLayer(skinLayer);
+            int layer = isOwned ? LayerMaskToLayer(skinLayer) : 0; // 0 = Default
             if (layer < 0) return;
 
             foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
