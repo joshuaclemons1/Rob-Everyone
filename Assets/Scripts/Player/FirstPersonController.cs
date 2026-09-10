@@ -114,6 +114,14 @@ namespace RobEveryone.Player
         // processing input.
         [SyncVar] public bool IsFrozen;
 
+        // Local-only (deliberately NOT synced, unlike IsFrozen) -- set by
+        // InventoryScreenUI while the Tab / steal screen is up so mouse
+        // movement drives the cursor instead of the camera, and WASD
+        // doesn't walk you around blind. You're still fully present in the
+        // world (a rival can still tase you mid-rearrange); this just
+        // parks your own input.
+        public bool LookSuppressed { get; set; }
+
         private void Awake()
         {
             controller = GetComponent<CharacterController>();
@@ -182,6 +190,7 @@ namespace RobEveryone.Player
             // self-moved position.
             if (!isOwned) return;
             if (IsFrozen) return;
+            if (LookSuppressed) return;
 
             HandleLook();
             HandleCrouch();

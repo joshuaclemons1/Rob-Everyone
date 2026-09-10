@@ -1,0 +1,342 @@
+using System.Collections.Generic;
+using Mirror;
+using RobEveryone.Inventory;
+using RobEveryone.Items;
+using RobEveryone.Player;
+using RobEveryone.Sabotage;
+using TMPro;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+namespace RobEveryone.UI
+{
+    // The Tab / steal screen. Press Tab: the local camera swaps to a
+    // static front-facing third-person shot, the hotbar rises and grows,
+    // the cursor appears, and every slot box (hotbar + wallet) becomes a
+    // drag source/target. Pressing E on a stunned rival opens the *same*
+    // screen with that rival's hotbar shown above yours and a "Steal
+    // from: <name>" label -- drag one item from their row onto yours.
+    //
+    // Every mutation is a Command on PlayerInventory / PlayerTheftTarget;
+    // this only ever requests changes and redraws from their events. You
+    // stay fully present in the world while it's open (a rival can still
+    // tase you) -- see FirstPersonController.LookSuppressed.
+    //
+    // One per scene, on the same Canvas as the Hotbar (so the dim overlay
+    // and hotbar share a stacking context). The Canvas needs a
+    // GraphicRaycaster and the scene an EventSystem.
+    public class InventoryScreenUI : MonoBehaviour
+    {
+        // Checked by HotbarController / PlayerDropController / Interactor /
+        // SabotageUseController so gameplay input pauses while the screen
+        // is up.
+        public static bool MenuOpen { get; private set; }
+
+        [Header("Panels")]
+        [SerializeField] private GameObject dimBackground;     // full-screen Image, toggled
+        [SerializeField] private RectTransform hotbarContainer; // the Hotbar row's own RectTransform
+        [SerializeField] private GameObject victimRow;         // holds victimHotbarUI + victimLabel, toggled
+        [SerializeField] private HotbarUI victimHotbarUI;      // bindToLocalPlayer = false
+        [SerializeField] private TMP_Text victimLabel;
+
+        [Header("Drag slots")]
+        [SerializeField] private InventoryDragSlot[] myHotbarSlots; // 5, left to right
+        [SerializeField] private InventoryDragSlot myWalletSlot;
+        [SerializeField] private InventoryDragSlot[] victimHotbarSlots; // 5, left to right
+
+        [Header("Hotbar transform (compact vs expanded)")]
+        [SerializeField] private Vector2 compactAnchoredPos;
+        [SerializeField] private float compactScale = 1f;
+        [SerializeField] private Vector2 expandedAnchoredPos;
+        [SerializeField] private float expandedScale = 1.6f;
+        [SerializeField] private float transformLerpSpeed = 12f;
+
+        [Header("Drag ghost")]
+        [SerializeField] private RectTransform dragGhost;      // an Image; raycastTarget OFF
+        [SerializeField] private TMP_Text dragGhostLabel;
+
+        [Header("Steal")]
+        [SerializeField] private float stealBreakDistance = 6f; // walk this far from the victim and the screen closes
+
+        private enum Mode { Closed, Self, Steal }
+        private Mode mode = Mode.Closed;
+
+        private FirstPersonController fpc;
+        private InventoryCameraRig cameraRig;
+        private PlayerImpactRelay myRelay;
+        private PlayerTheftTarget myTheft;
+
+        private PlayerInventory stealVictim;
+        private NetworkIdentity stealVictimIdentity;
+
+        private void Awake()
+        {
+            SetPanelsForClosed();
+            if (hotbarContainer != null)
+            {
+                hotbarContainer.anchoredPosition = compactAnchoredPos;
+                hotbarContainer.localScale = Vector3.one * compactScale;
+            }
+        }
+
+        private void Update()
+        {
+            ResolveLocalRefs();
+
+            if (mode == Mode.Closed)
+            {
+                if (CanOpenSelf() && TabPressed()) OpenSelf();
+            }
+            else if (mode == Mode.Self)
+            {
+                if (TabPressed() || EscapePressed()) Close(sendRelease: false);
+            }
+            else // Steal
+            {
+                if (EscapePressed() || TabPressed()) { CancelStealLocally(); }
+                else if (stealVictim == null || myRelay == null) { CancelStealLocally(); }
+                else if (stealVictimIdentity == null) { CancelStealLocally(); }
+                else if (!VictimStillStealable() || VictimTooFar()) { CancelStealLocally(); }
+            }
+
+            AnimateHotbar();
+
+            // A stun landing on us while a screen is up (we're fully
+            // vulnerable) -- bail so PlayerRagdoll can own the camera.
+            if (mode != Mode.Closed && myRelay != null && myRelay.IsStunned)
+            {
+                if (mode == Mode.Steal) CancelStealLocally();
+                else Close(sendRelease: false);
+            }
+        }
+
+        // ---- open / close ----------------------------------------------
+
+        private bool CanOpenSelf() =>
+            fpc != null && !fpc.IsFrozen && (myRelay == null || !myRelay.IsStunned);
+
+        private void OpenSelf()
+        {
+            mode = Mode.Self;
+            EnterScreen();
+            if (victimRow != null) victimRow.SetActive(false);
+            ApplySlotModes();
+        }
+
+        // Called from PlayerTheftTarget's TargetRpc on the thief's client.
+        public void OpenSteal(PlayerInventory victim)
+        {
+            if (victim == null) return;
+            stealVictim = victim;
+            stealVictimIdentity = victim.GetComponent<NetworkIdentity>();
+
+            mode = Mode.Steal;
+            EnterScreen();
+
+            if (victimRow != null) victimRow.SetActive(true);
+            if (victimHotbarUI != null) victimHotbarUI.Bind(victim);
+            if (victimLabel != null) victimLabel.text = $"Steal from: {victim.DisplayName}";
+            ApplySlotModes();
+        }
+
+        // Server told us the steal completed (or is over) -- clean close,
+        // no CmdCancel needed (the server already released the window).
+        public void CloseSteal()
+        {
+            if (mode != Mode.Steal) return;
+            Close(sendRelease: false);
+        }
+
+        private void CancelStealLocally()
+        {
+            Close(sendRelease: true);
+        }
+
+        private void Close(bool sendRelease)
+        {
+            if (mode == Mode.Steal && sendRelease && myTheft != null && stealVictimIdentity != null)
+            {
+                myTheft.ReleaseStealWindow(stealVictimIdentity);
+            }
+
+            mode = Mode.Closed;
+            stealVictim = null;
+            stealVictimIdentity = null;
+            if (victimHotbarUI != null) victimHotbarUI.Bind(null);
+
+            EndGhost();
+            SetPanelsForClosed();
+
+            MenuOpen = false;
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+            if (fpc != null) fpc.LookSuppressed = false;
+            if (cameraRig != null) cameraRig.Hide();
+        }
+
+        private void EnterScreen()
+        {
+            MenuOpen = true;
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            if (fpc != null) fpc.LookSuppressed = true;
+            if (cameraRig != null) cameraRig.Show();
+            if (dimBackground != null) dimBackground.SetActive(true);
+        }
+
+        private void SetPanelsForClosed()
+        {
+            if (dimBackground != null) dimBackground.SetActive(false);
+            if (victimRow != null) victimRow.SetActive(false);
+            foreach (var s in EnumerateSlots()) { s.DragEnabled = false; s.DropEnabled = false; }
+        }
+
+        // ---- slot interactivity per mode -----------------------------
+
+        private void ApplySlotModes()
+        {
+            bool self = mode == Mode.Self;
+            bool steal = mode == Mode.Steal;
+
+            SetSlots(myHotbarSlots, drag: true, drop: true);              // always rearrangeable while open
+            SetSlot(myWalletSlot, drag: self, drop: self);               // wallet only in self mode
+            SetSlots(victimHotbarSlots, drag: steal, drop: false);       // victim row: source only, steal only
+        }
+
+        private static void SetSlots(IEnumerable<InventoryDragSlot> slots, bool drag, bool drop)
+        {
+            if (slots == null) return;
+            foreach (var s in slots) SetSlot(s, drag, drop);
+        }
+
+        private static void SetSlot(InventoryDragSlot s, bool drag, bool drop)
+        {
+            if (s == null) return;
+            s.DragEnabled = drag;
+            s.DropEnabled = drop;
+        }
+
+        private IEnumerable<InventoryDragSlot> EnumerateSlots()
+        {
+            if (myHotbarSlots != null) foreach (var s in myHotbarSlots) if (s != null) yield return s;
+            if (victimHotbarSlots != null) foreach (var s in victimHotbarSlots) if (s != null) yield return s;
+            if (myWalletSlot != null) yield return myWalletSlot;
+        }
+
+        // ---- drag resolution ----------------------------------------
+
+        public ItemDefinition ItemAt(InventoryDragSlot.SlotKind kind, int index)
+        {
+            switch (kind)
+            {
+                case InventoryDragSlot.SlotKind.MyWallet:
+                    return PlayerInventory.LocalPlayer != null ? PlayerInventory.LocalPlayer.WalletItem : null;
+
+                case InventoryDragSlot.SlotKind.MyHotbar:
+                    return HeadItem(PlayerInventory.LocalPlayer, index);
+
+                case InventoryDragSlot.SlotKind.VictimHotbar:
+                    return HeadItem(stealVictim, index);
+            }
+            return null;
+        }
+
+        private static ItemDefinition HeadItem(PlayerInventory inv, int index)
+        {
+            if (inv == null || index < 0 || index >= PlayerInventory.SlotCount) return null;
+            if (index >= inv.SlotSpanLengths.Count || inv.SlotSpanLengths[index] <= 0) return null; // continuation
+            return inv.Slots[index]?.Item;
+        }
+
+        public void ResolveDrag(InventoryDragSlot src, InventoryDragSlot dst)
+        {
+            PlayerInventory mine = PlayerInventory.LocalPlayer;
+            if (mine == null || src == dst) return;
+
+            InventoryDragSlot.SlotKind from = src.Kind;
+            InventoryDragSlot.SlotKind to = dst.Kind;
+
+            if (from == InventoryDragSlot.SlotKind.MyHotbar && to == InventoryDragSlot.SlotKind.MyHotbar)
+            {
+                mine.CmdMoveItem(src.Index, dst.Index);
+            }
+            else if (from == InventoryDragSlot.SlotKind.MyHotbar && to == InventoryDragSlot.SlotKind.MyWallet)
+            {
+                mine.CmdMoveToWallet(src.Index);
+            }
+            else if (from == InventoryDragSlot.SlotKind.MyWallet && to == InventoryDragSlot.SlotKind.MyHotbar)
+            {
+                mine.CmdMoveFromWallet(dst.Index);
+            }
+            else if (from == InventoryDragSlot.SlotKind.VictimHotbar && to == InventoryDragSlot.SlotKind.MyHotbar)
+            {
+                if (myTheft != null && stealVictimIdentity != null)
+                    myTheft.RequestSteal(stealVictimIdentity, src.Index, dst.Index);
+            }
+            // any other pairing is a no-op
+        }
+
+        // ---- drag ghost --------------------------------------------
+
+        public void BeginGhost(InventoryDragSlot from, Vector2 screenPos)
+        {
+            if (dragGhost == null) return;
+            ItemDefinition item = ItemAt(from.Kind, from.Index);
+            if (item == null) return;
+
+            dragGhost.gameObject.SetActive(true);
+            if (dragGhostLabel != null) dragGhostLabel.text = item.ItemName;
+            MoveGhost(screenPos);
+        }
+
+        public void MoveGhost(Vector2 screenPos)
+        {
+            if (dragGhost != null && dragGhost.gameObject.activeSelf) dragGhost.position = screenPos;
+        }
+
+        public void EndGhost()
+        {
+            if (dragGhost != null) dragGhost.gameObject.SetActive(false);
+        }
+
+        // ---- helpers -----------------------------------------------
+
+        private void ResolveLocalRefs()
+        {
+            if (fpc != null) return;
+            if (NetworkClient.localPlayer == null) return;
+            GameObject p = NetworkClient.localPlayer.gameObject;
+            fpc = p.GetComponent<FirstPersonController>();
+            cameraRig = p.GetComponent<InventoryCameraRig>();
+            myRelay = p.GetComponent<PlayerImpactRelay>();
+            myTheft = p.GetComponent<PlayerTheftTarget>();
+        }
+
+        private bool VictimStillStealable()
+        {
+            PlayerImpactRelay vr = stealVictim != null ? stealVictim.GetComponent<PlayerImpactRelay>() : null;
+            return vr != null && vr.IsStealable;
+        }
+
+        private bool VictimTooFar()
+        {
+            if (NetworkClient.localPlayer == null || stealVictim == null) return true;
+            return Vector3.Distance(NetworkClient.localPlayer.transform.position, stealVictim.transform.position) > stealBreakDistance;
+        }
+
+        private void AnimateHotbar()
+        {
+            if (hotbarContainer == null) return;
+            bool open = mode != Mode.Closed;
+            Vector2 targetPos = open ? expandedAnchoredPos : compactAnchoredPos;
+            float targetScale = open ? expandedScale : compactScale;
+
+            hotbarContainer.anchoredPosition = Vector2.Lerp(hotbarContainer.anchoredPosition, targetPos, transformLerpSpeed * Time.deltaTime);
+            float s = Mathf.Lerp(hotbarContainer.localScale.x, targetScale, transformLerpSpeed * Time.deltaTime);
+            hotbarContainer.localScale = new Vector3(s, s, 1f);
+        }
+
+        private static bool TabPressed() => Keyboard.current != null && Keyboard.current.tabKey.wasPressedThisFrame;
+        private static bool EscapePressed() => Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame;
+    }
+}

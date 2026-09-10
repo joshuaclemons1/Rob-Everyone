@@ -1,71 +1,139 @@
 using Mirror;
 using RobEveryone.Interaction;
 using RobEveryone.Inventory;
-using RobEveryone.Items;
 using RobEveryone.Player;
+using RobEveryone.UI;
 using UnityEngine;
 
 namespace RobEveryone.Sabotage
 {
-    // Makes a stunned player themself a valid E-key interaction target --
-    // reuses Interactor.cs's existing raycast+prompt pipeline (already
-    // used by SellStation/PickupItem) instead of a parallel input system.
-    // CanInteract gates on PlayerImpactRelay.IsStealable, a client-visible
-    // SyncVar, so the prompt only shows during an actual PvP steal window
-    // (not a car-caused stun, which never sets IsStealable).
+    // On every Player. Two roles, same component:
+    //
+    //  - VICTIM: while this player is stunned by a PvP hit
+    //    (PlayerImpactRelay.IsStealable), they're a valid E target.
+    //    Pressing E grants the *steal window* to that one thief and opens
+    //    a steal screen on the thief's client -- it does NOT transfer
+    //    anything on its own.
+    //
+    //  - THIEF: the steal screen shows the victim's hotbar above the
+    //    thief's own; dragging one item down fires CmdStealItem here,
+    //    which does the server-authoritative transfer (one item per
+    //    window, gameplay-design.md).
+    //
+    // Reuses the existing Interactor/IInteractable raycast+prompt
+    // pipeline for the "press E on a stunned rival" half; the drag half
+    // is InventoryScreenUI.
     [RequireComponent(typeof(PlayerImpactRelay))]
     [RequireComponent(typeof(PlayerInventory))]
     public class PlayerTheftTarget : NetworkBehaviour, IInteractable
     {
         private PlayerImpactRelay relay;
-        private PlayerInventory victim;
+        private PlayerInventory inventory;
 
-        public string InteractionPrompt => "Steal item";
-        public bool CanInteract => relay.IsStealable;
+        // Server-only. The thief currently granted this player's steal
+        // window (they pressed E, their screen is open). Null = the
+        // window is open to whoever presses E first. Cleared on a
+        // successful steal, on the thief closing the screen, or when the
+        // window lapses.
+        private NetworkIdentity activeThief;
+
+        public string InteractionPrompt =>
+            $"Rob {(inventory != null ? inventory.DisplayName : "rival")}";
+
+        // Client-visible gate for the E prompt. The server-side exclusivity
+        // check (only one thief at a time) lives in Interact() below,
+        // since activeThief isn't synced.
+        public bool CanInteract => relay != null && relay.IsStealable;
 
         private void Awake()
         {
             relay = GetComponent<PlayerImpactRelay>();
-            victim = GetComponent<PlayerInventory>();
+            inventory = GetComponent<PlayerInventory>();
         }
 
-        // Server-only -- see Interactor's CmdInteract, the only caller.
+        private void Update()
+        {
+            // Manual isServer guard (not the [Server] attribute, which
+            // warns every frame on a client).
+            if (!isServer) return;
+            // Window lapsed with nobody having stolen -- release it.
+            if (activeThief != null && (relay == null || !relay.IsStealable)) activeThief = null;
+        }
+
+        // VICTIM side. Server-only -- see Interactor.CmdInteract, the only
+        // caller. Grants this stun's steal window to the thief and opens
+        // their steal screen.
         public void Interact(GameObject interactorObject)
         {
-            if (!isServer) return;
-            if (!relay.IsStealable) return; // re-validate server-side, don't trust the client-visible flag alone
+            if (!isServer || relay == null || !relay.IsStealable) return;
+            if (activeThief != null) return; // someone is already robbing this stun
 
-            PlayerInventory thief = interactorObject.GetComponent<PlayerInventory>();
-            if (thief == null || thief == victim) return;
+            NetworkIdentity thief = interactorObject.GetComponent<NetworkIdentity>();
+            if (thief == null || thief == netIdentity || thief.connectionToClient == null) return;
 
-            int victimSlot = FindFirstOccupiedSlot(victim);
-            if (victimSlot < 0) return;
+            activeThief = thief;
 
-            ItemDefinition stolen = victim.Slots[victimSlot]?.Item;
-            if (stolen == null) return;
-
-            // AddItem only ever tries the thief's currently-selected slot
-            // (existing PlayerInventory behavior) -- a full hotbar, or
-            // just an occupied selected slot with other slots free, both
-            // fail this the same way. Nothing is taken from the victim
-            // unless the thief's AddItem actually succeeds.
-            if (!thief.AddItem(stolen)) return;
-            victim.RemoveSlot(victimSlot);
-
-            // One theft per stun -- clear immediately rather than only via
-            // the window timer, so a second attacker can't also loot the
-            // same stun.
-            relay.ClearStealableNow();
+            PlayerTheftTarget thiefTheft = thief.GetComponent<PlayerTheftTarget>();
+            if (thiefTheft != null) thiefTheft.TargetOpenStealScreen(thief.connectionToClient, netIdentity);
         }
 
-        private static int FindFirstOccupiedSlot(PlayerInventory inventory)
+        // THIEF side (the RPC lands on the thief's own component).
+        [TargetRpc]
+        private void TargetOpenStealScreen(NetworkConnectionToClient target, NetworkIdentity victim)
         {
-            var spans = inventory.SlotSpanLengths;
-            for (int i = 0; i < PlayerInventory.SlotCount; i++)
-            {
-                if (i < spans.Count && spans[i] > 0 && inventory.Slots[i] != null) return i;
-            }
-            return -1;
+            if (victim == null) return;
+            InventoryScreenUI screen = FindFirstObjectByType<InventoryScreenUI>(FindObjectsInactive.Include);
+            if (screen != null) screen.OpenSteal(victim.GetComponent<PlayerInventory>());
+        }
+
+        [TargetRpc]
+        private void TargetCloseStealScreen(NetworkConnectionToClient target)
+        {
+            InventoryScreenUI screen = FindFirstObjectByType<InventoryScreenUI>(FindObjectsInactive.Include);
+            if (screen != null) screen.CloseSteal();
+        }
+
+        // THIEF side. Called by InventoryScreenUI when the thief drags
+        // victim slot `victimHead` onto their own slot `myHead`.
+        public void RequestSteal(NetworkIdentity victim, int victimHead, int myHead) =>
+            CmdStealItem(victim, victimHead, myHead);
+
+        // THIEF side. Called by InventoryScreenUI when the thief closes
+        // the screen without taking anything.
+        public void ReleaseStealWindow(NetworkIdentity victim) => CmdCancelSteal(victim);
+
+        [Command]
+        private void CmdStealItem(NetworkIdentity victimIdentity, int victimHead, int myHead)
+        {
+            if (victimIdentity == null) return;
+            PlayerTheftTarget victim = victimIdentity.GetComponent<PlayerTheftTarget>();
+            if (victim == null || victim == this) return;
+            if (victim.activeThief != netIdentity) return;                 // not your window
+            if (victim.relay == null || !victim.relay.IsStealable) return; // window lapsed
+
+            if (victimHead < 0 || victimHead >= PlayerInventory.SlotCount) return;
+            if (victimHead >= victim.inventory.SlotSpanLengths.Count ||
+                victim.inventory.SlotSpanLengths[victimHead] <= 0) return; // not a head slot
+
+            InventorySlot? slot = victim.inventory.Slots[victimHead];
+            if (slot == null || slot.Value.Item == null) return;
+
+            // No room on the thief's chosen slot -> nothing is taken from
+            // the victim. The window stays open for another try.
+            if (!inventory.TryPlaceAt(slot.Value.Item, slot.Value.RemainingUses, myHead)) return;
+
+            victim.inventory.RemoveSlot(victimHead);
+            victim.relay.ClearStealableNow(); // one item per window
+            victim.activeThief = null;
+            TargetCloseStealScreen(connectionToClient);
+        }
+
+        [Command]
+        private void CmdCancelSteal(NetworkIdentity victimIdentity)
+        {
+            if (victimIdentity == null) return;
+            PlayerTheftTarget victim = victimIdentity.GetComponent<PlayerTheftTarget>();
+            if (victim != null && victim.activeThief == netIdentity) victim.activeThief = null;
         }
     }
 }

@@ -27,7 +27,7 @@ namespace RobEveryone.Inventory
 
         private void Update()
         {
-            if (!inventory.isOwned) return;
+            if (!inventory.isOwned || RobEveryone.UI.InventoryScreenUI.MenuOpen) return;
 
             if (Keyboard.current != null)
             {

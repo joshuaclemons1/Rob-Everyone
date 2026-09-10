@@ -28,6 +28,7 @@ namespace RobEveryone.Interaction
         private void Update()
         {
             if (!isOwned) return;
+            if (RobEveryone.UI.InventoryScreenUI.MenuOpen) { currentTarget = null; return; }
 
             currentTarget = FindTarget();
 

@@ -40,6 +40,27 @@ namespace RobEveryone.Items
         [SyncVar(hook = nameof(OnTakenChanged))]
         private bool taken;
 
+        // True only for an item a player dropped (PlayerInventory.DropSlot),
+        // false for LootSpawnPoint house loot. Drives the cosmetic
+        // spin/bob below so a dropped item reads as "grabbable, just set
+        // down" rather than blending into the furniture -- same feel as
+        // the hotbar preview. Synced so every client (not just the
+        // dropper) sees it. These prefabs carry no NetworkTransform
+        // (house loot never moves), so spinning the root here is safe --
+        // nothing is fighting it over the wire.
+        [SyncVar]
+        private bool dropped;
+
+        [SerializeField] private float dropSpinSpeed = 60f;   // degrees/sec
+        [SerializeField] private float dropBobHeight = 0.12f; // metres
+        [SerializeField] private float dropBobSpeed = 2f;
+
+        private Vector3 droppedBasePos;
+        private bool capturedDroppedBase;
+
+        [Server]
+        public void MarkDropped() => dropped = true;
+
         public int Value => item != null ? item.Value : 0;
         public string InteractionPrompt => item != null ? $"Take {item.ItemName} (${item.Value})" : "Take item";
         public bool CanInteract => true;
@@ -96,6 +117,21 @@ namespace RobEveryone.Items
         private void OnTakenChanged(bool _, bool newValue)
         {
             gameObject.SetActive(!newValue);
+        }
+
+        private void Update()
+        {
+            if (!dropped) return;
+
+            if (!capturedDroppedBase)
+            {
+                droppedBasePos = transform.position;
+                capturedDroppedBase = true;
+            }
+
+            transform.Rotate(0f, dropSpinSpeed * Time.deltaTime, 0f, Space.World);
+            float bob = Mathf.Sin(Time.time * dropBobSpeed) * dropBobHeight;
+            transform.position = droppedBasePos + new Vector3(0f, bob, 0f);
         }
     }
 }

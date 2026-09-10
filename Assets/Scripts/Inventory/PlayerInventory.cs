@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Mirror;
+using RobEveryone.Core;
 using RobEveryone.Items;
 using UnityEngine;
 
@@ -93,12 +94,40 @@ namespace RobEveryone.Inventory
         private int selectedSlot;
         public int SelectedSlot => selectedSlot;
 
+        // A human-readable label for this player -- shown as "Rob X" /
+        // "Steal from: X" in the theft flow. Set by
+        // RobEveryoneNetworkManager.OnServerAddPlayer (join order for
+        // now; a real Steam persona name is a follow-up once per-connection
+        // SteamIDs are wired -- Stage 5).
+        [SyncVar] private string displayName;
+        public string DisplayName => string.IsNullOrEmpty(displayName) ? "rival" : displayName;
+
+        [Server]
+        public void SetDisplayName(string name) => displayName = name;
+
         // Separate from TotalValue (this round's carried loot, at risk
         // until sold) -- Cash is the safe, banked balance that persists
         // across rounds, per gameplay-design.md's Cash/carried split.
         [SyncVar(hook = nameof(OnCashChangedHook))]
         private int cash;
         public int Cash => cash;
+
+        // The Prison Wallet (gameplay-design.md's 6th slot) -- one item of
+        // any InventorySize, kept as its own two SyncVars rather than a
+        // slotItemNames entry so "survives being caught" is structural:
+        // ResetInventory only ever loops 0..SlotCount, so the wallet is
+        // untouched for free. Placeable only during a gameplay round,
+        // retrievable only in the shop/Lobby, and locked once filled for
+        // the round -- those rules live in MoveToWallet/MoveFromWallet.
+        [SyncVar(hook = nameof(OnWalletChangedHook))]
+        private string walletItemName;
+        [SyncVar]
+        private int walletUses;
+
+        public ItemDefinition WalletItem =>
+            string.IsNullOrEmpty(walletItemName) || catalog == null ? null : catalog.GetByName(walletItemName);
+        public int WalletUses => walletUses;
+        public bool WalletFilled => !string.IsNullOrEmpty(walletItemName);
 
         // Computed from slotItemNames each time, not cached -- always
         // correct, no risk of drifting from the slot array through some
@@ -128,6 +157,7 @@ namespace RobEveryone.Inventory
         public event Action OnSlotsChanged;
         public event Action<int> OnSelectedSlotChanged;
         public event Action<int> OnCashChanged;
+        public event Action OnWalletChanged;
 
         private void Awake()
         {
@@ -279,6 +309,165 @@ namespace RobEveryone.Inventory
             if (slotUses[headIndex] <= 0) RemoveSlot(headIndex);
         }
 
+        // Generic "put this item at exactly this head slot if it fits and
+        // the whole span is clear" -- the shared primitive behind
+        // retrieving from the wallet and receiving a stolen item. Returns
+        // false (changes nothing) if headIndex is out of range, the item
+        // would run off the end, or any covered slot is occupied.
+        [Server]
+        public bool TryPlaceAt(ItemDefinition item, int uses, int headIndex)
+        {
+            if (item == null) return false;
+            int size = item.InventorySize;
+            if (headIndex < 0 || headIndex + size > SlotCount) return false;
+
+            for (int offset = 0; offset < size; offset++)
+            {
+                if (!string.IsNullOrEmpty(slotItemNames[headIndex + offset])) return false;
+            }
+
+            slotItemNames[headIndex] = item.ItemName;
+            slotUses[headIndex] = uses;
+            for (int offset = 1; offset < size; offset++)
+            {
+                slotItemNames[headIndex + offset] = ContinuationMarker;
+                slotUses[headIndex + offset] = 0;
+            }
+            return true;
+        }
+
+        // Drag-and-drop within the Tab screen. Both indices are heads (a
+        // continuation box isn't draggable). Moves the whole span; blocks
+        // (rather than swaps) if the destination overlaps anything that
+        // isn't part of the item being moved, so nudging a 2-slot item
+        // one slot over still works.
+        [Server]
+        public bool MoveItem(int fromHead, int toHead)
+        {
+            if (fromHead < 0 || fromHead >= SlotCount || toHead < 0 || toHead >= SlotCount) return false;
+            if (fromHead == toHead) return false;
+
+            string name = slotItemNames[fromHead];
+            if (string.IsNullOrEmpty(name) || name == ContinuationMarker) return false;
+
+            ItemDefinition item = catalog != null ? catalog.GetByName(name) : null;
+            if (item == null) return false;
+            int size = item.InventorySize;
+            if (toHead + size > SlotCount) return false;
+
+            int uses = slotUses[fromHead];
+
+            for (int offset = 0; offset < size; offset++)
+            {
+                int dest = toHead + offset;
+                bool isOwnSlot = dest >= fromHead && dest < fromHead + size;
+                if (isOwnSlot) continue;
+                if (!string.IsNullOrEmpty(slotItemNames[dest])) return false;
+            }
+
+            for (int offset = 0; offset < size; offset++)
+            {
+                slotItemNames[fromHead + offset] = string.Empty;
+                slotUses[fromHead + offset] = 0;
+            }
+            slotItemNames[toHead] = name;
+            slotUses[toHead] = uses;
+            for (int offset = 1; offset < size; offset++)
+            {
+                slotItemNames[toHead + offset] = ContinuationMarker;
+                slotUses[toHead + offset] = 0;
+            }
+            return true;
+        }
+
+        [Command]
+        public void CmdMoveItem(int fromHead, int toHead) => MoveItem(fromHead, toHead);
+
+        // Hotbar head slot -> Prison Wallet. Only during a gameplay round
+        // (you stash on the way in, not in the shop), and only if the
+        // wallet is empty -- once filled it's locked for the round
+        // (gameplay-design.md).
+        [Server]
+        public bool MoveToWallet(int fromHead)
+        {
+            if (WalletFilled) return false;
+            if (!InGameplayPhase()) return false;
+            if (fromHead < 0 || fromHead >= SlotCount) return false;
+
+            string name = slotItemNames[fromHead];
+            if (string.IsNullOrEmpty(name) || name == ContinuationMarker) return false;
+
+            walletItemName = name;
+            walletUses = slotUses[fromHead];
+            RemoveSlot(fromHead);
+            return true;
+        }
+
+        // Prison Wallet -> hotbar slot toHead. Only in the shop/Lobby
+        // phase (you can't pull it back out mid-round).
+        [Server]
+        public bool MoveFromWallet(int toHead)
+        {
+            if (!WalletFilled) return false;
+            if (InGameplayPhase()) return false;
+
+            ItemDefinition item = WalletItem;
+            if (item == null) return false;
+            if (!TryPlaceAt(item, walletUses, toHead)) return false;
+
+            walletItemName = string.Empty;
+            walletUses = 0;
+            return true;
+        }
+
+        [Command] public void CmdMoveToWallet(int fromHead) => MoveToWallet(fromHead);
+        [Command] public void CmdMoveFromWallet(int toHead) => MoveFromWallet(toHead);
+
+        // "Are we mid-round" -- the wallet's place/retrieve gate. The
+        // server's active scene is reliably exactly the gameplay or Lobby
+        // scene (single-mode ServerChangeScene), and GameFlowManager owns
+        // both names.
+        [Server]
+        private bool InGameplayPhase() =>
+            GameFlowManager.Instance != null && GameFlowManager.Instance.InGameplayScene;
+
+        // Drops the item at headIndex into the world in front of the
+        // player: spawns its own WorldModelPrefab (Collider +
+        // NetworkIdentity + PickupItem baked in by ItemPrefabBatchTool --
+        // see LootSpawnPoint.cs's class comment for why runtime AddComponent
+        // isn't an option), carrying its remaining uses, and marks it
+        // `dropped` so it spins/bobs like the hotbar preview instead of
+        // sitting inert like house loot. Server-only: PlayerDropController's
+        // Command.
+        [Server]
+        public void DropSlot(int headIndex, Vector3 position, Quaternion rotation)
+        {
+            if (headIndex < 0 || headIndex >= SlotCount) return;
+
+            string name = slotItemNames[headIndex];
+            if (string.IsNullOrEmpty(name) || name == ContinuationMarker) return;
+
+            ItemDefinition item = catalog != null ? catalog.GetByName(name) : null;
+            if (item == null || item.WorldModelPrefab == null) return;
+
+            int uses = slotUses[headIndex];
+            if (!RemoveSlot(headIndex)) return;
+
+            GameObject instance = Instantiate(item.WorldModelPrefab, position, rotation);
+            instance.transform.localScale = item.WorldModelScale;
+
+            PickupItem pickup = instance.GetComponent<PickupItem>();
+            if (pickup == null)
+            {
+                Debug.LogError($"{item.ItemName}'s World Model Prefab has no PickupItem -- can't drop it (same fix as LootSpawnPoint's error).", instance);
+                Destroy(instance);
+                return;
+            }
+            pickup.Initialize(item, uses);
+            pickup.MarkDropped();
+            NetworkServer.Spawn(instance);
+        }
+
         [Command]
         public void CmdSelectSlot(int index) => SelectSlot(index);
 
@@ -324,6 +513,10 @@ namespace RobEveryone.Inventory
             SelectSlot(next);
         }
 
+        // Clears the 5 normal slots -- deliberately does NOT touch the
+        // Prison Wallet (walletItemName/walletUses aren't in this loop),
+        // which is the whole point of the wallet: RoundManager calls this
+        // on a caught player and the wallet item survives.
         [Server]
         public void ResetInventory()
         {
@@ -360,5 +553,6 @@ namespace RobEveryone.Inventory
 
         private void OnCashChangedHook(int _, int newValue) => OnCashChanged?.Invoke(newValue);
         private void OnSelectedSlotChangedHook(int _, int newValue) => OnSelectedSlotChanged?.Invoke(newValue);
+        private void OnWalletChangedHook(string _, string __) => OnWalletChanged?.Invoke();
     }
 }

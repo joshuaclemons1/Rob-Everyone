@@ -44,7 +44,7 @@ namespace RobEveryone.Sabotage
 
         private void Update()
         {
-            if (!isOwned) return;
+            if (!isOwned || RobEveryone.UI.InventoryScreenUI.MenuOpen) return;
             if (Mouse.current == null) return;
 
             ItemDefinition item = ResolveSelectedItem();

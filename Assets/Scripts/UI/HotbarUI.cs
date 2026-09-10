@@ -5,43 +5,84 @@ using UnityEngine;
 
 namespace RobEveryone.UI
 {
-    // Ties the 5 hotbar slot boxes to *this client's own*
-    // PlayerInventory.LocalPlayer (Stage 4) -- never another connected
-    // player's copy. The local player spawns asynchronously after
-    // connecting, so Start polls for it rather than assuming it already
-    // exists the way a single-player Awake lookup safely could.
+    // Ties a row of hotbar slot boxes to a PlayerInventory.
+    //
+    // Default (bindToLocalPlayer = true): binds to *this client's own*
+    // PlayerInventory.LocalPlayer -- never another connected player's
+    // copy. The local player spawns asynchronously after connecting, so
+    // Start polls for it.
+    //
+    // bindToLocalPlayer = false: stays idle until Bind() is called with
+    // an explicit inventory. Used by InventoryScreenUI's steal screen to
+    // show a *victim's* hotbar above the thief's own.
     public class HotbarUI : MonoBehaviour
     {
         [SerializeField] private HotbarSlotUI[] slots; // exactly PlayerInventory.SlotCount, left to right
+        [SerializeField] private bool bindToLocalPlayer = true;
 
         private PlayerInventory inventory;
+        public PlayerInventory BoundInventory => inventory;
 
         private void Start()
         {
-            StartCoroutine(WaitForLocalPlayer());
+            if (bindToLocalPlayer) StartCoroutine(WaitForLocalPlayer());
         }
 
         private IEnumerator WaitForLocalPlayer()
         {
-            while (inventory == null)
+            PlayerInventory found = null;
+            while (found == null)
             {
-                inventory = PlayerInventory.LocalPlayer;
-                if (inventory != null) break;
+                found = PlayerInventory.LocalPlayer;
+                if (found != null) break;
                 yield return null;
             }
+            Bind(found);
+        }
 
-            inventory.OnSlotsChanged += Refresh;
-            inventory.OnSelectedSlotChanged += RefreshSelection;
-            Refresh();
-            RefreshSelection(inventory.SelectedSlot);
+        // Rebinds (or, with null, clears) this row. Safe to call
+        // repeatedly.
+        public void Bind(PlayerInventory inv)
+        {
+            if (inventory != null)
+            {
+                inventory.OnSlotsChanged -= Refresh;
+                inventory.OnSelectedSlotChanged -= RefreshSelection;
+            }
+
+            inventory = inv;
+
+            if (inventory != null)
+            {
+                inventory.OnSlotsChanged += Refresh;
+                inventory.OnSelectedSlotChanged += RefreshSelection;
+                Refresh();
+                RefreshSelection(inventory.SelectedSlot);
+            }
+            else
+            {
+                BlankAll();
+            }
         }
 
         private void OnDisable()
         {
             if (inventory == null) return;
-
             inventory.OnSlotsChanged -= Refresh;
             inventory.OnSelectedSlotChanged -= RefreshSelection;
+        }
+
+        private void BlankAll()
+        {
+            if (slots == null) return;
+            for (int i = 0; i < slots.Length; i++)
+            {
+                if (slots[i] == null) continue;
+                slots[i].gameObject.SetActive(true);
+                slots[i].SetItem(null);
+                slots[i].SetSpan(slots[i].BaseAnchoredX, slots[i].BaseWidth);
+                slots[i].SetSelected(false);
+            }
         }
 
         // A bulky item's box merges into one wide rectangle instead of
@@ -59,7 +100,7 @@ namespace RobEveryone.UI
         // to a layout system.
         private void Refresh()
         {
-            if (slots == null) return;
+            if (slots == null || inventory == null) return;
 
             IReadOnlyList<int> spans = inventory.SlotSpanLengths;
             for (int i = 0; i < slots.Length; i++)

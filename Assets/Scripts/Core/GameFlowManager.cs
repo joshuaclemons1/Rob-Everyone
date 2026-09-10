@@ -57,6 +57,13 @@ namespace RobEveryone.Core
         public int BatchNumber => batchNumber;
         public int RoundInBatch => roundInBatch;
 
+        // The gameplay-vs-shop phase gate (used by PlayerInventory's
+        // Prison Wallet rules: stash only mid-round, retrieve only in the
+        // Lobby). ServerChangeScene is single-mode, so the active scene
+        // is reliably exactly one of these two.
+        public bool InGameplayScene => SceneManager.GetActiveScene().name == gameplaySceneName;
+        public bool InLobbyScene => SceneManager.GetActiveScene().name == lobbySceneName;
+
         // Catches a player left below the map -- normally impossible, but
         // ragdoll physics (a car impact, a Dynamite blast) can carry
         // someone past a boundary or through a thin/missing collider

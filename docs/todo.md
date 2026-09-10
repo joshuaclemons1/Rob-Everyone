@@ -9,9 +9,8 @@ happen soon" to "later stage."
 ## Priority order (the plan)
 
 1. **Inventory / UX** (high) — Tab inventory screen, drop-with-Q, Prison
-   Wallet slot, and the steal-window rework. Gates how looting a downed
-   player actually feels. Build guide:
-   [inventory-ux-setup.md](stages/inventory-ux-setup.md).
+   Wallet slot, steal-window rework. **Code done**; Editor wiring +
+   playtest remain: [inventory-ux-setup.md](stages/inventory-ux-setup.md).
 2. **Finish Stage 6 Phase 2** — only the Alarm Clock build + a full
    two-Editor Phase 2 playtest are left.
 3. **Stage 5 real Steam overlay test** — parked until a second Steam
@@ -30,39 +29,30 @@ Detail for each below.
 
 ## Do first — inventory / UX (high priority)
 
-This gates how looting a downed player actually feels. Stage 6's PvP
-steal-window (`PlayerTheftTarget`, stun a rival → press E → take one
-item) is in but half-formed, and once you've taken something there's no
-way to rearrange or drop what you end up carrying.
+**Code is written and committed** (`jclem's-branch`) — what's left is
+Editor wiring + a two-Editor playtest, step by step in
+[inventory-ux-setup.md](stages/inventory-ux-setup.md). One shared Tab /
+steal screen (front-facing third-person camera, hotbar rises + grows,
+cursor); drag to rearrange your slots and to/from the Prison Wallet;
+`Q` drops the selected slot into the world (spinning/bobbing); `E` on a
+stunned rival opens the same screen with their hotbar above yours to
+drag one item down. Design calls baked in: fully vulnerable while open;
+wallet takes one item of any size, placeable only mid-round, retrievable
+only in the Lobby, locked once filled, survives being caught; sell only
+after dragging it to a hotbar slot; one steal per stun.
 
-- **Inventory screen (Tab)** — not built. Shows the mouse in-game,
-  click-and-drag to move an item between slots (including a multi-slot
-  item — dragging it should move its whole span, not just one cell of
-  it). Real UI work: needs its own drag-and-drop system, separate from
-  the hotbar's existing number-key/scroll selection. This is also where
-  a stolen item should land in a way the player can see and manage.
-- **Drop item (hold + press Q)** — not built. A dropped item should look
-  the same as it does in the hotbar preview (spinning, slightly
-  floating) when it lands in the world, not disappear or revert to a
-  plain static object. Ties into the same "selected slot represents
-  what's in your hands" direction that shaped `AddItem`'s block-not-
-  fallback behavior (see `PlayerInventory.cs`'s own comment) — worth
-  designing both together rather than dropping first and reconciling
-  later.
-- **Prison Wallet slot** — gameplay-design.md's 6th, separate inventory
-  slot: holds exactly 1 item of any size/value, immune to whatever
-  happens to the other 5 when caught. The design calls that held it up
-  (what "immune" does to a caught player's inventory; whether you can
-  sell straight out of the wallet) are settled in
-  [inventory-ux-setup.md](stages/inventory-ux-setup.md) Part 1b — wallet
-  is separate `SyncVar`s that `ResetInventory` never touches, and you
-  drag it to a hotbar slot before selling.
-- **Revisit the steal-window design** — the code-review nits at the
-  bottom of this doc (theft not discriminating loot from equipped
-  sabotage gear, resetting a used item's durability, the multi-attacker
-  race) are all in `PlayerTheftTarget`/`PlayerImpactRelay`;
-  [inventory-ux-setup.md](stages/inventory-ux-setup.md) Part 4 folds them
-  into the same pass.
+New scripts: `InventoryScreenUI`, `InventoryDragSlot`, `WalletSlotUI`,
+`InventoryCameraRig`, `PlayerDropController`. Changed: `PlayerInventory`
+(wallet + move/drop), `PlayerTheftTarget` (drag-driven rework),
+`PlayerImpactRelay` (steal window = expiry timestamp, closing the
+multi-attacker race + the stale class comment), `HotbarUI` (bind to an
+explicit inventory), `PickupItem` (dropped spin), `FirstPersonController`
+(`LookSuppressed`).
+
+Follow-ups deferred (see the setup doc's own list): swap-on-drag,
+right-click quick-drop, real Steam names in the "Steal from:" label,
+auto-banking an unretrieved wallet item, making the wallet item
+off-limits to theft.
 
 ## Do first — finish Stage 6 Phase 2
 
@@ -227,31 +217,22 @@ way to rearrange or drop what you end up carrying.
 
 ## Code-review nits (Stage 6 sabotage read-through)
 
-Minor, none blocking — surfaced reviewing the Phase 1/2 commits, worth
-folding into whatever pass revisits sabotage next.
+Minor, none blocking — surfaced reviewing the Phase 1/2 commits.
 
-- **`PlayerImpactRelay` class comment is stale** — still says "Only the
-  server ever calls `RpcApplyImpact` (from CarDriver's own isServer-
-  gated impact detection)". It's now `private`, reached via
-  `ServerApplyImpact` / `ServerApplyPvpImpact`, and called from the
-  sabotage path too, not just `CarDriver`.
+**Fixed** in the inventory/UX pass:
+- ~~`PlayerImpactRelay` class comment stale~~ — rewritten.
+- ~~`ServerApplyPvpImpact` opening the steal window on a no-op stun~~ —
+  now explicitly commented as deliberate.
+- ~~Multi-attacker steal-window race~~ — the window is an expiry
+  timestamp now, not racing coroutines.
+- ~~Theft not discriminating what it takes~~ — moot: the thief now
+  drag-picks the item off the victim's hotbar (still *can* take gear;
+  making it loot-only is a one-liner if playtesting wants it — tracked
+  in the setup doc's follow-ups).
+
+**Still open:**
 - **Sabotage cooldowns never reset between rounds** —
-  `SabotageUseController.nextReadyTime` keys off `Time.time`, which is
-  continuous across the Lobby round-trip, so a Taser fired near the end
-  of a round can still be on cooldown at the start of the next. Short
-  windows, low impact, but a `ClearCooldowns()` called from round start
-  would be tidy.
-- **`ServerApplyPvpImpact` opens the steal window even when the stun
-  no-ops** — if the target is already stunned (e.g. by a car), the
-  inner `ServerApplyImpact` early-returns but `IsStealable` still gets
-  set. Probably fine/desirable (they're already down), but it's an
-  implicit decision worth making on purpose.
-- **Multi-attacker steal window race** — two PvP hits on the same
-  target start two independent `ClearStealableAfter` coroutines; the
-  first to fire closes the window early for the second attacker.
-- **Theft doesn't discriminate what it takes** —
-  `PlayerTheftTarget.Interact` uses plain `AddItem(stolen)` (a
-  partially-used item resets to full durability) and
-  `FindFirstOccupiedSlot` will happily steal an equipped sabotage item,
-  not just loot. Consider preferring highest-value loot and/or skipping
-  sabotage gear — a design call, not just a code one.
+  `SabotageUseController.nextReadyTime` keys off `Time.time`, continuous
+  across the Lobby round-trip, so a Taser fired near the end of a round
+  can still be on cooldown at the start of the next. Low impact; a
+  `ClearCooldowns()` from round start would be tidy.

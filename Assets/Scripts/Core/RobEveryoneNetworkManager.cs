@@ -1,4 +1,5 @@
 using Mirror;
+using RobEveryone.Inventory;
 using UnityEngine;
 
 namespace RobEveryone.Core
@@ -45,6 +46,13 @@ namespace RobEveryone.Core
             if (conn.identity != null)
             {
                 DontDestroyOnLoad(conn.identity.gameObject);
+
+                // Placeholder label until real Steam persona names are
+                // wired (Stage 5 follow-up). By this point the new
+                // player's PlayerInventory.OnStartServer has already added
+                // it to AllPlayers, so Count is the join ordinal.
+                var inv = conn.identity.GetComponent<PlayerInventory>();
+                if (inv != null) inv.SetDisplayName($"Player {PlayerInventory.AllPlayers.Count}");
             }
 
             if (GameFlowManager.Instance != null)
