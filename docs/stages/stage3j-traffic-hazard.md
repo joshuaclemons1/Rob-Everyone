@@ -215,7 +215,8 @@ explicit drag-in slot for the template instead.
 
 1. Menu: **Assets → Rob Everyone → Ragdoll Batch Tool**. This opens a
    window — leave it open alongside the Project window.
-2. Drag your template prefab (`Assets/Prefabs/PlayerSkins/BaseCharacter.prefab`)
+2. Drag any already-ragdolled skin prefab (e.g.
+   `Assets/Prefabs/PlayerSkins/_Ragdoll/BaseCharacter_Ragdoll.prefab`)
    into the window's **Template** field. The **Template bones with
    Rigidbody** list should read 11 — that's the correct, complete count
    per the note above, not a shortfall.
@@ -230,9 +231,11 @@ explicit drag-in slot for the template instead.
    ragdoll) *only if* you're intentionally redoing everyone for another
    reason (e.g. the template itself changed). If the first pass's 11-bone
    results were already correct, you may not need to redo most of these
-   at all — the only genuinely new work is the 6 skins that weren't in
+   at all — the only genuinely new work was the 6 skins that weren't in
    the roster before (`Chef_Hat`, `Cowboy_Hair`, `Ninja_Male_Hair`,
-   `VikingHelmet`, `Cow`, `Pug`), which still need their first pass.
+   `VikingHelmet`, `Cow`, `Pug`). **All 52 are now in the roster** (see
+   [completed.md](../completed.md)) — this section is kept only as the
+   how-to for re-running the tool on a future skin.
 5. Click **Copy Ragdoll To Targets**.
 6. Check the Console. For each one, it logs either the (re)wrapped prefab
    path, or a warning naming exactly which bone it couldn't match — it
@@ -241,11 +244,10 @@ explicit drag-in slot for the template instead.
    `Assets/PlayerSkinRoster.asset` now point at the actual
    `_Ragdoll.prefab` files (currently organized into
    `Assets/Prefabs/PlayerSkins/_Ragdoll/`, after you moved them there),
-   except `BaseCharacter`, which points at your original hand-built
-   `Assets/Prefabs/PlayerSkins/BaseCharacter.prefab` rather than the
-   redundant `BaseCharacter_Ragdoll.prefab` the batch tool also created
-   when `BaseCharacter.fbx` got included in the 52-item selection (that
-   duplicate is harmless clutter — safe to delete whenever, not required).
+   including `BaseCharacter`, whose entry now points at
+   `_Ragdoll/BaseCharacter_Ragdoll.prefab` like every other skin. The
+   original hand-built `Assets/Prefabs/PlayerSkins/BaseCharacter.prefab`
+   is now the unreferenced one — harmless clutter, safe to delete.
 8. **Actually test a handful, not just one** — 51 prefabs going through
    an untested batch process is a lot to trust blindly. Pick a few
    varied ones (not just the first alphabetically), check their bones got a
@@ -277,7 +279,8 @@ explicit drag-in slot for the template instead.
 
 If the Console logs a warning about a missing `RagdollHips` marker,
 that's `PlayerRagdoll` telling you which skin still needs step 4b's pass
-run on it — expected for the 5 you haven't done yet, not a bug.
+run on it — all 52 have been done, so this would only show up for a
+brand-new skin added later.
 
 ## 5. SFX to source later
 

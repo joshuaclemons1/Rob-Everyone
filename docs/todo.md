@@ -6,7 +6,54 @@ docs (several of which had drifted stale — see
 [completed.md](completed.md)'s note on that). Roughly ordered by "should
 happen soon" to "later stage."
 
-## In progress — do this first
+## Do first — inventory / UX (high priority)
+
+This gates how looting a downed player actually feels. Stage 6's PvP
+steal-window (`PlayerTheftTarget`, stun a rival → press E → take one
+item) is in but half-formed, and once you've taken something there's no
+way to rearrange or drop what you end up carrying.
+
+- **Inventory screen (Tab)** — not built. Shows the mouse in-game,
+  click-and-drag to move an item between slots (including a multi-slot
+  item — dragging it should move its whole span, not just one cell of
+  it). Real UI work: needs its own drag-and-drop system, separate from
+  the hotbar's existing number-key/scroll selection. This is also where
+  a stolen item should land in a way the player can see and manage.
+- **Drop item (hold + press Q)** — not built. A dropped item should look
+  the same as it does in the hotbar preview (spinning, slightly
+  floating) when it lands in the world, not disappear or revert to a
+  plain static object. Ties into the same "selected slot represents
+  what's in your hands" direction that shaped `AddItem`'s block-not-
+  fallback behavior (see `PlayerInventory.cs`'s own comment) — worth
+  designing both together rather than dropping first and reconciling
+  later.
+- **Prison Wallet slot** — gameplay-design.md's 6th, separate inventory
+  slot: holds exactly 1 item of any size/value, immune to whatever
+  happens to the other 5 when caught. Deliberately not built alongside
+  `InventorySize` (see [item-creation.md](stages/item-creation.md)) since
+  it needs its own design pass through `PoliceAI`/`RoundManager`'s catch
+  handling (what does "immune" actually do to a caught player's
+  inventory) and `SellStation` (can you sell straight out of the wallet,
+  or does it need moving to a normal slot first) -- not just a UI slot.
+- **Revisit the steal-window design** — the code-review nits at the
+  bottom of this doc (theft not discriminating loot from equipped
+  sabotage gear, resetting a used item's durability, the multi-attacker
+  race) are all in `PlayerTheftTarget`/`PlayerImpactRelay` and worth
+  settling in the same pass as the inventory screen.
+
+## Do first — finish Stage 6 Phase 2
+
+- **Alarm Clock build + full Phase 2 playtest** — Parts 1–4 of
+  [stage6-sabotage-items-phase2-setup.md](stages/stage6-sabotage-items-phase2-setup.md)
+  are done (hotbar uses-count UI, `PlayerTheftTarget` on the Player
+  prefab, `HammerProjectile.prefab` built and registered). Only **Part 5**
+  remains: build `AlarmClockProjectile.prefab`, wire it into
+  `AlarmClock.asset`'s Thrown Projectile Prefab + `NetworkManager`'s
+  Spawnable Prefabs. Then a real two-Editor playtest of all of Phase 2
+  (Bat, Hammer swing/throw, Tranq Gun, Alarm Clock, the steal-window)
+  before it's done.
+
+## Test when able
 
 - **Stage 5 real Steam overlay test** — every Rest Point through
   `stage5-steam-multiplayer.md` Part 3 is done (Steamworks.NET +
@@ -19,65 +66,6 @@ happen soon" to "later stage."
   Point passing, but needs a real two-account (or two-machine) pass to
   actually confirm the overlay invite → join → full batch flow, per that
   doc's own Rest Point 4 checklist, before this is genuinely "done."
-
-- **Prison Wallet slot** — gameplay-design.md's 6th, separate inventory
-  slot: holds exactly 1 item of any size/value, immune to whatever
-  happens to the other 5 when caught. Deliberately not built alongside
-  `InventorySize` (see [item-creation.md](stages/item-creation.md)) since
-  it needs its own design pass through `PoliceAI`/`RoundManager`'s catch
-  handling (what does "immune" actually do to a caught player's
-  inventory) and `SellStation` (can you sell straight out of the wallet,
-  or does it need moving to a normal slot first) -- not just a UI slot.
-
-- **Drop item (hold + press Q)** — not built. A dropped item should look
-  the same as it does in the hotbar preview (spinning, slightly
-  floating) when it lands in the world, not disappear or revert to a
-  plain static object. Ties into the same "selected slot represents
-  what's in your hands" direction that shaped `AddItem`'s block-not-
-  fallback behavior (see `PlayerInventory.cs`'s own comment) — worth
-  designing both together rather than dropping first and reconciling
-  later.
-- **Inventory screen (Tab)** — not built. Shows the mouse in-game,
-  click-and-drag to move an item between slots (including a multi-slot
-  item — dragging it should move its whole span, not just one cell of
-  it). Real UI work: needs its own drag-and-drop system, separate from
-  the hotbar's existing number-key/scroll selection.
-
-## Verify / playtest (built but not confirmed)
-
-- **Stage 7b (batch economy + hotbar)** — code and Editor wiring both
-  landed in the same commit, but unlike Stage 7's v1 shop/lobby loop,
-  there's no explicit "playtested and confirmed working" note anywhere
-  for the ×1.5 batch growth, surplus wipe, or the 5-slot hotbar. Play a
-  full 3-round batch and confirm all of it end to end.
-- **`Real_House_02`** — exists in `Assets/Prefabs/Houses/`, but there's
-  no record of it going through the same solo test every other house
-  prefab got (door, loot, homeowner, walk back out) the way
-  `stage3e-house-prefabs.md`/`stage3f-house-pool.md` describe for
-  `Real_House_01`.
-- **Ragdoll batch results** — `RagdollBatchTool.cs` processed all 52
-  player skins, but per `stage3j-traffic-hazard.md`'s own step 4b:8,
-  only a handful were spot-checked, not all 51 non-template ones. Pick a
-  few more (not just the first alphabetically) and confirm bones got a
-  Rigidbody/Collider/CharacterJoint, `Is Kinematic` is on, and it looks
-  right in Play mode.
-
-## Small cleanup
-
-- Delete the redundant `BaseCharacter_Ragdoll.prefab` (harmless but
-  unused — `PlayerSkinRoster`'s `BaseCharacter` entry points at the
-  original hand-built prefab instead).
-- Wire the character-selection UI to something other than the
-  placeholder first-skin default (`PlayerCosmeticSelection.SkinIndex`
-  defaults to `0`) — the main-menu customization screen already lets you
-  pick one, so check whether this is actually still open or already
-  covered by that.
-- A few docs have stale inline status callouts now superseded by
-  [completed.md](completed.md) — not urgent to fix since completed.md
-  and this doc are the current source of truth, but worth trimming next
-  time one of those specific docs is being read anyway (e.g.
-  `stage3h-map-dressing.md`'s "still open" line, `stage3j`'s "5 skins
-  not done yet" line, `art-info.md`'s "skybox not wired up" line).
 
 ## Art & audio (see art-info.md for full detail)
 
@@ -106,9 +94,10 @@ happen soon" to "later stage."
   Not built.
 - **Skin unlock-gating** — every configured skin is currently pickable;
   the design calls for unlocks eventually (`ui-design.md`).
-- **Sabotage item icons + SFX** — models exist (`Assets/Art/Items/`),
-  but `Icon` is still unset on every sabotage `ItemDefinition`, and no
-  use/impact SFX exist for the Taser or Dynamite yet.
+- **Sabotage item SFX** — no use/impact SFX exist for any sabotage item
+  yet (Taser zap, Dynamite blast, Bat/Hammer thwack, Tranq dart, Alarm
+  Clock ring). Icons aren't needed — the hotbar uses the 3D model as its
+  preview, same as regular loot.
 - **HUD result banner** — `RoundUI.cs`'s `resultText` is still plain
   text. Lower priority now that round-end flows into a loading screen +
   Lobby scene rather than lingering on this screen — worth re-scoping
@@ -126,7 +115,7 @@ happen soon" to "later stage."
 - **Stage 5 — Steam multiplayer** — Steamworks.NET + FizzySteamworks,
   test AppID 480. Editor setup done through Part 3; the real overlay
   invite test (Rest Point 4) still needs a second Steam account — see
-  the top of this doc's "In progress" section.
+  the "Test when able" section near the top of this doc.
 - **Stage 6 Phase 1 — sabotage foundation, Taser + Dynamite — done and
   tested.** All 6 items have a prefab + `ItemDefinition`, in
   `ItemCatalog`/Spawnable Prefabs. `ItemDefinition` gained a
@@ -176,25 +165,24 @@ happen soon" to "later stage."
   every existing organic sighting); `PoliceAI.HandleAlertRaised` chases a
   blamed player directly via `EnterChase` instead of just moving toward a
   position. New `Assets/Scripts/Sabotage/AlarmClockProjectile.cs`
-  resolves who's nearby to frame and which Homeowner to alert. **Still
-  needed**: the Editor half, written up step by step in
-  [stage6-sabotage-items-phase2-setup.md](stages/stage6-sabotage-items-phase2-setup.md)
-  (hotbar uses-count UI, `PlayerTheftTarget` on the Player prefab,
-  building `HammerProjectile.prefab`/`AlarmClockProjectile.prefab` and
-  wiring them into each `ItemDefinition` + `NetworkManager`'s Spawnable
-  Prefabs) plus actual two-Editor playtesting. See
-  [item-creation.md](stages/item-creation.md)'s Section 4b for the asset
-  pipeline and `gameplay-design.md`'s Sabotage items section for each
-  item's intended numbers.
-- **Stage 7 — full meta-game** — the v1 shop/lobby loop and batch economy
-  above are a deliberately scoped-down slice. Still missing: sabotage
-  purchases, real Jail & Bail (rescue/bond/self-bail), the personal
-  sabotage-spending quota add-on. See `gameplay-design.md` for the full
-  design.
+  resolves who's nearby to frame and which Homeowner to alert. **Editor
+  setup Parts 1–4 done** (hotbar uses-count UI, `PlayerTheftTarget` on
+  the Player prefab, `HammerProjectile.prefab` built + registered). Only
+  Part 5 (`AlarmClockProjectile.prefab` build + wiring) and a full
+  two-Editor playtest remain — see the "finish Stage 6 Phase 2" item
+  near the top of this doc. Reference:
+  [stage6-sabotage-items-phase2-setup.md](stages/stage6-sabotage-items-phase2-setup.md),
+  [item-creation.md](stages/item-creation.md)'s Section 4b, and
+  `gameplay-design.md`'s Sabotage items section for intended numbers.
+- **Stage 7 — full meta-game (medium priority)** — the v1 shop/lobby
+  loop and batch economy above are a deliberately scoped-down slice.
+  Still missing: sabotage purchases, real Jail & Bail
+  (rescue/bond/self-bail), the personal sabotage-spending quota add-on.
+  See `gameplay-design.md` for the full design.
 - **Stage 8 — playtest with the friend group** — not started, depends on
   Stage 4-6 existing.
-- **VoIP / in-game proximity voice chat** — not started, not designed
-  yet. Steamworks.NET exposes Steam's own voice API (`SteamUser`
+- **VoIP / in-game proximity voice chat (medium-low priority)** — not
+  started, not designed yet. Steamworks.NET exposes Steam's own voice API (`SteamUser`
   `StartVoiceRecording`/`GetVoiceData`/`DecompressVoice`), which would
   fit naturally alongside the existing FizzySteamworks transport
   (`stage5-steam-multiplayer.md`) without pulling in a separate

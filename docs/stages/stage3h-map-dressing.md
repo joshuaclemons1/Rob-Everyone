@@ -9,11 +9,9 @@ compound. Police station placed with an essential interior: 3 jail cells
 over-furnished since the Jail & Bail system itself isn't built until
 Stage 7. `Exit` already repositioned away from the compound (z: 110,
 opposite side from the compound's z: -78 to -110).
-**Still open:** double-check the 2 Good House slots actually read as
-"adjacent to/inside" the compound now that the fence is a real perimeter
-rather than the placeholder it was when those slots were first placed
-(Stage 3g) — then do the full-loop playtest in section 4 below. That
-playtest is the last thing standing between here and Stage 3 being
+**Done** (see [completed.md](../completed.md)): the 2 Good House slots
+were repositioned to read as inside/adjacent to the compound, and the
+full-loop playtest in section 4 is confirmed working — Stage 3 is
 feature-complete on real art.
 
 With Stage 3g's slots spawning real houses randomly, this stage fills in

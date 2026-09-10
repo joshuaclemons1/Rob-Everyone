@@ -38,7 +38,8 @@ status line inside an individual stage doc.
   [stage3e-house-prefabs.md](stages/stage3e-house-prefabs.md).
 - **House pool** — `Real_House_02` also exists now (2 real house prefabs
   total; Zach's further variants still pending, not blocking anything).
-  See [stage3f-house-pool.md](stages/stage3f-house-pool.md).
+  Both prefabs solo-tested (door, loot, homeowner, walk back out). See
+  [stage3f-house-pool.md](stages/stage3f-house-pool.md).
 - **Map slot layout + spawner** — `HousePoolSpawner.cs` randomly assigns
   a prefab per slot on `Start()`; `HomeownerAI`/`PoliceAI` auto-find the
   player if not hand-wired, so runtime-spawned houses need zero manual
@@ -130,14 +131,18 @@ status line inside an individual stage doc.
   the scenes/prefabs it needs (`Hotbar.prefab`, `CashHUD.prefab`,
   `Lobby.unity` wiring) — despite the how-to doc's own header still
   saying "Editor setup not done yet," the commit that added it (`5e9ce4f`)
-  shipped the scene/prefab work in the same pass. See
+  shipped the scene/prefab work in the same pass. **Playtested and
+  confirmed working** — full 3-round batch: ×1.5 quota growth, surplus
+  wipe at the batch boundary, and the 5-slot hotbar all behave. See
   [stage7b-batch-economy-hotbar-setup.md](stages/stage7b-batch-economy-hotbar-setup.md).
 - **Item catalog + loot tables** — replaced one-off `(name, value)` pairs
   baked into `PickupItem` with a shared `ItemDefinition` catalog (name,
   value, icon, world model + scale) and a `LootTable`/`LootSpawnPoint`
   system, so houses roll a random item at runtime instead of a specific
-  item being hand-placed and baked in. Only one `ItemDefinition` exists
-  so far (`Laptop`) — see [todo.md](todo.md) for filling this out.
+  item being hand-placed and baked in. 33 `ItemDefinition`s now exist
+  (built via `ItemPrefabBatchTool.cs`), split across
+  `LootTable_Small`/`Medium`/`Large` — though only Medium is wired to a
+  house so far; see [todo.md](todo.md)'s "loot variety" note.
 
 ## Multiplayer (Stage 4/5)
 
