@@ -16,20 +16,24 @@ batch economy, hotbar inventory) since the core loop had no restart path
 — see completed.md for why that's fine and what's still deliberately
 missing from the full Stage 7 design.
 
-**Stage 4/5 (multiplayer) — code written, Editor setup + testing not
-done yet.** Chose full system sync (not the minimal "just player
+**Stage 4 (multiplayer, localhost) is done -- all 9 Rest Points confirmed
+working.** Chose full system sync (not the minimal "just player
 presence + loot" slice) -- every system (player movement/animation/skin,
 loot/inventory, Homeowner/Police AI, traffic hazard cars, the round/
-batch economy) was converted to Mirror (Stage 4, localhost) with
-Steamworks.NET/FizzySteamworks (Stage 5) layered on top. This is the
-single biggest, riskiest change made to the codebase so far -- see
+batch economy) was converted to Mirror. This was the single biggest,
+riskiest change made to the codebase so far, and it showed: a long tail
+of real bugs (not just Editor wiring) surfaced and got fixed going
+through the doc's Rest Points one at a time -- see
 [stage4-multiplayer-mirror.md](stages/stage4-multiplayer-mirror.md) and
-[stage5-steam-multiplayer.md](stages/stage5-steam-multiplayer.md), each
-broken into small Parts with a 🔴 Rest Point to actually test after every
-one, specifically so problems surface incrementally instead of all at
-once at the end. **Nothing in Stage 4/5 has been opened in the Editor or
-compiled yet** -- go through Part 0 onward yourself and report back
-per-Part, same as every other stage in this project.
+[completed.md](completed.md) for the full list.
+
+**Stage 5 (Steam) is done through Editor setup Part 3** --
+Steamworks.NET/FizzySteamworks installed, `SteamLobby`/`SteamManager`
+wired, Steam initializes cleanly. The one thing still open: Rest Point
+4, the real two-Steam-account overlay invite test, since that needs a
+second account/friend to actually verify against -- see
+[stage5-steam-multiplayer.md](stages/stage5-steam-multiplayer.md) and
+[todo.md](todo.md).
 
 Full stage-by-stage how-to walkthroughs (procedural reference, not status
 — check completed.md/todo.md for what's actually done):
@@ -57,12 +61,14 @@ Style/asset reference (palette, sourced packs, remaining art to-do) is in
 [main-menu-visual-design.md](stages/main-menu-visual-design.md) and
 [main-menu-customization-setup.md](stages/main-menu-customization-setup.md).
 
-**Next steps**: work through stage4-multiplayer-mirror.md Part 0 onward.
-The older [todo.md](todo.md) "Verify / playtest" items (Stage 7b,
+**Next steps**: Stage 5's Rest Point 4 (real Steam overlay test) is
+parked until a second account/friend is available -- move on to Stage 6
+(sabotage items, networked) in the meantime, per the build order. The
+older [todo.md](todo.md) "Verify / playtest" items (Stage 7b,
 `Real_House_02`, the ragdoll batch results) are all still open too and
-worth doing whenever there's a natural pause in the Stage 4/5 push, but
-don't block it. Work happens on `jclem's-branch`; merge to `main` once
-tested and confirmed working.
+worth doing whenever there's a natural pause, but don't block Stage 6.
+Work happens on `jclem's-branch`; merge to `main` once tested and
+confirmed working.
 
 ## Strategy
 

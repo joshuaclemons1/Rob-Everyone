@@ -139,6 +139,44 @@ status line inside an individual stage doc.
   item being hand-placed and baked in. Only one `ItemDefinition` exists
   so far (`Laptop`) — see [todo.md](todo.md) for filling this out.
 
+## Multiplayer (Stage 4/5)
+
+- **Stage 4 — Mirror over localhost** — full system sync (player
+  movement/animation/skin, loot/inventory, Homeowner/Police AI, traffic
+  hazard cars, round/batch economy) rewritten for multiple connected
+  players. **All 9 Rest Points confirmed working** via two-Editor
+  ParrelSync testing. A long tail of real bugs surfaced and got fixed
+  along the way, not just Editor wiring: every client rendering every
+  player's Camera/AudioListener instead of just their own; a shared
+  "hide own body" skin layer hiding everyone's body from everyone, not
+  just its owner; `PlayerAnimationDriver`/`PlayerRagdoll` both doing a
+  one-shot skin lookup that could run before a remote player's cosmetics
+  sync finished, permanently breaking animation/ragdoll for that player;
+  scene-transition repositioning using a raw position set instead of
+  NetworkTransform's real teleport API, causing position mismatches
+  between clients; `LootSpawnPoint` parenting a spawned item under
+  itself, which Mirror doesn't replicate, landing loot at the world
+  origin for remote clients; `PickupItem`'s item reference never being
+  synced (always null on non-owner clients); Police missing a
+  NetworkTransform entirely (frozen on every non-host client); traffic
+  cars never triggering an impact at all (project-wide Auto Sync
+  Transforms was disabled, and `PlayerImpactRelay` was never actually
+  added to the Player prefab); and a single car hit firing the impact
+  once per ragdoll limb collider (up to 9x over). See
+  [stage4-multiplayer-mirror.md](stages/stage4-multiplayer-mirror.md).
+- **Stage 5 — Steam multiplayer** — Steamworks.NET + FizzySteamworks
+  (installed via `?path=/com.mirror.steamworks.net`, the actual UPM
+  package root in that repo) swapped in as the transport;
+  `SteamLobby`/`SteamManager` wired on the persistent NetworkManager
+  object; Host button calls `SteamLobby.HostLobby()` (an instance
+  method — has to be wired via a dragged-in `SteamLobby` object
+  reference in the Inspector, not typed as `SteamLobby.Instance.
+  HostLobby()`); `DISABLESTEAMWORKS` removed from Player Settings'
+  Scripting Define Symbols so `SteamManager.cs`/`SteamLobby.cs` actually
+  compile. Editor setup done through Part 3 (Steam initializes cleanly).
+  **Rest Point 4 (the real two-Steam-account overlay invite test) not
+  yet run** — see [todo.md](todo.md).
+
 **Note on why 7/7b exist before Stage 4**: this jumped ahead of
 `plan.md`'s build order on purpose — the core loop (loot → quota → exit)
 was confirmed fun solo but had no restart path, a round ending just froze

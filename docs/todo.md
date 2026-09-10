@@ -8,15 +8,17 @@ happen soon" to "later stage."
 
 ## In progress — do this first
 
-- **Stage 4/5 multiplayer (Mirror + Steam)** — code for full system sync
-  is written (`stage4-multiplayer-mirror.md`, `stage5-steam-multiplayer.md`),
-  but **none of it has been opened in the Editor, compiled, or tested**.
-  This is a huge, invasive change (12+ scripts converted to
-  `NetworkBehaviour`, `PartyGate.cs` deleted and folded into
-  `RoundManager`, several UI scripts changed from Inspector-wired to
-  runtime-resolved) — go through both docs' Rest Points in order and
-  report back per-Part rather than trying to power through both docs in
-  one sitting.
+- **Stage 5 real Steam overlay test** — every Rest Point through
+  `stage5-steam-multiplayer.md` Part 3 is done (Steamworks.NET +
+  FizzySteamworks installed, `SteamLobby`/`SteamManager` wired, Host
+  button correctly calls `SteamLobby.HostLobby()`, `DISABLESTEAMWORKS`
+  removed from Scripting Define Symbols). **Rest Point 4 — the actual
+  "two separate Steam accounts, real overlay invite" test — has not been
+  run**: no second account/friend was available to test with. Assumed
+  working based on Steam initializing cleanly and every earlier Rest
+  Point passing, but needs a real two-account (or two-machine) pass to
+  actually confirm the overlay invite → join → full batch flow, per that
+  doc's own Rest Point 4 checklist, before this is genuinely "done."
 
 - **Prison Wallet slot** — gameplay-design.md's 6th, separate inventory
   slot: holds exactly 1 item of any size/value, immune to whatever
@@ -117,12 +119,16 @@ happen soon" to "later stage."
 ## Bigger stages (per plan.md's build order)
 
 - **Stage 4 — multiplayer, same machine** — Mirror over `localhost`.
-  Not started at all.
+  **Done, all 9 Rest Points confirmed working** (two-Editor ParrelSync
+  testing) — see [completed.md](completed.md) for the full bug list
+  found/fixed along the way.
 - **Stage 5 — Steam multiplayer** — Steamworks.NET + FizzySteamworks,
-  test AppID 480. Not started.
+  test AppID 480. Editor setup done through Part 3; the real overlay
+  invite test (Rest Point 4) still needs a second Steam account — see
+  the top of this doc's "In progress" section.
 - **Stage 6 — sabotage items** — taser, hammer, alarm clock, bat,
-  networked. Not started (also blocked on Stage 4/5 for the "networked
-  correctly" part).
+  networked. Not started (Stage 4/5's networking foundation is now
+  ready for this).
 - **Stage 7 — full meta-game** — the v1 shop/lobby loop and batch economy
   above are a deliberately scoped-down slice. Still missing: sabotage
   purchases, real Jail & Bail (rescue/bond/self-bail), the personal
