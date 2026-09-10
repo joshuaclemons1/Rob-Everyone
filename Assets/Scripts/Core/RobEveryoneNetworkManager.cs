@@ -1,5 +1,6 @@
 using Mirror;
 using RobEveryone.Inventory;
+using RobEveryone.Player;
 using UnityEngine;
 
 namespace RobEveryone.Core
@@ -63,9 +64,16 @@ namespace RobEveryone.Core
 
         public override void OnServerDisconnect(NetworkConnectionToClient conn)
         {
-            if (GameFlowManager.Instance != null && conn.identity != null)
+            if (conn.identity != null)
             {
-                GameFlowManager.Instance.HandlePlayerRemoved(conn.identity);
+                // If they were hauling someone, drop the body before their
+                // object is torn down.
+                conn.identity.GetComponent<CarryController>()?.ServerReleaseOnDisconnect();
+
+                if (GameFlowManager.Instance != null)
+                {
+                    GameFlowManager.Instance.HandlePlayerRemoved(conn.identity);
+                }
             }
 
             base.OnServerDisconnect(conn);

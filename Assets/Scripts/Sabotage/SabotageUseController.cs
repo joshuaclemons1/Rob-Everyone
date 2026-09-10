@@ -25,6 +25,7 @@ namespace RobEveryone.Sabotage
         [SerializeField] private float meleeRangeSlack = 0.5f;
 
         private PlayerInventory inventory;
+        private CarryController carry;
 
         // Server-only, per-attacker cooldown tracking, keyed by item name
         // (not by slot index -- a cooldown belongs to the item type, not
@@ -34,6 +35,7 @@ namespace RobEveryone.Sabotage
         private void Awake()
         {
             inventory = GetComponent<PlayerInventory>();
+            carry = GetComponent<CarryController>();
         }
 
         private ItemDefinition ResolveSelectedItem()
@@ -45,6 +47,7 @@ namespace RobEveryone.Sabotage
         private void Update()
         {
             if (!isOwned || RobEveryone.UI.InventoryScreenUI.MenuOpen) return;
+            if (carry != null && carry.IsCarrying) return; // LMB is the throw while carrying a body
             if (Mouse.current == null) return;
 
             ItemDefinition item = ResolveSelectedItem();

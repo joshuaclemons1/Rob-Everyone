@@ -29,6 +29,7 @@ namespace RobEveryone.Sabotage
     {
         private PlayerImpactRelay relay;
         private PlayerInventory inventory;
+        private Carryable carryable;
 
         // Server-only. The thief currently granted this player's steal
         // window (they pressed E, their screen is open). Null = the
@@ -42,13 +43,17 @@ namespace RobEveryone.Sabotage
 
         // Client-visible gate for the E prompt. The server-side exclusivity
         // check (only one thief at a time) lives in Interact() below,
-        // since activeThief isn't synced.
-        public bool CanInteract => relay != null && relay.IsStealable;
+        // since activeThief isn't synced. A carried player is
+        // theft-protected -- carrying is a grief/relocate toy, not a way
+        // to strip-mine someone or pass a body around stealing from it.
+        public bool CanInteract => relay != null && relay.IsStealable
+                                && (carryable == null || !carryable.IsCarried);
 
         private void Awake()
         {
             relay = GetComponent<PlayerImpactRelay>();
             inventory = GetComponent<PlayerInventory>();
+            carryable = GetComponent<Carryable>();
         }
 
         private void Update()
@@ -66,6 +71,7 @@ namespace RobEveryone.Sabotage
         public void Interact(GameObject interactorObject)
         {
             if (!isServer || relay == null || !relay.IsStealable) return;
+            if (carryable != null && carryable.IsCarried) return; // theft-protected while carried
             if (activeThief != null) return; // someone is already robbing this stun
 
             NetworkIdentity thief = interactorObject.GetComponent<NetworkIdentity>();
@@ -110,6 +116,7 @@ namespace RobEveryone.Sabotage
             if (victim == null || victim == this) return;
             if (victim.activeThief != netIdentity) return;                 // not your window
             if (victim.relay == null || !victim.relay.IsStealable) return; // window lapsed
+            if (victim.carryable != null && victim.carryable.IsCarried) return; // theft-protected while carried
 
             if (victimHead < 0 || victimHead >= PlayerInventory.SlotCount) return;
             if (victimHead >= victim.inventory.SlotSpanLengths.Count ||

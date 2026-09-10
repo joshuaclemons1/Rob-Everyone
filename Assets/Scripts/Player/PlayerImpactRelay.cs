@@ -99,6 +99,15 @@ namespace RobEveryone.Player
             stealableUntil = 0;
         }
 
+        // A thrown carried player -- CarryController.ServerDrop calls
+        // this. The body is already ragdolling; this just adds the launch
+        // impulse on every client.
+        [Server]
+        public void ServerThrow(Vector3 direction, float force) => RpcThrow(direction, force);
+
+        [ClientRpc]
+        private void RpcThrow(Vector3 direction, float force) => ragdoll.ApplyThrowImpulse(direction, force);
+
         private void Update()
         {
             // Manual isServer guard (not the [Server] attribute, which

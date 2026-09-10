@@ -69,6 +69,18 @@ namespace RobEveryone.Player
         private CharacterController characterController;
         private PlayerSkinSpawner skinSpawner;
         private PlayerCameraRig cameraRig;
+        private Carryable carryable;
+
+        // A carry release (drop/throw) pushes this out -- the settle loop
+        // won't let the ragdoll end before it, so a dropped body always
+        // gets a short beat on the ground and a thrown one gets to land.
+        private float extraHoldUntil;
+
+        public bool IsCarried => carryable != null && carryable.IsCarried;
+
+        // Called (on every client) by Carryable.RpcOnDetached.
+        public void NotifyReleasedFromCarry(float stun) =>
+            extraHoldUntil = Mathf.Max(extraHoldUntil, Time.time + stun);
 
         private Rigidbody[] ragdollBodies;
         private Vector3[] restLocalPositions;
@@ -91,6 +103,7 @@ namespace RobEveryone.Player
             characterController = GetComponent<CharacterController>();
             skinSpawner = GetComponent<PlayerSkinSpawner>();
             cameraRig = GetComponent<PlayerCameraRig>();
+            carryable = GetComponent<Carryable>();
         }
 
         // True once TryInitializeRagdoll has either fully succeeded or hit
@@ -440,9 +453,25 @@ namespace RobEveryone.Player
             StartCoroutine(ImpactSequence(direction, force, duration));
         }
 
+        // A fresh launch impulse on an ALREADY-ragdolling body -- a
+        // carried player being thrown. Unlike ApplyImpact this doesn't
+        // start a new stun (isStunned is already true and stays that
+        // way); the carry release already pushed extraHoldUntil out, so
+        // the settle loop waits for the throw to land. Called on every
+        // client via PlayerImpactRelay.RpcThrow.
+        public void ApplyThrowImpulse(Vector3 direction, float force)
+        {
+            if (hipsRigidbody == null || !isStunned) return;
+            hipsRigidbody.isKinematic = false; // Carryable had it pinned
+            hipsRigidbody.linearVelocity = Vector3.zero;
+            hipsRigidbody.angularVelocity = Vector3.zero;
+            hipsRigidbody.AddForce(direction * force, ForceMode.Impulse);
+        }
+
         private IEnumerator ImpactSequence(Vector3 direction, float force, float duration)
         {
             isStunned = true;
+            extraHoldUntil = 0f; // clear any stale carry-release hold from a previous stun
 
             firstPersonController.enabled = false;
             characterController.enabled = false;
@@ -477,6 +506,11 @@ namespace RobEveryone.Player
                 UpdateBridgeBones();
                 yield return null;
 
+                // Being carried freezes the whole "can I stand up yet"
+                // clock -- Carryable is holding the hips, and a carried
+                // player never gets up until dropped.
+                if (IsCarried) { settledSince = -1f; continue; }
+
                 if (Time.time >= hardCapTime) break;
 
                 if (RagdollAtRest())
@@ -485,7 +519,9 @@ namespace RobEveryone.Player
                 }
                 else settledSince = -1f;
 
-                bool minPassed = Time.time >= minEndTime;
+                // extraHoldUntil is pushed out by a carry drop/throw, so a
+                // thrown body's flight + landing is always waited out.
+                bool minPassed = Time.time >= minEndTime && Time.time >= extraHoldUntil;
                 bool restedLongEnough = settledSince >= 0f && Time.time - settledSince >= settleHoldTime;
                 if (minPassed && restedLongEnough) break;
             }

@@ -111,6 +111,11 @@ namespace RobEveryone.Player
         // parks your own input.
         public bool LookSuppressed { get; set; }
 
+        // Set by CarryController on the owner while hauling a downed rival.
+        // Walk/sprint stay normal; this just kills air control and autohop
+        // so you can't bhop a body around the map.
+        public bool CarryingSomething { get; set; }
+
         private void Awake()
         {
             controller = GetComponent<CharacterController>();
@@ -249,8 +254,11 @@ namespace RobEveryone.Player
             // we're actually airborne, with a hard timeout as a backstop.
             if (jumpPending && (!grounded || Time.time - jumpPendingSince > 0.3f)) jumpPending = false;
 
+            // Autohop is disabled while carrying a body -- a single
+            // deliberate jump is fine, chaining hops isn't.
+            bool autoHop = holdToAutoHop && !CarryingSomething;
             bool wantJump = grounded && !jumpPending &&
-                (holdToAutoHop ? Keyboard.current.spaceKey.isPressed : Keyboard.current.spaceKey.wasPressedThisFrame);
+                (autoHop ? Keyboard.current.spaceKey.isPressed : Keyboard.current.spaceKey.wasPressedThisFrame);
 
             if (wantJump)
             {
@@ -271,7 +279,7 @@ namespace RobEveryone.Player
                 float targetSpeed = IsCrouching ? crouchSpeed : IsSprinting ? sprintSpeed : walkSpeed;
                 horizontalVelocity = Vector3.MoveTowards(horizontalVelocity, wishDir * targetSpeed, groundAcceleration * Time.deltaTime);
             }
-            else
+            else if (!CarryingSomething)
             {
                 float currentSpeedInWishDir = Vector3.Dot(horizontalVelocity, wishDir);
                 float addSpeedCap = airWishSpeed - currentSpeedInWishDir;
