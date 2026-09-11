@@ -22,7 +22,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3ddd527d56ea94fc5b28250597b7190f, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.7071067
+      value: 0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3ddd527d56ea94fc5b28250597b7190f, type: 3}
       propertyPath: m_LocalRotation.x
@@ -34,11 +34,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3ddd527d56ea94fc5b28250597b7190f, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3ddd527d56ea94fc5b28250597b7190f, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
+      value: -90
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3ddd527d56ea94fc5b28250597b7190f, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
@@ -105,7 +105,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
   sceneId: 0
-  _assetId: 2736626523
+  _assetId: 776098434
   serverOnly: 0
   visibility: 0
   hasSpawned: 0
@@ -125,3 +125,6 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   item: {fileID: 0}
+  dropSpinSpeed: 60
+  dropBobHeight: 0.12
+  dropBobSpeed: 2

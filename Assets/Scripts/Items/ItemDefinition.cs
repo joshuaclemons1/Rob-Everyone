@@ -41,6 +41,14 @@ namespace RobEveryone.Items
         // model itself, not of any one LootSpawnPoint that happens to
         // roll it.
         [SerializeField] private Vector3 worldModelScale = Vector3.one;
+        // Applied as a local Euler rotation on top of whatever
+        // position/rotation each spawn path (LootSpawnPoint, a player
+        // drop, a landed thrown item) already places the model at --
+        // same reasoning as WorldModelScale: a raw imported model's own
+        // orientation rarely matches how it should sit as a world pickup
+        // (a watch imported lying on its side, say), and this is a
+        // property of the model itself, not of any one spawn point.
+        [SerializeField] private Vector3 worldModelRotation;
         // Where/how this model needs to sit relative to the hand bone to
         // actually look held, not just glued on at its raw import pivot
         // -- every source model's own origin/orientation is different
@@ -81,6 +89,7 @@ namespace RobEveryone.Items
         public Sprite Icon => icon;
         public GameObject WorldModelPrefab => worldModelPrefab;
         public Vector3 WorldModelScale => worldModelScale;
+        public Quaternion WorldModelRotation => Quaternion.Euler(worldModelRotation);
         public Vector3 HeldPositionOffset => heldPositionOffset;
         public Vector3 HeldRotationOffset => heldRotationOffset;
         public int InventorySize => Mathf.Max(1, inventorySize);

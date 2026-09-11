@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Mirror;
+using RobEveryone.Core;
 using RobEveryone.Inventory;
 using RobEveryone.Items;
 using RobEveryone.Player;
@@ -231,7 +232,14 @@ namespace RobEveryone.Sabotage
             // (Hammer) needs to carry its current durability onto the
             // flying projectile so a landed pickup doesn't reset to full.
             int remainingUses = inventory.Slots[slotIndex]?.RemainingUses ?? 0;
-            if (!inventory.RemoveSlot(slotIndex)) return; // consumed on throw
+
+            // Lobby items are "practice" gear (Stage 7's shop) -- a
+            // thrown item stays in your hotbar there instead of being
+            // consumed, so players can keep testing it on friends before
+            // a round starts. The projectile itself still spawns/
+            // detonates/stuns normally either way.
+            bool inLobby = GameFlowManager.Instance != null && GameFlowManager.Instance.InLobbyScene;
+            if (!inLobby && !inventory.RemoveSlot(slotIndex)) return; // consumed on throw
 
             Vector3 origin = viewPoint != null ? viewPoint.position : transform.position + Vector3.up * 1.5f;
             GameObject projectile = Instantiate(item.ThrownProjectilePrefab, origin, Quaternion.LookRotation(direction));

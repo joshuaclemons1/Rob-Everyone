@@ -47,6 +47,38 @@ namespace RobEveryone.Items
     public class LootSpawnPoint : NetworkBehaviour
     {
         [SerializeField] private LootTable lootTable;
+        // What ResolveSpawnOverlap/SnapToSurfaceBelow treat as solid world
+        // geometry -- walls/floors/furniture all sit on the ordinary
+        // Default layer in this project (confirmed no dedicated "level
+        // geometry" layer exists), so this is Everything *except* Player
+        // and Ragdoll: a loot item's resting place shouldn't depend on
+        // whether some player's hitbox happened to be standing on this
+        // exact spot the instant the round started. Computed once in
+        // Awake (name lookup, not a hardcoded bit index, in case layers
+        // ever get renumbered) rather than baked into the field
+        // initializer -- narrow further in the Inspector if needed.
+        [SerializeField] private LayerMask overlapResolveMask = ~0;
+        // Hard cap on push-out iterations -- Physics.ComputePenetration
+        // usually resolves a single-wall overlap in one pass, but a spawn
+        // point wedged between two solids (e.g. a shelf against a wall)
+        // can need a couple more. Bailing after this many just leaves the
+        // item wherever it landed rather than fighting geometry forever.
+        [SerializeField] private int maxOverlapResolveIterations = 4;
+        // How far below the item SnapToSurfaceBelow will look for a
+        // surface to rest on, and how big a gap it'll bother closing --
+        // pushing an item out of a wall/table it was embedded in can
+        // easily leave it hovering with visible daylight underneath,
+        // which reads exactly as "odd placement" as clipping through
+        // geometry does. Small min gap so this doesn't twitch-correct
+        // genuinely-fine placements over float noise.
+        [SerializeField] private float groundSnapMaxDistance = 1f;
+        [SerializeField] private float groundSnapMinGap = 0.02f;
+
+        private void Awake()
+        {
+            int excluded = (1 << LayerMask.NameToLayer("Player")) | (1 << LayerMask.NameToLayer("Ragdoll"));
+            overlapResolveMask &= ~excluded;
+        }
 
         public override void OnStartServer()
         {
@@ -64,7 +96,8 @@ namespace RobEveryone.Items
                 return;
             }
 
-            GameObject instance = Instantiate(item.WorldModelPrefab, transform.position, transform.rotation);
+            GameObject instance = Instantiate(item.WorldModelPrefab, transform.position,
+                transform.rotation * item.WorldModelRotation);
 
             // No parent (see class comment), so localScale *is* world
             // scale directly -- no need to compensate for an inherited
@@ -78,6 +111,27 @@ namespace RobEveryone.Items
             {
                 instance.AddComponent<BoxCollider>();
             }
+
+            // Spawn points are hand-placed once and then reused by every
+            // item the shared LootTable might roll there -- a marker set
+            // for a small trinket can just as easily roll a bulkier item,
+            // or an item's fitted collider isn't exactly centered on its
+            // visual model, so the raw spawn point position alone isn't
+            // reliably clear of nearby walls/furniture. Confirmed
+            // complaint: items sometimes spawned partially inside a wall
+            // or shelf. Nudges the instance out of whatever it's
+            // overlapping right after scale is applied (the check has to
+            // happen post-scale -- the collider's real size isn't known
+            // until then).
+            Collider[] ownColliders = ResolveSpawnOverlap(instance);
+
+            // Pushing an item out of whatever it was embedded in can just
+            // as easily leave it hovering above the real surface with a
+            // visible gap underneath -- ComputePenetration only guarantees
+            // "no longer overlapping," not "resting on something." Runs
+            // after overlap resolution settles, using the item's now-final
+            // position.
+            SnapToSurfaceBelow(instance, ownColliders);
 
             if (instance.GetComponent<NetworkIdentity>() == null)
             {
@@ -94,6 +148,96 @@ namespace RobEveryone.Items
             pickup.Initialize(item);
 
             NetworkServer.Spawn(instance);
+        }
+
+        // Iteratively pushes `instance` out of whatever solid geometry its
+        // own collider(s) currently overlap, using Physics.ComputePenetration
+        // (the same depenetration primitive Unity's own physics engine
+        // uses internally) rather than a raycast-based placement -- a
+        // raycast only ever answers "where's the floor," not "does this
+        // box's actual footprint intersect that wall over there," which
+        // is the shape of bug actually being fixed here.
+        private Collider[] ResolveSpawnOverlap(GameObject instance)
+        {
+            Collider[] ownColliders = instance.GetComponentsInChildren<Collider>();
+            if (ownColliders.Length == 0) return ownColliders;
+
+            for (int iteration = 0; iteration < maxOverlapResolveIterations; iteration++)
+            {
+                bool foundOverlap = false;
+
+                foreach (Collider ownCollider in ownColliders)
+                {
+                    // bounds is already the world-space AXIS-ALIGNED box
+                    // (Collider.bounds), so the query itself stays
+                    // unrotated (Quaternion.identity) -- this is only a
+                    // broad-phase "what's nearby" gather, the real
+                    // shape-accurate check is ComputePenetration below.
+                    Bounds bounds = ownCollider.bounds;
+                    Collider[] nearby = Physics.OverlapBox(bounds.center, bounds.extents, Quaternion.identity,
+                        overlapResolveMask, QueryTriggerInteraction.Ignore);
+
+                    foreach (Collider other in nearby)
+                    {
+                        if (other.transform.IsChildOf(instance.transform)) continue; // never push against itself
+
+                        bool penetrating = Physics.ComputePenetration(
+                            ownCollider, ownCollider.transform.position, ownCollider.transform.rotation,
+                            other, other.transform.position, other.transform.rotation,
+                            out Vector3 pushDirection, out float pushDistance);
+
+                        if (!penetrating || pushDistance <= 0f) continue;
+
+                        instance.transform.position += pushDirection * pushDistance;
+                        foundOverlap = true;
+                    }
+                }
+
+                if (!foundOverlap) break; // clear -- nothing left to resolve
+            }
+
+            return ownColliders;
+        }
+
+        // Lowers `instance` onto the nearest surface directly below it, if
+        // one exists within groundSnapMaxDistance and there's actually a
+        // gap worth closing -- ResolveSpawnOverlap only guarantees "not
+        // overlapping," which is equally satisfied by "floating just
+        // above the shelf it was pushed out of." Uses RaycastAll + a
+        // self-filter (same pattern PlayerRagdoll.IsHipsNearGround
+        // already established) rather than a layer-mask exclusion, since
+        // the item's own collider sits on the same layer as the
+        // environment it's being tested against.
+        private void SnapToSurfaceBelow(GameObject instance, Collider[] ownColliders)
+        {
+            if (ownColliders.Length == 0) return;
+
+            Bounds combined = ownColliders[0].bounds;
+            for (int i = 1; i < ownColliders.Length; i++) combined.Encapsulate(ownColliders[i].bounds);
+
+            // Starts a hair above the item's own true bottom (not exactly
+            // on it) -- a ray whose origin sits precisely on a surface can
+            // miss that surface on some hardware/precision edge cases.
+            // Self-hits inside that margin are filtered below anyway.
+            const float originEpsilon = 0.05f;
+            Vector3 origin = new Vector3(combined.center.x, combined.min.y + originEpsilon, combined.center.z);
+            RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, groundSnapMaxDistance + originEpsilon,
+                overlapResolveMask, QueryTriggerInteraction.Ignore);
+
+            float? nearestSurfaceY = null;
+            foreach (RaycastHit hit in hits)
+            {
+                if (hit.collider.transform.IsChildOf(instance.transform)) continue;
+                if (nearestSurfaceY == null || hit.point.y > nearestSurfaceY.Value) nearestSurfaceY = hit.point.y;
+            }
+
+            if (nearestSurfaceY == null) return; // nothing found within range -- leave it where overlap resolution put it
+
+            float gap = combined.min.y - nearestSurfaceY.Value;
+            if (gap > groundSnapMinGap)
+            {
+                instance.transform.position -= new Vector3(0f, gap, 0f);
+            }
         }
     }
 }

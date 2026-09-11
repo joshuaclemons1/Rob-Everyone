@@ -24,11 +24,19 @@ namespace RobEveryone.Shop
             get
             {
                 ItemDefinition item = ResolveSelectedItem(PlayerInventory.LocalPlayer);
-                return item != null ? $"Sell {item.ItemName} for ${item.Value}" : "Nothing selected to sell";
+                return item != null ? $"Sell {item.ItemName} for ${item.Value}" : "Nothing to sell...";
             }
         }
 
-        public bool CanInteract => ResolveSelectedItem(PlayerInventory.LocalPlayer) != null;
+        // Deliberately doesn't gate on "is anything selected" --
+        // Interactor.FindTarget only ever shows a prompt at all when
+        // CanInteract is true, so gating this the old way silently
+        // swallowed the "Nothing to sell..." text along with it
+        // (confirmed bug, same shape as ShopShelfItem's own "Locked"
+        // text never showing). The station is always a valid target;
+        // Interact() below is what actually enforces "is there
+        // something to sell," by simply no-oping.
+        public bool CanInteract => true;
 
         public void Interact(GameObject interactor)
         {
@@ -38,6 +46,7 @@ namespace RobEveryone.Shop
 
             PlayerInventory inventory = interactor.GetComponent<PlayerInventory>();
             if (inventory == null) return;
+            if (ResolveSelectedItem(inventory) == null) return;
 
             inventory.SellSelectedSlot();
         }

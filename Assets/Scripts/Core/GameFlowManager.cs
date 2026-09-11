@@ -38,6 +38,10 @@ namespace RobEveryone.Core
         // leaves the exact curve as an open question, this is a tunable
         // starting point (200 -> 300 -> 450 -> ...).
         [SerializeField] private float quotaGrowthMultiplier = 1.5f;
+        // Exposed for ShopShelfItem -- sabotage prices ride the same
+        // curve quota itself grows on (Stage 7), rather than needing a
+        // second, separately-tuned price curve.
+        public float QuotaGrowthMultiplier => quotaGrowthMultiplier;
 
         private RoundManager currentRoundManager;
         private ReadySpot currentReadySpot;

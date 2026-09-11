@@ -101,6 +101,22 @@ namespace RobEveryone.Player
         private Rigidbody[] ragdollBodies;
         private Vector3[] restLocalPositions;
         private Quaternion[] restLocalRotations;
+        // Every bone under the skin (not just ragdollBodies/bridgeBones),
+        // captured once at rest and restored whole on EndRagdoll --
+        // covers scale specifically, which nothing else here ever
+        // touches. Confirmed bug: the Action layer's one-shot clips
+        // (PickUp, Swing, etc.) drive scale on some upper-body bones as
+        // part of their authored animation, and freezing the Animator
+        // mid-clip (isStunned's animator.enabled = false, right when a
+        // car impact lands) can catch a bone at a keyframe that's
+        // temporarily scaled toward zero. Position/rotation get reset
+        // from a physics-only rest pose already; scale needs its own
+        // full-skin snapshot since a non-ragdoll, Animator-only bone
+        // (anything the Action layer's mask reaches that isn't itself a
+        // physics body or a bridge bone) was never otherwise touched
+        // here at all.
+        private Transform[] allBones;
+        private Vector3[] allBoneRestScales;
         private Rigidbody hipsRigidbody;
         // Disabled for the duration of a stun and re-enabled afterward --
         // PlayerAnimationDriver drives this the rest of the time, and a
@@ -171,6 +187,13 @@ namespace RobEveryone.Player
                 restLocalPositions[i] = ragdollBodies[i].transform.localPosition;
                 restLocalRotations[i] = ragdollBodies[i].transform.localRotation;
                 ragdollBodies[i].isKinematic = true;
+            }
+
+            allBones = skin.GetComponentsInChildren<Transform>(true);
+            allBoneRestScales = new Vector3[allBones.Length];
+            for (int i = 0; i < allBones.Length; i++)
+            {
+                allBoneRestScales[i] = allBones[i].localScale;
             }
 
             FindBridgeBones(skin.transform);
@@ -710,6 +733,27 @@ namespace RobEveryone.Player
                     if (bridgeBones[i] == null) continue;
                     bridgeBones[i].localPosition = bridgeRestLocalPositions[i];
                     bridgeBones[i].localRotation = bridgeRestLocalRotations[i];
+                }
+            }
+
+            // Root-caused via [ArmDebug] logging: UpperArm.L/R's localScale
+            // came back (0,0,0) after standing up, while every position/
+            // rotation restore above was already correct -- the Action
+            // layer's one-shot clips (PickUp, Swing, etc.) drive scale on
+            // some upper-body bones as part of their authored animation,
+            // and disabling the Animator mid-clip (right above, at the
+            // top of ImpactSequence) can catch a bone at a keyframe
+            // that's temporarily scaled toward zero, with nothing ever
+            // resetting it back afterward. Restoring every bone's rest
+            // scale here (not just ragdollBodies/bridgeBones, since the
+            // affected bone doesn't have to be either) closes that off
+            // in general rather than just for the two bones this one
+            // repro happened to hit.
+            if (allBones != null)
+            {
+                for (int i = 0; i < allBones.Length; i++)
+                {
+                    if (allBones[i] != null) allBones[i].localScale = allBoneRestScales[i];
                 }
             }
         }

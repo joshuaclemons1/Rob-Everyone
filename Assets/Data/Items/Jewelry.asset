@@ -16,7 +16,7 @@ MonoBehaviour:
   value: 40
   icon: {fileID: 0}
   worldModelPrefab: {fileID: 9153704227943385530, guid: 782f8b1be74e84b9585aed4240b27c6a, type: 3}
-  worldModelScale: {x: 1, y: 1, z: 1}
+  worldModelScale: {x: 0.0003, y: 0.0003, z: 0.0003}
   heldPositionOffset: {x: 0, y: 0, z: 0}
   heldRotationOffset: {x: 0, y: 0, z: 0}
   inventorySize: 1

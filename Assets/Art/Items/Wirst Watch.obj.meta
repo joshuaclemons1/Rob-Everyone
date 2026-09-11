@@ -3,7 +3,47 @@ guid: b07c5069904254cd18aee559994706c2
 ModelImporter:
   serializedVersion: 24501
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Hour_hand1Mat
+    second: {fileID: 2100000, guid: 7991f7b10e5aa4d4091c2e4b83bd5d81, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Minute_hand1Mat
+    second: {fileID: 2100000, guid: 831f91fa0a73fec41b360ddbac1af911, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Second_hand1Mat
+    second: {fileID: 2100000, guid: 4b06c33d937cc964085cc4a2925cbf9d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Strap2Mat
+    second: {fileID: 2100000, guid: e23af08bb063eb841b74fecc5256fc6a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: StrapMat
+    second: {fileID: 2100000, guid: 08d9ec6e5fc72c04bac1a384d8ead609, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Wirst_WatchMat
+    second: {fileID: 2100000, guid: 76a7b32214f1ded48a66a6574ebeebd0, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: aMat
+    second: {fileID: 2100000, guid: cec5328abe5d9a5418b76ce89fa9b80c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: bMat
+    second: {fileID: 2100000, guid: dbfb0c8a73b75814aba71adc1b8398dd, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

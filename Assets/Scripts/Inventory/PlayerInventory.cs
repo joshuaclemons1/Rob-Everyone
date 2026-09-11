@@ -309,6 +309,12 @@ namespace RobEveryone.Inventory
         [Server]
         public void DecrementUses(int headIndex)
         {
+            // Lobby items are "practice" gear -- Stage 7's shop lets
+            // players buy sabotage items and mess around with friends
+            // before a round starts, so durability/ammo shouldn't
+            // actually burn down outside an actual round.
+            if (GameFlowManager.Instance != null && GameFlowManager.Instance.InLobbyScene) return;
+
             if (headIndex < 0 || headIndex >= SlotCount) return;
             if (slotUses[headIndex] <= 0) return;
 
@@ -460,7 +466,7 @@ namespace RobEveryone.Inventory
             int uses = slotUses[headIndex];
             if (!RemoveSlot(headIndex)) return;
 
-            GameObject instance = Instantiate(item.WorldModelPrefab, position, rotation);
+            GameObject instance = Instantiate(item.WorldModelPrefab, position, rotation * item.WorldModelRotation);
             instance.transform.localScale = item.WorldModelScale;
 
             PickupItem pickup = instance.GetComponent<PickupItem>();
@@ -583,6 +589,25 @@ namespace RobEveryone.Inventory
 
             cash += item.Value;
             RemoveSlot(index);
+            return true;
+        }
+
+        // The inverse of SellSelectedSlot -- reuses AddItem's existing
+        // "only ever tries the selected slot" behavior so a shop
+        // purchase behaves exactly like any other pickup (fails cleanly
+        // if that slot's occupied/full, same as walking up to a
+        // ShopShelfItem with a full hand). This is also the entire
+        // implementation of gameplay-design.md's "sabotage-spending
+        // quota add-on" -- spending Cash here through the same balance
+        // WipeCashSurplus/the batch-end quota check reads is what makes
+        // hitting quota harder, with no separate tracking needed.
+        // Called from ShopShelfItem's Interact(), server-only.
+        [Server]
+        public bool TryPurchase(ItemDefinition item, int price)
+        {
+            if (item == null || cash < price) return false;
+            if (!AddItem(item)) return false;
+            cash -= price;
             return true;
         }
 

@@ -24,6 +24,13 @@ namespace RobEveryone.UI
     {
         [SerializeField] private GameObject interactHint;
         [SerializeField] private TextMeshProUGUI promptText;
+        // Second line under promptText -- only a handful of
+        // interactables (IInteractableWarning) ever have anything to
+        // put here (e.g. a shop shelf you can't currently afford), so
+        // this stays hidden the rest of the time. Color this red in the
+        // Inspector; the script only ever touches text/enabled, same as
+        // promptText.
+        [SerializeField] private TextMeshProUGUI warningText;
 
         private Interactor interactor;
 
@@ -44,6 +51,14 @@ namespace RobEveryone.UI
             {
                 promptText.text = hasTarget ? $"[E] {interactor.CurrentTarget.InteractionPrompt}" : "";
                 promptText.enabled = hasTarget;
+            }
+
+            if (warningText != null)
+            {
+                string warning = hasTarget ? (interactor.CurrentTarget as IInteractableWarning)?.WarningText : null;
+                bool showWarning = !string.IsNullOrEmpty(warning);
+                warningText.text = showWarning ? warning : "";
+                warningText.enabled = showWarning;
             }
         }
     }

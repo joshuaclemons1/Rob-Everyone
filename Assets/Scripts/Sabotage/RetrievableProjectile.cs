@@ -1,5 +1,6 @@
 using System.Collections;
 using Mirror;
+using RobEveryone.Core;
 using RobEveryone.Items;
 using RobEveryone.Player;
 using UnityEngine;
@@ -102,9 +103,17 @@ namespace RobEveryone.Sabotage
             if (hasResolved) return;
             hasResolved = true;
 
-            if (remainingUses > 0 && pickupPrefab != null)
+            // Stage 7's Lobby practice mode already keeps the thrower's
+            // original item in their hotbar (SabotageUseController.
+            // CmdUseThrown skips consuming it there) -- spawning a
+            // second, landed copy on top of that would duplicate it.
+            // Confirmed bug: throwing the Hammer in the Lobby left one
+            // copy in hand and a second one where it landed.
+            bool inLobby = GameFlowManager.Instance != null && GameFlowManager.Instance.InLobbyScene;
+
+            if (!inLobby && remainingUses > 0 && pickupPrefab != null)
             {
-                GameObject pickup = Instantiate(pickupPrefab, transform.position, Quaternion.identity);
+                GameObject pickup = Instantiate(pickupPrefab, transform.position, sourceItem.WorldModelRotation);
                 // WorldModelScale is never baked into a pickup prefab's
                 // own saved scale -- every other spawn path (LootSpawnPoint,
                 // PlayerInventory's drop) applies it explicitly after
