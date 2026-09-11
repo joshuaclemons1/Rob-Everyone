@@ -24,13 +24,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 474532539896606222}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: -0.6427876, w: 0.7660445}
-  m_LocalPosition: {x: 0.35, y: 1.35, z: 0.15}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: -0.5, z: 0.9}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 2522545488536744673}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: -80}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4012876597643224101
 GameObject:
   m_ObjectHideFlags: 0
@@ -186,6 +186,7 @@ GameObject:
   - component: {fileID: 5103582257785641117}
   - component: {fileID: 2620805307834764653}
   - component: {fileID: 5267831992489046214}
+  - component: {fileID: 7664136054049044517}
   m_Layer: 8
   m_Name: Player
   m_TagString: Untagged
@@ -284,6 +285,8 @@ MonoBehaviour:
   interactableMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  carryHoldDuration: 0.5
+  ragdollAssistMaxAngle: 30
 --- !u!114 &1240068813097717794
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -345,6 +348,7 @@ MonoBehaviour:
   settleAngularThreshold: 1.8
   settleHoldTime: 0.3
   settleTimeoutExtra: 4
+  groundCheckDistance: 1.5
   thirdPersonOffset: {x: 0, y: 2.5, z: -5}
   lookAtHeightOffset: 0.5
   cameraFollowSpeed: 3
@@ -365,6 +369,7 @@ MonoBehaviour:
   syncInterval: 0
   jumpClip: {fileID: 140615187318258251, guid: 8ee889166b449410585929e6f1375a24, type: 3}
   jumpAnticipationFraction: 0
+  actionBlendSpeed: 8
 --- !u!114 &1292215316417540458
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -539,6 +544,7 @@ MonoBehaviour:
   syncInterval: 0
   carriedBy: {fileID: 0}
   carryReleaseStun: 1.5
+  postReleaseCollisionIgnoreTime: 0.3
 --- !u!114 &5267831992489046214
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -560,8 +566,21 @@ MonoBehaviour:
   minThrowForce: 8
   maxThrowForce: 45
   throwChargeTime: 1.2
-  playerMask:
-    serializedVersion: 2
-    m_Bits: 4294967295
   grabKey: 19
   setDownKey: 21
+  grabAssistMaxAngle: 30
+--- !u!114 &7664136054049044517
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4564336539568727325}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 390dbfc2f41521245b5568b210900275, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Player.HeldItemDisplay
+  handBoneName: Fist.R
+  heldLocalPositionOffset: {x: 0, y: 0, z: 0}
+  heldLocalEulerOffset: {x: 0, y: 0, z: 0}

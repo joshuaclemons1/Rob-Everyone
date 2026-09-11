@@ -26,3 +26,4 @@ MonoBehaviour:
   blastRadius: 8
   thrownProjectilePrefab: {fileID: 0}
   maxUses: 0
+  useAnimation: 1

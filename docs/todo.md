@@ -13,33 +13,29 @@ happen soon" to "later stage."
 2. ~~**Player feel pass**~~ — done: instant jump, CS bhop + autohop +
    speed cap, first-person visible body
    ([player-feel-setup.md](stages/player-feel-setup.md)).
-3. **Held item + carry/run animations** — carry gait + pick-up / shoot /
-   swing one-shots **code done**; controller rebuild (one menu click) +
-   playtest open
+3. ~~**Carry / throw ragdolled players**~~ — done and playtested. See
+   "Done" section below for the full bug list found along the way.
+4. ~~**Held item in hand**~~ — done. See "Done" section below.
+5. **Running + carry animation states** — **code done**, controller
+   rebuild + playtest open
    ([player-animations-setup.md](stages/player-animations-setup.md)).
-   Still open: the selected hotbar item actually showing in the
-   character's hand (needs a hand bone socket + the held model).
-4. **Carry / throw ragdolled players** — un-ragdoll-too-fast bug fixed;
-   carry mechanic **code done and Editor-wired on the Player prefab**.
-   Only the two-Editor playtest (Rest Points 1–5) remains — to be run
-   at home ([ragdoll-carry-setup.md](stages/ragdoll-carry-setup.md)).
-5. **Finish Stage 6 Phase 2** — Alarm Clock build + full two-Editor
+6. **Finish Stage 6 Phase 2** — Alarm Clock build + full two-Editor
    Phase 2 playtest.
-6. **Stage 5 real Steam overlay test** — parked until a second Steam
+7. **Stage 5 real Steam overlay test** — parked until a second Steam
    account is available; not blocking anything else.
-7. **Stage 7 — full meta-game** (medium) — sabotage purchases, real
+8. **Stage 7 — full meta-game** (medium) — sabotage purchases, real
    Jail & Bail, sabotage-spending quota.
-8. **VoIP / proximity voice chat** (medium-low) — Steam's own voice API.
+9. **VoIP / proximity voice chat** (medium-low) — Steam's own voice API.
    Build guide: [voip-setup.md](stages/voip-setup.md).
-9. **Stage 8 — friend-group playtest** — depends on 3–7.
-10. **Art & audio** — more house variants (unblocks loot variety), all
+10. **Stage 8 — friend-group playtest** — depends on 5–8.
+11. **Art & audio** — more house variants (unblocks loot variety), all
     SFX, ambient music, "Good House" tell, skin unlock-gating, HUD
     result banner, environmental detail. Mostly Zach / asset work.
-11. **Housekeeping + code-review nits** — as they come up.
+12. **Housekeeping + code-review nits** — as they come up.
 
 Detail for each below.
 
-## Done — Inventory / UX + Player feel pass
+## Done — Inventory / UX, Player feel pass, Carry / throw, Held item
 
 - **Inventory / UX** — Tab / steal screen, drop-with-Q, Prison Wallet,
   steal-window rework. **Playtested.**
@@ -55,16 +51,100 @@ Detail for each below.
   [player-feel-setup.md](stages/player-feel-setup.md). Deferred
   follow-ups: arm/shoulder clipping if it's bad (nudge camera / trim
   more bones), a real separate first-person viewmodel.
+- **Carry / throw ragdolled players** — done and playtested
+  ([ragdoll-carry-setup.md](stages/ragdoll-carry-setup.md)). `E` on any
+  ragdolled rival to hoist them, walk them around (no bhop while
+  carrying), `G` to set down, hold LMB to charge a throw.
+  `Carryable`/`CarryController` + hooks in `PlayerRagdoll`/
+  `PlayerImpactRelay`/`PlayerTheftTarget` (theft protection)/
+  `FirstPersonController`/`SabotageUseController`. Real bugs found and
+  fixed during playtesting, in order:
+  - Un-ragdoll-too-fast after a car hit — `defaultStunDuration` bumped
+    to 3.5s, `ImpactSequence` waits until the hips have been near-still
+    for `settleHoldTime` past that (hard-capped at `+settleTimeoutExtra`).
+  - E always stole instead of carrying, since a PvP-stunned rival is
+    both a valid steal target and a valid carry target and Interactor
+    claimed the keypress first — added tap-vs-hold disambiguation
+    (`Interactor.carryHoldDuration`, 0.5s) scoped to exactly that
+    overlap, every other interactable keeps its original zero-latency
+    tap.
+  - Throwing looked identical to a gentle drop — root cause was the
+    unpin (`Carryable`) and the throw impulse (`PlayerImpactRelay`)
+    firing as two separate `ClientRpc`s with no ordering guarantee;
+    merged into one atomic RPC. Turned out insufficient on its own —
+    real fix (found via hop-by-hop diagnostic logging, then diffing
+    against the already-working car-impact code path) was that
+    `ApplyThrowImpulse` only ever impulsed the hips, while every other
+    ragdoll body had spent the whole carry hanging non-kinematically off
+    that one pinned point via `CharacterJoint`s — freeing only the hips
+    let its own joints immediately absorb the impulse. Now frees and
+    impulses every ragdoll body together, matching `BeginRagdoll`.
+  - Carried body looked static/stiff and blocked the carrier's own view
+    — `Carryable.Update()` was using a direct `.position`/`.rotation`
+    assignment on the pinned hips instead of `MovePosition`/
+    `MoveRotation`, which teleports a kinematic Rigidbody without
+    informing the physics engine of any velocity, starving every
+    joint-connected limb of natural lag. Fixed, plus retuned the carry
+    anchor position (now in front and low, not shoulder-height).
+  - Walking into a carried body felt like hitting a wall, and it was
+    also silently absorbing the throw impulse — the carried player's
+    individual ragdoll limb colliders stay solid the whole time (only
+    their `CharacterController` is disabled), and the close carry anchor
+    kept them overlapping the carrier. Fixed with
+    `Physics.IgnoreCollision` between the carrier's `CharacterController`
+    and the carried player's ragdoll colliders for the carry's duration
+    plus a brief window after release.
+  - Standing up too early, sometimes — `RagdollAtRest()` was a velocity-
+    only proxy, not a real ground check, so a body could read "at rest"
+    at the apex of a throw arc or resting on something mid-air. Added
+    `IsHipsNearGround()` (a downward raycast filtered to ignore the
+    player's own colliders) as an additional requirement, and bumped
+    `settleHoldTime` to a real 2s.
+- **Held item in hand** — done. New `HeldItemDisplay` (plain
+  `MonoBehaviour`, not owner-gated — runs identically for every
+  player's copy on every client, reacting to `PlayerInventory`'s
+  already-synced slot state, no new networking needed) instantiates the
+  selected item's `WorldModelPrefab` as a child of the skin's `Fist.R`
+  bone (all 52 skins share this bone name, confirmed — no bone is
+  literally named "Hand"), so it automatically follows the Shoot/Swing
+  Action-layer animations for free once parented, and disappears on its
+  own while carrying a body (`PlayerInventory.SelectedSlot` already
+  goes to `-1` then). New per-item `HeldPositionOffset`/
+  `HeldRotationOffset` on `ItemDefinition` (same reasoning as
+  `WorldModelScale` — every source model's raw pivot/orientation is
+  different, has to be tuned per item not shared globally). Bugs found
+  and fixed during setup:
+  - Every item instantiated at the correct scale on the ground came out
+    way too large in-hand — `WorldModelScale` is calibrated for a
+    scale-1 parent, but the hand bone carries its own accumulated scale
+    from the rig import; now divides it back out via the bone's
+    `lossyScale` before applying.
+  - Picking up *any* item immediately ended the round and returned to
+    the Lobby, which then auto-started the next round — root cause:
+    `ItemDefinition.WorldModelPrefab` is the *same* prefab used for the
+    real ground pickup, with `NetworkIdentity`/`PickupItem`/
+    `BoxCollider` baked onto it by `ItemPrefabBatchTool`. Instantiating
+    it wholesale glued a live solid collider inside the player's own
+    body, which was enough to double-trigger Ready Spot/round-end
+    logic. Fixed by stripping every `NetworkBehaviour`/`Collider`/
+    `Rigidbody`/`NetworkIdentity` off the instantiated copy immediately
+    (dependency-safe order — `PickupItem` before the components it
+    requires), leaving only the visual mesh.
+  - Built a proper tuning tool once per-item offsets landed, rather
+    than tuning by trial and error one pickup at a time: **Rob Everyone
+    → Held Item Pose Tuner** (`Assets/Scripts/Editor/HeldItemPoseTuner.cs`).
+    Forces any `ItemDefinition` to preview in the local player's hand
+    regardless of real inventory state, Prev/Next to cycle every item
+    in one Play session, live Position/Rotation/Scale fields (writes
+    straight to the asset via `SerializedObject` — persists after
+    stopping Play Mode, since it's asset data not scene state) with
+    typed-value + step-sized nudge buttons instead of the default
+    drag-numeric-field UI, which wasn't precise enough for the
+    sub-0.01 adjustments this needed.
 
-## Do first — held item + carry/run animations
+## Do next — running + carry animation states
 
-- **Current hotbar item visible in your hands** — whatever slot is
-  selected shows its `WorldModelPrefab` held in the character's hand
-  (a hand/wrist bone socket), for you in first person (the body trim
-  keeps the arms) and for everyone else in third person. Ties into the
-  `FirstPersonBodyTrim` work and the eventual drop/throw-from-hand.
-- **Running + carry animation states** — **code done**, controller
-  rebuild + playtest open
+- **Code done**, controller rebuild + playtest open
   ([player-animations-setup.md](stages/player-animations-setup.md)). The
   `Assets > Rob Everyone > Rebuild Player Animator` tool builds a carry
   gait (Walk_Carry / Run_Carry + a frozen carry-idle pose) into the base
@@ -73,8 +153,6 @@ Detail for each below.
   from this pass: a distinct sprint state (Run is doing double duty), a
   "carrying something bulky" two-handed gait for multi-slot loot, and
   `RecieveHit` is wired but unused until a non-ragdoll hit exists.
-
-## Do first — finish Stage 6 Phase 2
 
 ## Do first — finish Stage 6 Phase 2
 
@@ -87,30 +165,6 @@ Detail for each below.
   Spawnable Prefabs. Then a real two-Editor playtest of all of Phase 2
   (Bat, Hammer swing/throw, Tranq Gun, Alarm Clock, the steal-window)
   before it's done.
-
-## Known bugs / deeper dives
-
-- ~~**Player un-ragdolls too fast after a car hit**~~ — fixed:
-  `defaultStunDuration` bumped to 3.5 s, and `ImpactSequence` now waits
-  past that until the hips have been near-still for `settleHoldTime`
-  (hard-capped at `+settleTimeoutExtra`), so you can't stand up
-  mid-air/mid-tumble. `IsStunned` stays a fixed server timer, but the
-  owner's controller is disabled for the whole (possibly longer)
-  ragdoll regardless, so it doesn't matter if the two drift on a big
-  launch. Tuning knobs on `Player Ragdoll`. Retest with a fast car hit.
-- **Carry / throw ragdolled players** — **code done and Editor-wired**
-  (`Carryable` + `CarryController` + `CarryAnchor` on the Player prefab,
-  fields hooked up). Only the two-Editor playtest — Rest Points 1–5 of
-  [ragdoll-carry-setup.md](stages/ragdoll-carry-setup.md) — is left,
-  and will be run at home.
-  `E` on any ragdolled rival to hoist them (floppy in your hands),
-  walk them around (no bhop while carrying), `G` to set down, hold LMB
-  to charge a throw. `Carryable` / `CarryController` + hooks in
-  `PlayerRagdoll` / `PlayerImpactRelay` / `PlayerTheftTarget` (theft
-  protection) / `FirstPersonController` / `SabotageUseController`.
-  While carrying, both hands are full: the hotbar drops to **no slot
-  selected** (`1`–`5` / scroll dead), and the Sell Station and Tab
-  screen do nothing until the body is set down.
 
 ## Test when able
 

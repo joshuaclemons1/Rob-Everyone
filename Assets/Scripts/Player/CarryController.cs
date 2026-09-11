@@ -27,9 +27,11 @@ namespace RobEveryone.Player
         [SerializeField] private float minThrowForce = 8f;
         [SerializeField] private float maxThrowForce = 45f;
         [SerializeField] private float throwChargeTime = 1.2f;
-        [SerializeField] private LayerMask playerMask = ~0;
         [SerializeField] private Key grabKey = Key.E;
         [SerializeField] private Key setDownKey = Key.G;
+        // See Interactor.ragdollAssistMaxAngle's own comment -- collider-
+        // free on purpose, not a raycast/SphereCast radius.
+        [SerializeField] private float grabAssistMaxAngle = 30f;
 
         [SyncVar] private NetworkIdentity carried; // the victim, server-set
 
@@ -108,18 +110,53 @@ namespace RobEveryone.Player
         public float ThrowCharge01 =>
             chargeStart < 0f ? 0f : Mathf.Clamp01((Time.time - chargeStart) / Mathf.Max(0.01f, throwChargeTime));
 
+        // Collider-free, same reasoning as Interactor.FindRagdolledPlayerNearby
+        // -- picks the nearest grabbable ragdoll within grabRange whose
+        // direction from the viewpoint is within grabAssistMaxAngle of
+        // where the camera's pointed, rather than requiring a precise hit
+        // against a ragdolling player's small individual limb colliders
+        // (their CharacterController is disabled for the whole stun).
         private bool TryFindCarryable(out NetworkIdentity target)
         {
             target = null;
             Transform origin = viewPoint != null ? viewPoint : transform;
-            if (!Physics.Raycast(origin.position, origin.forward, out RaycastHit hit, grabRange, playerMask))
-                return false;
 
-            Carryable c = hit.collider.GetComponentInParent<Carryable>();
-            if (c == null || c.gameObject == gameObject || !c.CanBeGrabbed) return false;
+            Carryable best = null;
+            float bestAngle = grabAssistMaxAngle;
 
-            target = c.GetComponent<NetworkIdentity>();
+            foreach (Carryable candidate in FindObjectsByType<Carryable>(FindObjectsSortMode.None))
+            {
+                if (candidate.gameObject == gameObject || !candidate.CanBeGrabbed) continue;
+
+                Vector3 toTarget = candidate.transform.position - origin.position;
+                if (toTarget.magnitude > grabRange) continue;
+
+                float angle = Vector3.Angle(origin.forward, toTarget);
+                if (angle >= bestAngle) continue;
+
+                bestAngle = angle;
+                best = candidate;
+            }
+
+            if (best == null) return false;
+
+            target = best.GetComponent<NetworkIdentity>();
             return target != null;
+        }
+
+        // Called by Interactor once a hold-to-grab disambiguation succeeds
+        // (the target is both a valid steal target and a valid carry
+        // target right now -- Interactor itself arbitrates tap-vs-hold
+        // for that specific overlap and calls this directly, bypassing
+        // the plain tap-grab branch above which only fires when
+        // Interactor has no target of its own at all).
+        public void TryGrabFromHold(NetworkIdentity target)
+        {
+            if (fpc.IsFrozen || ownRagdoll.IsRagdolling) return;
+            if (carried != null || target == null) return;
+
+            if (animDriver != null) animDriver.PlayAction(PlayerActionAnim.PickUp);
+            CmdGrab(target);
         }
 
         [Command]
@@ -148,13 +185,11 @@ namespace RobEveryone.Player
             carried = null;
             if (ownInventory != null) ownInventory.SetCarryHold(false); // restore the pre-carry selection
 
+            // thrown/direction/force ride along on the same detach call --
+            // see Carryable.ServerDetach's own comment for why this can't
+            // be a second, separate RPC.
             Carryable c = victim.GetComponent<Carryable>();
-            if (c != null) c.ServerDetach();
-
-            if (thrown && force > 0f)
-            {
-                victim.GetComponent<PlayerImpactRelay>()?.ServerThrow(direction.normalized, force);
-            }
+            if (c != null) c.ServerDetach(thrown && force > 0f, direction.normalized, force);
         }
 
         // RobEveryoneNetworkManager.OnServerDisconnect -- release before

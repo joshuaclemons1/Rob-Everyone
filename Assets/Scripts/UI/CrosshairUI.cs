@@ -1,5 +1,6 @@
 using Mirror;
 using RobEveryone.Interaction;
+using TMPro;
 using UnityEngine;
 
 namespace RobEveryone.UI
@@ -8,6 +9,10 @@ namespace RobEveryone.UI
     // crosshair dot -- the dot itself never changes sprite, size, or
     // position, so there's nothing to glitch when interactability
     // changes. Drag the hint icon's GameObject into `interactHint`.
+    // Also shows the current target's own IInteractable.InteractionPrompt
+    // text (prefixed with the key) next to it -- with several different
+    // actions now possible on the same look-at (rob vs. carry a stunned
+    // rival), the icon alone no longer says which one E will do.
     //
     // Networking (Stage 4): `interactor` used to be a direct Inspector
     // drag onto the one hand-placed Player object -- that Player no
@@ -18,6 +23,7 @@ namespace RobEveryone.UI
     public class CrosshairUI : MonoBehaviour
     {
         [SerializeField] private GameObject interactHint;
+        [SerializeField] private TextMeshProUGUI promptText;
 
         private Interactor interactor;
 
@@ -30,9 +36,15 @@ namespace RobEveryone.UI
                 if (interactor == null) return;
             }
 
-            if (interactHint == null) return;
+            bool hasTarget = interactor.CurrentTarget != null;
 
-            interactHint.SetActive(interactor.CurrentTarget != null);
+            if (interactHint != null) interactHint.SetActive(hasTarget);
+
+            if (promptText != null)
+            {
+                promptText.text = hasTarget ? $"[E] {interactor.CurrentTarget.InteractionPrompt}" : "";
+                promptText.enabled = hasTarget;
+            }
         }
     }
 }

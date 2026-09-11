@@ -478,6 +478,14 @@ namespace RobEveryone.Core
                 // this player's round -- no-op otherwise.
                 FirstPersonController fpc = player.GetComponent<FirstPersonController>();
                 if (fpc != null) fpc.IsFrozen = false;
+
+                // Whatever ended the round (timeout, extraction, caught),
+                // nobody should carry a body through the scene change --
+                // confirmed bug: a carried player followed their carrier
+                // into the Lobby. ServerDrop no-ops if this player wasn't
+                // carrying anyone.
+                CarryController carry = player.GetComponent<CarryController>();
+                if (carry != null) carry.ServerDrop(false);
             }
 
             lastResults.Clear();

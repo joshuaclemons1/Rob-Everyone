@@ -41,6 +41,13 @@ namespace RobEveryone.Items
         // model itself, not of any one LootSpawnPoint that happens to
         // roll it.
         [SerializeField] private Vector3 worldModelScale = Vector3.one;
+        // Where/how this model needs to sit relative to the hand bone to
+        // actually look held, not just glued on at its raw import pivot
+        // -- every source model's own origin/orientation is different
+        // (same reason WorldModelScale exists), so this has to be tuned
+        // per item rather than shared globally. See HeldItemDisplay.
+        [SerializeField] private Vector3 heldPositionOffset;
+        [SerializeField] private Vector3 heldRotationOffset;
         // How many of PlayerInventory's 5 hotbar slots this item eats up
         // at once -- most things are 1, but a bulky item (a fridge, a
         // safe) should plausibly cost most or all of your carrying
@@ -74,6 +81,8 @@ namespace RobEveryone.Items
         public Sprite Icon => icon;
         public GameObject WorldModelPrefab => worldModelPrefab;
         public Vector3 WorldModelScale => worldModelScale;
+        public Vector3 HeldPositionOffset => heldPositionOffset;
+        public Vector3 HeldRotationOffset => heldRotationOffset;
         public int InventorySize => Mathf.Max(1, inventorySize);
 
         public SabotageType SabotageType => sabotageType;

@@ -38,8 +38,14 @@ namespace RobEveryone.Sabotage
         // window lapses.
         private NetworkIdentity activeThief;
 
+        // Tap vs. hold only matters while this rival is still actively
+        // ragdolling (Interactor's own hold-to-grab disambiguation) --
+        // once the ragdoll animation ends but the steal window is still
+        // open, E only ever robs them, so the hint drops away on its own.
         public string InteractionPrompt =>
-            $"Rob {(inventory != null ? inventory.DisplayName : "rival")}";
+            carryable != null && carryable.CanBeGrabbed
+                ? $"Rob {(inventory != null ? inventory.DisplayName : "rival")} (hold to carry)"
+                : $"Rob {(inventory != null ? inventory.DisplayName : "rival")}";
 
         // Client-visible gate for the E prompt. The server-side exclusivity
         // check (only one thief at a time) lives in Interact() below,

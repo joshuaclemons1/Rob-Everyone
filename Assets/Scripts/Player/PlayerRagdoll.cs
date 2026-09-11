@@ -50,8 +50,24 @@ namespace RobEveryone.Player
         // beyond defaultStunDuration in case the body wedges on geometry.
         [SerializeField] private float settleSpeedThreshold = 0.7f;    // m/s
         [SerializeField] private float settleAngularThreshold = 1.8f;  // rad/s
-        [SerializeField] private float settleHoldTime = 0.3f;
-        [SerializeField] private float settleTimeoutExtra = 4f;
+        // How long the body must actually stay still AND near the ground
+        // (see IsHipsNearGround), once it's stopped moving, before
+        // standing up -- the real "stay ragdolled at least 2s after
+        // touching the ground" knob. A dropped/thrown carried body
+        // settles almost immediately on a gentle drop but can take a
+        // while to land after a hard throw, so this (not
+        // Carryable.carryReleaseStun, which only floors the minimum time
+        // from the moment of *release*) is what actually governs the
+        // post-landing hold for both.
+        [SerializeField] private float settleHoldTime = 2f;
+        [SerializeField] private float settleTimeoutExtra = 6f;
+        // How far below the hips to look for solid ground -- generous
+        // enough to cover a ragdoll pose where the hips end up sitting a
+        // bit above true ground level (folded legs, draped over debris),
+        // without being so long a body resting on a rooftop/car reads as
+        // "still airborne" just because the street is technically further
+        // down.
+        [SerializeField] private float groundCheckDistance = 1.5f;
 
         [Header("Third-person ragdoll view")]
         [SerializeField] private Vector3 thirdPersonOffset = new(0f, 2.5f, -5f);
@@ -458,14 +474,53 @@ namespace RobEveryone.Player
         // start a new stun (isStunned is already true and stays that
         // way); the carry release already pushed extraHoldUntil out, so
         // the settle loop waits for the throw to land. Called on every
-        // client via PlayerImpactRelay.RpcThrow.
+        // client via Carryable.RpcOnDetached.
         public void ApplyThrowImpulse(Vector3 direction, float force)
         {
-            if (hipsRigidbody == null || !isStunned) return;
-            hipsRigidbody.isKinematic = false; // Carryable had it pinned
-            hipsRigidbody.linearVelocity = Vector3.zero;
-            hipsRigidbody.angularVelocity = Vector3.zero;
-            hipsRigidbody.AddForce(direction * force, ForceMode.Impulse);
+            if (hipsRigidbody == null || !isStunned || ragdollBodies == null) return;
+
+            // Carryable only ever pins the hips while carried -- every
+            // other ragdoll body (spine, thighs, etc.) has spent the
+            // whole carry hanging non-kinematically off that one pinned
+            // anchor via CharacterJoints, settled into place around it.
+            // Confirmed bug: impulsing the hips alone did nothing
+            // visible -- the instant it's freed, its own joints to those
+            // still-stationary neighbors immediately pull it back to
+            // satisfy the joint constraints, absorbing the impulse
+            // before it can actually move anything. BeginRagdoll (the
+            // car-impact path, which does work) frees every body at once
+            // for exactly this reason -- matching that here instead of
+            // only ever touching the hips.
+            Vector3 impulse = direction * force;
+            for (int i = 0; i < ragdollBodies.Length; i++)
+            {
+                Rigidbody body = ragdollBodies[i];
+                if (body == null) continue;
+
+                body.isKinematic = false;
+                body.linearVelocity = Vector3.zero;
+                body.angularVelocity = Vector3.zero;
+                body.AddForce(impulse, ForceMode.Impulse);
+            }
+        }
+
+        // Every ragdoll bone's own Collider -- Carryable uses this to
+        // Physics.IgnoreCollision them against the carrier's own
+        // CharacterController for the duration of a carry (and briefly
+        // after release), since the carry anchor holds this body directly
+        // against/overlapping the carrier otherwise, and these colliders
+        // stay fully solid the whole time (only the CharacterController
+        // is disabled while ragdolling).
+        public Collider[] GetRagdollColliders()
+        {
+            if (ragdollBodies == null) return System.Array.Empty<Collider>();
+
+            var colliders = new Collider[ragdollBodies.Length];
+            for (int i = 0; i < ragdollBodies.Length; i++)
+            {
+                colliders[i] = ragdollBodies[i].GetComponent<Collider>();
+            }
+            return colliders;
         }
 
         private IEnumerator ImpactSequence(Vector3 direction, float force, float duration)
@@ -513,7 +568,13 @@ namespace RobEveryone.Player
 
                 if (Time.time >= hardCapTime) break;
 
-                if (RagdollAtRest())
+                // Both slow AND actually near solid ground -- velocity
+                // alone was a proxy that could momentarily read "at rest"
+                // at the apex of a throw arc, or while resting on top of
+                // something mid-air (another player, a car), not just
+                // genuinely on the ground. Confirmed complaint: standing
+                // up too early, sometimes.
+                if (RagdollAtRest() && IsHipsNearGround())
                 {
                     if (settledSince < 0f) settledSince = Time.time;
                 }
@@ -551,17 +612,43 @@ namespace RobEveryone.Player
         }
 
         // "Has the body basically stopped" -- low linear and angular
-        // velocity on the hips. Deliberately not a ground raycast (the
-        // ragdoll colliders sit on the same layer as the world now, so a
-        // downward ray just hits the player's own legs): near-zero
-        // velocity sustained for settleHoldTime is a reliable enough
-        // proxy for "on a surface and at rest," and the hold time
-        // debounces the brief slow-down at the apex of a launch arc.
+        // velocity on the hips. On its own this is only a proxy for "at
+        // rest" (paired with IsHipsNearGround below for the real "on the
+        // ground" check) -- the hold time on top of both debounces the
+        // brief slow-down at the apex of a launch arc.
         private bool RagdollAtRest()
         {
             if (hipsRigidbody == null) return true;
             return hipsRigidbody.linearVelocity.sqrMagnitude < settleSpeedThreshold * settleSpeedThreshold
                 && hipsRigidbody.angularVelocity.sqrMagnitude < settleAngularThreshold * settleAngularThreshold;
+        }
+
+        // A real ground-contact check, not just "slow" -- a downward
+        // raycast/sphere sweep from the hips would ordinarily just hit
+        // the player's own legs (the ragdoll colliders sit on the same
+        // layer as the world), so this specifically filters out any hit
+        // belonging to this player's own ragdoll bodies rather than
+        // relying on a layer mask.
+        private bool IsHipsNearGround()
+        {
+            if (hipsRigidbody == null) return false;
+
+            RaycastHit[] hits = Physics.RaycastAll(hipsRigidbody.position, Vector3.down, groundCheckDistance);
+            foreach (RaycastHit hit in hits)
+            {
+                if (!IsOwnRagdollCollider(hit.collider)) return true;
+            }
+            return false;
+        }
+
+        private bool IsOwnRagdollCollider(Collider candidate)
+        {
+            if (ragdollBodies == null) return false;
+            for (int i = 0; i < ragdollBodies.Length; i++)
+            {
+                if (ragdollBodies[i] != null && ragdollBodies[i].GetComponent<Collider>() == candidate) return true;
+            }
+            return false;
         }
 
         private void BeginRagdoll(Vector3 direction, float force)
