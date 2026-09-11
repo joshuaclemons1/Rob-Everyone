@@ -17,6 +17,8 @@ MonoBehaviour:
   icon: {fileID: 0}
   worldModelPrefab: {fileID: 843100087236206725, guid: 09715d743e8bb5c41957b8818ac0d028, type: 3}
   worldModelScale: {x: 0.1, y: 0.1, z: 0.1}
+  heldPositionOffset: {x: 0, y: 0.002, z: 0}
+  heldRotationOffset: {x: 90, y: 0, z: 0}
   inventorySize: 1
   sabotageType: 3
   stunDuration: 3

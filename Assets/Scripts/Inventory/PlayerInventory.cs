@@ -33,7 +33,7 @@ namespace RobEveryone.Inventory
     // by an ItemCatalog to resolve a name back to its ItemDefinition on
     // every client -- the local InventorySlot?[] view below is rebuilt
     // from that SyncList's hook rather than being the source of truth
-    // itself. AddItem/SellCarried/etc. only ever run on the server now
+    // itself. AddItem/SellSelectedSlot/etc. only ever run on the server now
     // (called from server-context code -- Interactor's Command, or
     // SellStation's Command), never called directly by a client.
     public class PlayerInventory : NetworkBehaviour
@@ -563,17 +563,27 @@ namespace RobEveryone.Inventory
             }
         }
 
-        // Banks the current carried value into Cash, then clears carried
-        // loot the same way ResetInventory does -- called from the
-        // Lobby's SellStation via a Command, never automatically.
+        // Banks the currently-selected/held item's value into Cash and
+        // clears just that slot -- SellStation only ever sells what's
+        // "in your hand" (the selected slot), not your whole carried
+        // haul at once, matching the held-item display's own framing of
+        // the selected slot as what you're currently holding. Called
+        // from SellStation's Interact(), server-only.
         [Server]
-        public void SellCarried()
+        public bool SellSelectedSlot()
         {
-            int total = TotalValue;
-            if (total <= 0) return;
+            int index = selectedSlot;
+            if (index < 0 || index >= SlotCount) return false;
 
-            cash += total;
-            ResetInventory();
+            string itemName = slotItemNames[index];
+            if (string.IsNullOrEmpty(itemName) || itemName == ContinuationMarker) return false;
+
+            ItemDefinition item = catalog != null ? catalog.GetByName(itemName) : null;
+            if (item == null) return false;
+
+            cash += item.Value;
+            RemoveSlot(index);
+            return true;
         }
 
         // Anti-hoarding: called by GameFlowManager on a batch's final

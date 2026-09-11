@@ -105,6 +105,13 @@ namespace RobEveryone.Sabotage
             if (remainingUses > 0 && pickupPrefab != null)
             {
                 GameObject pickup = Instantiate(pickupPrefab, transform.position, Quaternion.identity);
+                // WorldModelScale is never baked into a pickup prefab's
+                // own saved scale -- every other spawn path (LootSpawnPoint,
+                // PlayerInventory's drop) applies it explicitly after
+                // instantiating. Confirmed bug: a landed Hammer came out
+                // at its raw, unscaled import size (way too large)
+                // because this path was the one spawner that skipped it.
+                pickup.transform.localScale = sourceItem.WorldModelScale;
                 pickup.GetComponent<PickupItem>()?.Initialize(sourceItem, remainingUses);
                 NetworkServer.Spawn(pickup);
             }

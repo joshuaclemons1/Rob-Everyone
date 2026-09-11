@@ -17,4 +17,15 @@ MonoBehaviour:
   icon: {fileID: 0}
   worldModelPrefab: {fileID: 5890135731191612444, guid: 5638974fc9ca04a3999d8523d2fcf5ed, type: 3}
   worldModelScale: {x: 0.3, y: 0.3, z: 0.3}
+  heldPositionOffset: {x: 0, y: 0.0060000005, z: 0.0019999999}
+  heldRotationOffset: {x: 0, y: -90, z: 180}
   inventorySize: 1
+  sabotageType: 0
+  stunDuration: 2
+  impactForce: 40
+  cooldownSeconds: 0
+  range: 2.5
+  blastRadius: 0
+  thrownProjectilePrefab: {fileID: 0}
+  maxUses: 0
+  useAnimation: 0

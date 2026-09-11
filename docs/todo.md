@@ -16,18 +16,16 @@ happen soon" to "later stage."
 3. ~~**Carry / throw ragdolled players**~~ — done and playtested. See
    "Done" section below for the full bug list found along the way.
 4. ~~**Held item in hand**~~ — done. See "Done" section below.
-5. **Running + carry animation states** — **code done**, controller
-   rebuild + playtest open
-   ([player-animations-setup.md](stages/player-animations-setup.md)).
-6. **Finish Stage 6 Phase 2** — Alarm Clock build + full two-Editor
-   Phase 2 playtest.
+5. ~~**Running + carry animation states**~~ — done. See "Done" section
+   below.
+6. ~~**Finish Stage 6 Phase 2**~~ — done. See "Done" section below.
 7. **Stage 5 real Steam overlay test** — parked until a second Steam
    account is available; not blocking anything else.
 8. **Stage 7 — full meta-game** (medium) — sabotage purchases, real
    Jail & Bail, sabotage-spending quota.
 9. **VoIP / proximity voice chat** (medium-low) — Steam's own voice API.
    Build guide: [voip-setup.md](stages/voip-setup.md).
-10. **Stage 8 — friend-group playtest** — depends on 5–8.
+10. **Stage 8 — friend-group playtest** — depends on 7–8.
 11. **Art & audio** — more house variants (unblocks loot variety), all
     SFX, ambient music, "Good House" tell, skin unlock-gating, HUD
     result banner, environmental detail. Mostly Zach / asset work.
@@ -35,7 +33,7 @@ happen soon" to "later stage."
 
 Detail for each below.
 
-## Done — Inventory / UX, Player feel pass, Carry / throw, Held item
+## Done — items 1–6 (Inventory/UX through Stage 6 Phase 2)
 
 - **Inventory / UX** — Tab / steal screen, drop-with-Q, Prison Wallet,
   steal-window rework. **Playtested.**
@@ -141,30 +139,35 @@ Detail for each below.
     typed-value + step-sized nudge buttons instead of the default
     drag-numeric-field UI, which wasn't precise enough for the
     sub-0.01 adjustments this needed.
+  - A landed, thrown Hammer (`RetrievableProjectile`'s pickup respawn)
+    came out massive — the one spawn path that never applied
+    `ItemDefinition.WorldModelScale` after instantiating (every other
+    spawner — `LootSpawnPoint`, `PlayerInventory`'s drop — already did).
+    Fixed.
+  - `SellStation` now sells only the currently-selected/held item, not
+    the whole carried haul at once (`PlayerInventory.SellSelectedSlot`,
+    replacing `SellCarried`), with a dynamic `"Sell {Item} for $X"`
+    prompt read from `PlayerInventory.LocalPlayer`'s selection; hides
+    the prompt entirely when nothing's selected. `PickupItem`'s prompt
+    is now `"Pick Up {Item}"` instead of `"Take {Item} (${Value})"`.
 
-## Do next — running + carry animation states
-
-- **Code done**, controller rebuild + playtest open
-  ([player-animations-setup.md](stages/player-animations-setup.md)). The
-  `Assets > Rob Everyone > Rebuild Player Animator` tool builds a carry
-  gait (Walk_Carry / Run_Carry + a frozen carry-idle pose) into the base
-  layer and an upper-body Action layer for pick-up / one-handed shoot
-  (Taser, Tranq Gun) / bat swing (Bat, Hammer), all networked. Deferred
-  from this pass: a distinct sprint state (Run is doing double duty), a
+- **Running + carry animation states** — done, controller rebuilt and
+  playtested ([player-animations-setup.md](stages/player-animations-setup.md)).
+  The `Assets > Rob Everyone > Rebuild Player Animator` tool builds a
+  carry gait (Walk_Carry / Run_Carry + a frozen carry-idle pose) into
+  the base layer and an upper-body Action layer for pick-up / one-handed
+  shoot (Taser, Tranq Gun) / bat swing (Bat, Hammer), all networked.
+  Deferred: a distinct sprint state (Run is doing double duty), a
   "carrying something bulky" two-handed gait for multi-slot loot, and
   `RecieveHit` is wired but unused until a non-ragdoll hit exists.
-
-## Do first — finish Stage 6 Phase 2
-
-- **Alarm Clock build + full Phase 2 playtest** — Parts 1–4 of
-  [stage6-sabotage-items-phase2-setup.md](stages/stage6-sabotage-items-phase2-setup.md)
-  are done (hotbar uses-count UI, `PlayerTheftTarget` on the Player
-  prefab, `HammerProjectile.prefab` built and registered). Only **Part 5**
-  remains: build `AlarmClockProjectile.prefab`, wire it into
-  `AlarmClock.asset`'s Thrown Projectile Prefab + `NetworkManager`'s
-  Spawnable Prefabs. Then a real two-Editor playtest of all of Phase 2
-  (Bat, Hammer swing/throw, Tranq Gun, Alarm Clock, the steal-window)
-  before it's done.
+- **Finish Stage 6 Phase 2** — done and playtested (Bat, Hammer
+  swing/throw, Tranq Gun, Alarm Clock, the steal-window), including
+  Part 5 (`AlarmClockProjectile.prefab` built and wired) of
+  [stage6-sabotage-items-phase2-setup.md](stages/stage6-sabotage-items-phase2-setup.md).
+  Also added since: a proper `Real_House_0X`-style permanent
+  `LootSpawnPoint` placement for the sabotage items (in addition to the
+  hand-placed test pickups the setup doc originally called for), and
+  the Shop/held-item follow-ups noted below.
 
 ## Test when able
 
@@ -257,8 +260,8 @@ Detail for each below.
   the rescue) for the edge case where ragdoll physics carries a player
   off the map.
 - **Stage 6 Phase 2 — Bat, Hammer, Tranquilizer Gun, PvP steal-window,
-  Alarm Clock framing — code done, Editor setup + playtesting not done
-  yet.** `ItemDefinition` gained `MaxUses` (per-slot durability/ammo) and
+  Alarm Clock framing — done and playtested.** `ItemDefinition` gained
+  `MaxUses` (per-slot durability/ammo) and
   `SabotageType` became `[Flags]` (`Ranged` added, Hammer is
   `Melee | Thrown`) — every exact-value `SabotageType` comparison across
   `SabotageUseController` was rewritten to `HasFlag`. `PlayerInventory`
@@ -278,12 +281,11 @@ Detail for each below.
   every existing organic sighting); `PoliceAI.HandleAlertRaised` chases a
   blamed player directly via `EnterChase` instead of just moving toward a
   position. New `Assets/Scripts/Sabotage/AlarmClockProjectile.cs`
-  resolves who's nearby to frame and which Homeowner to alert. **Editor
-  setup Parts 1–4 done** (hotbar uses-count UI, `PlayerTheftTarget` on
-  the Player prefab, `HammerProjectile.prefab` built + registered). Only
-  Part 5 (`AlarmClockProjectile.prefab` build + wiring) and a full
-  two-Editor playtest remain — see the "finish Stage 6 Phase 2" item
-  near the top of this doc. Reference:
+  resolves who's nearby to frame and which Homeowner to alert. **All 5
+  Editor setup Parts done** (hotbar uses-count UI, `PlayerTheftTarget`
+  on the Player prefab, `HammerProjectile.prefab` and
+  `AlarmClockProjectile.prefab` built + registered), full two-Editor
+  playtest passed. Reference:
   [stage6-sabotage-items-phase2-setup.md](stages/stage6-sabotage-items-phase2-setup.md),
   [item-creation.md](stages/item-creation.md)'s Section 4b, and
   `gameplay-design.md`'s Sabotage items section for intended numbers.

@@ -62,7 +62,7 @@ namespace RobEveryone.Items
         public void MarkDropped() => dropped = true;
 
         public int Value => item != null ? item.Value : 0;
-        public string InteractionPrompt => item != null ? $"Take {item.ItemName} (${item.Value})" : "Take item";
+        public string InteractionPrompt => item != null ? $"Pick Up {item.ItemName}" : "Take item";
         public bool CanInteract => true;
 
         // Called by LootSpawnPoint right after it instantiates this
