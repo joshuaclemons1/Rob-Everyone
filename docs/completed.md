@@ -104,28 +104,126 @@ status line inside an individual stage doc.
   states; `PlayerSkinSpawner.cs` shares one animator controller across
   every skin. (No dedicated stage doc yet — see the commit itself,
   `ec73123`, for the full change list.)
+- **Running + carry animation states** — done, controller rebuilt and
+  playtested. The `Assets > Rob Everyone > Rebuild Player Animator`
+  tool builds a carry gait (Walk_Carry / Run_Carry + a frozen
+  carry-idle pose) into the base layer and an upper-body Action layer
+  for pick-up / one-handed shoot (Taser, Tranq Gun) / bat swing (Bat,
+  Hammer), all networked. See
+  [player-animations-setup.md](stages/player-animations-setup.md).
+  Deferred: a distinct sprint state (Run is doing double duty), a
+  "carrying something bulky" two-handed gait for multi-slot loot, and
+  `RecieveHit` is wired but unused until a non-ragdoll hit exists.
 - **Ragdoll get-up timing fix** — a car hit at force ~60 launches the
   ragdoll ~20 m/s, but the old fixed 2 s stun timer let players stand
   up mid-air / mid-tumble. `PlayerRagdoll` now holds a 3.5 s minimum
   and then waits until the hips have been near-still for `settleHoldTime`
   (hard-capped by `settleTimeoutExtra`) before ending. Tuning knobs on
   `Player Ragdoll`. Playtested.
-- **Ragdoll carry / throw** *(code + Editor wiring done; two-Editor
-  playtest still to run at home)* — `E` hoists any ragdolled rival
-  (they stay floppy — hips pinned to a `CarryAnchor`, limbs flop), walk
-  them around with no bhop, `G` to set down gently, hold LMB to charge a
-  throw and release to launch them along your view. Carried players are
-  helpless: can't stand until a short delay after being dropped/thrown,
-  and can't be stolen from (carrying is a grief/relocate toy, not
-  body-passing to strip a friend). Carrying fills both hands — the
-  hotbar goes to no-slot-selected, and the Sell Station / Tab screen do
-  nothing until the body is down. Drops instantly if the carrier is
-  ragdolled or disconnects. `Carryable` + `CarryController`, with hooks
-  in `PlayerRagdoll` / `PlayerImpactRelay` / `PlayerTheftTarget` /
-  `FirstPersonController` / `PlayerInventory` / `HotbarController` /
-  `Interactor` / `SabotageUseController` / `SellStation` /
-  `RobEveryoneNetworkManager`. See
-  [ragdoll-carry-setup.md](stages/ragdoll-carry-setup.md).
+- **Ragdoll carry / throw** — done and playtested. `E` hoists any
+  ragdolled rival (they stay floppy — hips pinned to a `CarryAnchor`,
+  limbs flop), walk them around with no bhop, `G` to set down gently,
+  hold LMB to charge a throw and release to launch them along your
+  view. Carried players are helpless: can't stand until a delay after
+  being dropped/thrown, and can't be stolen from (carrying is a
+  grief/relocate toy, not body-passing to strip a friend). Carrying
+  fills both hands — the hotbar goes to no-slot-selected, and the Sell
+  Station / Tab screen do nothing until the body is down. Drops
+  instantly if the carrier is ragdolled or disconnects. `Carryable` +
+  `CarryController`, with hooks in `PlayerRagdoll` / `PlayerImpactRelay`
+  / `PlayerTheftTarget` / `FirstPersonController` / `PlayerInventory` /
+  `HotbarController` / `Interactor` / `SabotageUseController` /
+  `SellStation` / `RobEveryoneNetworkManager`. See
+  [ragdoll-carry-setup.md](stages/ragdoll-carry-setup.md). A real string
+  of bugs surfaced during the two-Editor playtest, fixed in order:
+  - Un-ragdoll-too-fast after a car hit — `defaultStunDuration` bumped
+    to 3.5s, `ImpactSequence` waits until the hips have been near-still
+    for `settleHoldTime` past that (hard-capped at `+settleTimeoutExtra`).
+  - E always stole instead of carrying, since a PvP-stunned rival is
+    both a valid steal target and a valid carry target and `Interactor`
+    claimed the keypress first — added tap-vs-hold disambiguation
+    (`Interactor.carryHoldDuration`, 0.5s) scoped to exactly that
+    overlap; every other interactable keeps its original zero-latency
+    tap.
+  - Throwing looked identical to a gentle drop — root cause was the
+    unpin (`Carryable`) and the throw impulse (`PlayerImpactRelay`)
+    firing as two separate `ClientRpc`s with no ordering guarantee;
+    merged into one atomic RPC. Turned out insufficient on its own —
+    real fix (found via hop-by-hop diagnostic logging, then diffing
+    against the already-working car-impact code path) was that
+    `ApplyThrowImpulse` only ever impulsed the hips, while every other
+    ragdoll body had spent the whole carry hanging non-kinematically off
+    that one pinned point via `CharacterJoint`s — freeing only the hips
+    let its own joints immediately absorb the impulse. Now frees and
+    impulses every ragdoll body together, matching `BeginRagdoll`.
+  - Carried body looked static/stiff and blocked the carrier's own view
+    — `Carryable.Update()` was using a direct `.position`/`.rotation`
+    assignment on the pinned hips instead of `MovePosition`/
+    `MoveRotation`, which teleports a kinematic Rigidbody without
+    informing the physics engine of any velocity, starving every
+    joint-connected limb of natural lag. Fixed, plus retuned the carry
+    anchor position (now in front and low, not shoulder-height).
+  - Walking into a carried body felt like hitting a wall, and it was
+    also silently absorbing the throw impulse — the carried player's
+    individual ragdoll limb colliders stay solid the whole time (only
+    their `CharacterController` is disabled), and the close carry anchor
+    kept them overlapping the carrier. Fixed with
+    `Physics.IgnoreCollision` between the carrier's `CharacterController`
+    and the carried player's ragdoll colliders for the carry's duration
+    plus a brief window after release.
+  - Standing up too early, sometimes — `RagdollAtRest()` was a velocity-
+    only proxy, not a real ground check, so a body could read "at rest"
+    at the apex of a throw arc or resting on something mid-air. Added
+    `IsHipsNearGround()` (a downward raycast filtered to ignore the
+    player's own colliders) as an additional requirement, and bumped
+    `settleHoldTime` to a real 2s.
+- **Held item in hand** — done. `HeldItemDisplay` (plain
+  `MonoBehaviour`, not owner-gated — runs identically for every
+  player's copy on every client, reacting to `PlayerInventory`'s
+  already-synced slot state, no new networking needed) instantiates the
+  selected item's `WorldModelPrefab` as a child of the skin's `Fist.R`
+  bone (all 52 skins share this bone name — no bone is literally named
+  "Hand"), so it automatically follows the Shoot/Swing Action-layer
+  animations for free once parented, and disappears on its own while
+  carrying a body (`PlayerInventory.SelectedSlot` already goes to `-1`
+  then). New per-item `HeldPositionOffset`/`HeldRotationOffset` on
+  `ItemDefinition` (same reasoning as `WorldModelScale` — every source
+  model's raw pivot/orientation is different, has to be tuned per item
+  not shared globally), tuned via a new Editor tool, **Rob Everyone →
+  Held Item Pose Tuner** (`Assets/Scripts/Editor/HeldItemPoseTuner.cs`)
+  — forces any `ItemDefinition` to preview in the local player's hand
+  regardless of real inventory state, Prev/Next to cycle every item in
+  one Play session, live Position/Rotation/Scale fields (writes
+  straight to the asset via `SerializedObject`, persisting after
+  stopping Play Mode since it's asset data not scene state) with
+  typed-value + step-sized nudge buttons instead of the default
+  drag-numeric-field UI, which wasn't precise enough for the sub-0.01
+  adjustments this needed. Bugs found and fixed during setup:
+  - Every item came out way too large in-hand — `WorldModelScale` is
+    calibrated for a scale-1 parent, but the hand bone carries its own
+    accumulated scale from the rig import; now divides it back out via
+    the bone's `lossyScale` before applying.
+  - Picking up *any* item immediately ended the round and returned to
+    the Lobby, which then auto-started the next round — root cause:
+    `ItemDefinition.WorldModelPrefab` is the *same* prefab used for the
+    real ground pickup, with `NetworkIdentity`/`PickupItem`/
+    `BoxCollider` baked onto it by `ItemPrefabBatchTool`. Instantiating
+    it wholesale glued a live solid collider inside the player's own
+    body, which was enough to double-trigger Ready Spot/round-end
+    logic. Fixed by stripping every `NetworkBehaviour`/`Collider`/
+    `Rigidbody`/`NetworkIdentity` off the instantiated copy immediately
+    (dependency-safe order — `PickupItem` before the components it
+    requires), leaving only the visual mesh.
+  - A landed, thrown Hammer (`RetrievableProjectile`'s pickup respawn)
+    came out massive — the one spawn path that never applied
+    `WorldModelScale` after instantiating (every other spawner —
+    `LootSpawnPoint`, `PlayerInventory`'s drop — already did). Fixed.
+  - `SellStation` now sells only the currently-selected/held item, not
+    the whole carried haul at once (`PlayerInventory.SellSelectedSlot`,
+    replacing `SellCarried`), with a dynamic `"Sell {Item} for $X"`
+    prompt read from `PlayerInventory.LocalPlayer`'s selection; hides
+    the prompt entirely when nothing's selected. `PickupItem`'s prompt
+    is now `"Pick Up {Item}"` instead of `"Take {Item} (${Value})"`.
 
 ## UI
 
@@ -234,6 +332,69 @@ status line inside an individual stage doc.
   compile. Editor setup done through Part 3 (Steam initializes cleanly).
   **Rest Point 4 (the real two-Steam-account overlay invite test) not
   yet run** — see [todo.md](todo.md).
+
+## Sabotage items (Stage 6)
+
+- **Phase 1 — foundation, Taser + Dynamite** — done and tested. All 6
+  items have a prefab + `ItemDefinition`, in `ItemCatalog`/Spawnable
+  Prefabs. `ItemDefinition` gained a `SabotageType` (Melee/Thrown) plus
+  stun/force/cooldown/range/blastRadius/projectile fields;
+  `PlayerRagdoll`/`PlayerImpactRelay` take a configurable stun
+  duration, with `PlayerImpactRelay.IsStunned` as a real server-synced
+  flag (also fixed the bug where a police-frozen player mid-stun could
+  get control handed back early); new `Assets/Scripts/Sabotage/`
+  folder (`SabotageUseController`, `SabotageProjectile`) wires
+  left-click to melee/throw, confirmed working two-Editor (Taser melee
+  hit/cooldown/no-restack, Dynamite throw/AOE/consumed-on-use, all per
+  [stage6-sabotage-items-setup.md](stages/stage6-sabotage-items-setup.md)'s
+  Part 7). Also fixed along the way: `Player.prefab`'s
+  `CharacterController` (`Height`/`Center`) was undersized for its own
+  camera height, so head-height hits (Taser, and implicitly Police
+  vision/anything else raycasting the player) silently missed — now
+  `Height: 3, Center: (0, 0.5, 0)`, chosen so the capsule top clears
+  eye height with margin while the origin (and camera, a fixed child
+  offset from it) lands at exactly the original height;
+  `DynamiteProjectile.prefab` had its `NetworkTransformReliable` left
+  at the default Client-To-Server sync instead of Server-To-Client,
+  breaking it for non-host clients; and `GameFlowManager` gained a
+  periodic server-side fall-through safety net (any player below Y
+  `-20` gets teleported to a spawn point, skipping anyone still
+  mid-ragdoll so `PlayerRagdoll.EndRagdoll` doesn't fight the rescue)
+  for the edge case where ragdoll physics carries a player off the map.
+- **Phase 2 — Bat, Hammer, Tranquilizer Gun, PvP steal-window, Alarm
+  Clock framing** — done and playtested. `ItemDefinition` gained
+  `MaxUses` (per-slot durability/ammo) and `SabotageType` became
+  `[Flags]` (`Ranged` added, Hammer is `Melee | Thrown`) — every
+  exact-value `SabotageType` comparison across `SabotageUseController`
+  was rewritten to `HasFlag`. `PlayerInventory` gained a parallel
+  `slotUses` SyncList, an `AddItem(item, overrideUses)` overload, and
+  `DecrementUses`. `PlayerImpactRelay` gained `IsStealable` +
+  `ServerApplyPvpImpact` (a car impact still only calls the plain
+  `ServerApplyImpact` — no steal window from that). The E-key
+  `IInteractable` pipeline gained a `CanInteract` check, and a new
+  `PlayerTheftTarget` component makes a stunned player themself a valid
+  steal target through that same existing pipeline. New `ILaunchable`
+  interface abstracts "thing a thrown item spawns" —
+  `SabotageProjectile` (Dynamite, unchanged) and the new
+  `RetrievableProjectile` (Hammer: collision-triggered, lands and
+  respawns as a real pickup carrying its remaining uses via a new
+  `PickupItem.Initialize(item, uses)` overload) both implement it.
+  `HomeownerAI` gained `ForceAlert(position, blamed)` and
+  `OnAlertRaised` now carries a `PlayerInventory` to blame (`null` for
+  every existing organic sighting); `PoliceAI.HandleAlertRaised` chases
+  a blamed player directly via `EnterChase` instead of just moving
+  toward a position. New `Assets/Scripts/Sabotage/AlarmClockProjectile.cs`
+  resolves who's nearby to frame and which Homeowner to alert. All 5
+  Editor setup Parts done (hotbar uses-count UI, `PlayerTheftTarget` on
+  the Player prefab, `HammerProjectile.prefab` and
+  `AlarmClockProjectile.prefab` built + registered), full two-Editor
+  playtest passed (Bat, Hammer swing/throw, Tranq Gun, Alarm Clock, the
+  steal-window). Permanent `LootSpawnPoint` placements for the
+  sabotage items added in `Real_House_01`/`Real_House_02` afterward
+  (previously only hand-placed test pickups). See
+  [stage6-sabotage-items-phase2-setup.md](stages/stage6-sabotage-items-phase2-setup.md),
+  [item-creation.md](stages/item-creation.md)'s Section 4b, and
+  `gameplay-design.md`'s Sabotage items section for intended numbers.
 
 **Note on why 7/7b exist before Stage 4**: this jumped ahead of
 `plan.md`'s build order on purpose — the core loop (loot → quota → exit)

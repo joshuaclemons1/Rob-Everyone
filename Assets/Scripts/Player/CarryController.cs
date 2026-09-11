@@ -106,6 +106,13 @@ namespace RobEveryone.Player
             }
         }
 
+        // True while LMB is held mid-carry, charging a throw -- separate
+        // from ThrowCharge01 itself since 0 is ambiguous (both "not
+        // charging" and "just started charging" read as 0), and a HUD
+        // meter needs to know when to show/hide, not just what value to
+        // show.
+        public bool IsChargingThrow => chargeStart >= 0f;
+
         // 0..1 while LMB is held mid-carry, for a HUD charge meter.
         public float ThrowCharge01 =>
             chargeStart < 0f ? 0f : Mathf.Clamp01((Time.time - chargeStart) / Mathf.Max(0.01f, throwChargeTime));

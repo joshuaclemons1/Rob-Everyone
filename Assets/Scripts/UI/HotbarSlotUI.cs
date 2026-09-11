@@ -1,6 +1,7 @@
 using System.Collections;
 using RobEveryone.Inventory;
 using RobEveryone.Items;
+using RobEveryone.Sabotage;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -69,6 +70,20 @@ namespace RobEveryone.UI
 
         public float BaseAnchoredX => baseAnchoredX;
         public float BaseWidth => baseWidth;
+
+        // The item usesText is currently bound to (null when empty), so
+        // Update() can poll its live cooldown every frame without SetItem
+        // needing to be called again each tick.
+        private ItemDefinition currentItem;
+
+        // Only true for a row actually bound to the *local* player's own
+        // inventory (see HotbarUI.Bind) -- the steal screen's victim
+        // hotbar reuses this same prefab bound to someone else's
+        // PlayerInventory, where the viewer's own cooldowns have nothing
+        // to do with what's shown in that row.
+        private bool cooldownDisplayEnabled = true;
+
+        public void SetCooldownDisplayEnabled(bool enabled) => cooldownDisplayEnabled = enabled;
 
         private void Awake()
         {
@@ -147,17 +162,25 @@ namespace RobEveryone.UI
         // is a live mini-render of the item, not a blank box.
         public Texture PreviewTexture => modelInstance != null && renderTexture != null ? renderTexture : null;
 
+        // What usesText shows when nothing's overriding it for a live
+        // cooldown countdown -- restored by UpdateCooldownDisplay() once a
+        // cooldown-tracked item (e.g. Taser) comes off cooldown.
+        private string baseUsesTextValue;
+        private bool baseUsesShown;
+
         public void SetItem(InventorySlot? slot)
         {
             ItemDefinition item = slot.HasValue ? slot.Value.Item : null;
+            currentItem = item;
 
             if (itemText != null) itemText.text = item != null ? item.ItemName : "";
 
             if (usesText != null)
             {
-                bool showUses = item != null && item.MaxUses > 0;
-                usesText.text = showUses ? $"x{slot.Value.RemainingUses}" : "";
-                usesText.enabled = showUses;
+                baseUsesShown = item != null && item.MaxUses > 0;
+                baseUsesTextValue = baseUsesShown ? $"x{slot.Value.RemainingUses}" : "";
+                usesText.text = baseUsesTextValue;
+                usesText.enabled = baseUsesShown;
             }
 
             SetModel(item != null ? item.WorldModelPrefab : null);
@@ -291,6 +314,34 @@ namespace RobEveryone.UI
             if (modelPivot != null)
             {
                 modelPivot.Rotate(0f, currentSpinSpeed * Time.deltaTime, 0f);
+            }
+
+            UpdateCooldownDisplay();
+        }
+
+        // Reuses the durability slot (usesText) to show "X.Xs..." for a
+        // cooldown-based item (Taser today) instead of a uses count --
+        // the two never apply to the same item (CooldownSeconds and
+        // MaxUses are set independently per ItemDefinition, and nothing
+        // configured today uses both), so there's no real conflict to
+        // resolve, just whichever one this item actually has.
+        private void UpdateCooldownDisplay()
+        {
+            if (usesText == null || currentItem == null) return;
+            if (!cooldownDisplayEnabled || currentItem.CooldownSeconds <= 0f) return;
+
+            SabotageUseController controller = SabotageUseController.LocalPlayer;
+            float remaining = controller != null ? controller.GetCooldownRemaining(currentItem.ItemName) : 0f;
+
+            if (remaining > 0f)
+            {
+                usesText.text = $"{remaining:0.0}s...";
+                usesText.enabled = true;
+            }
+            else
+            {
+                usesText.text = baseUsesTextValue;
+                usesText.enabled = baseUsesShown;
             }
         }
 

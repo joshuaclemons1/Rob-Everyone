@@ -54,6 +54,20 @@ namespace RobEveryone.UI
 
             if (inventory != null)
             {
+                // Cooldown countdown text (HotbarSlotUI) only ever makes
+                // sense for the row actually showing the local player's
+                // own items -- the steal screen rebinds this same row
+                // to a victim's PlayerInventory, where the viewer's own
+                // SabotageUseController cooldowns are irrelevant.
+                bool isOwnHotbar = inventory == PlayerInventory.LocalPlayer;
+                if (slots != null)
+                {
+                    foreach (HotbarSlotUI slot in slots)
+                    {
+                        if (slot != null) slot.SetCooldownDisplayEnabled(isOwnHotbar);
+                    }
+                }
+
                 inventory.OnSlotsChanged += Refresh;
                 inventory.OnSelectedSlotChanged += RefreshSelection;
                 Refresh();

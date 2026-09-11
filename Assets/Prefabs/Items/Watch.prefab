@@ -90,8 +90,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1080.0001, y: 5607.933, z: 340.26028}
-  m_Center: {x: 0.000061035156, y: -183.46655, z: -50.130142}
+  m_Size: {x: 0.6, y: 0.3, z: 0.6}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!114 &8649373239130094721
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -105,7 +105,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
   sceneId: 0
-  _assetId: 2136091050
+  _assetId: 4070813914
   serverOnly: 0
   visibility: 0
   hasSpawned: 0
@@ -125,3 +125,6 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   item: {fileID: 0}
+  dropSpinSpeed: 60
+  dropBobHeight: 0.12
+  dropBobSpeed: 2

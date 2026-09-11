@@ -1559,6 +1559,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1074956248}
+  - {fileID: 1903689476}
   - {fileID: 651629168}
   - {fileID: 1126569962}
   m_Father: {fileID: 1946879404}
@@ -8393,6 +8394,7 @@ GameObject:
   - component: {fileID: 651629168}
   - component: {fileID: 651629167}
   - component: {fileID: 651629166}
+  - component: {fileID: 651629169}
   m_Layer: 5
   m_Name: InteractHint
   m_TagString: Untagged
@@ -8457,6 +8459,21 @@ RectTransform:
   m_AnchoredPosition: {x: 77, y: -25}
   m_SizeDelta: {x: 83, y: 74}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &651629169
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 651629165}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e19747de3f5aca642ab2be37e372fb86, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Outline
+  m_EffectColor: {r: 0, g: 0, b: 0, a: 1}
+  m_EffectDistance: {x: 1, y: -1}
+  m_UseGraphicAlpha: 1
 --- !u!1001 &658199961
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -14249,6 +14266,7 @@ GameObject:
   - component: {fileID: 1074956248}
   - component: {fileID: 1074956251}
   - component: {fileID: 1074956250}
+  - component: {fileID: 1074956252}
   m_Layer: 5
   m_Name: Crosshair
   m_TagString: Untagged
@@ -14313,6 +14331,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1074956247}
   m_CullTransparentMesh: 1
+--- !u!114 &1074956252
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1074956247}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e19747de3f5aca642ab2be37e372fb86, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Outline
+  m_EffectColor: {r: 0, g: 0, b: 0, a: 1}
+  m_EffectDistance: {x: 1, y: -1}
+  m_UseGraphicAlpha: 1
 --- !u!1001 &1080720179
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -18232,6 +18265,7 @@ MonoBehaviour:
   goodSlots:
   - {fileID: 74933571}
   - {fileID: 1037674738}
+  navMeshSurface: {fileID: 1820970047}
   housePlotSize: {x: 40, y: 10, z: 40}
 --- !u!114 &1345318098
 MonoBehaviour:
@@ -25008,7 +25042,7 @@ MonoBehaviour:
   m_LayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_UseGeometry: 0
+  m_UseGeometry: 1
   m_DefaultArea: 0
   m_GenerateLinks: 0
   m_IgnoreNavMeshAgent: 1
@@ -25831,6 +25865,101 @@ MonoBehaviour:
   serverOnly: 0
   visibility: 0
   hasSpawned: 0
+--- !u!1 &1903689475
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1903689476}
+  - component: {fileID: 1903689479}
+  - component: {fileID: 1903689478}
+  - component: {fileID: 1903689477}
+  m_Layer: 5
+  m_Name: ThrowChargeMeter
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1903689476
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1903689475}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 138019130}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 92, y: 92}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1903689477
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1903689475}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6e8871927e82714794759df713bef4f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.UI.ThrowChargeMeterUI
+  meterImage: {fileID: 1903689478}
+  meterSteps:
+  - {fileID: 224342140, guid: ff2ab0087a6f24ecd8ddbb718a4b2a80, type: 3}
+  - {fileID: -1846257244, guid: ff2ab0087a6f24ecd8ddbb718a4b2a80, type: 3}
+  - {fileID: 359842385, guid: ff2ab0087a6f24ecd8ddbb718a4b2a80, type: 3}
+  - {fileID: 504563689, guid: ff2ab0087a6f24ecd8ddbb718a4b2a80, type: 3}
+  - {fileID: 401505403, guid: ff2ab0087a6f24ecd8ddbb718a4b2a80, type: 3}
+--- !u!114 &1903689478
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1903689475}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 224342140, guid: ff2ab0087a6f24ecd8ddbb718a4b2a80, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &1903689479
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1903689475}
+  m_CullTransparentMesh: 1
 --- !u!1001 &1904372749
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -33,6 +33,36 @@ namespace RobEveryone.Sabotage
         // to whichever physical slot it currently sits in).
         private readonly Dictionary<string, float> nextReadyTime = new();
 
+        // Owner-side mirror of the same clock, for the HUD only -- set at
+        // the exact same point the server would actually consume the
+        // cooldown (see TryUseMelee/TryUseRanged), not just on every
+        // click, so a whiff that never reaches the server doesn't start a
+        // countdown the server never started. Purely cosmetic: the
+        // dictionary above stays the sole authority on whether a swing/
+        // shot actually lands, this can drift and nothing breaks.
+        private readonly Dictionary<string, float> localNextReadyTime = new();
+
+        // "My own" SabotageUseController, the same LocalPlayer convention
+        // PlayerInventory.LocalPlayer already establishes -- HotbarSlotUI
+        // uses this to read the local player's own cooldown for its HUD
+        // countdown text.
+        public static SabotageUseController LocalPlayer =>
+            NetworkClient.localPlayer != null ? NetworkClient.localPlayer.GetComponent<SabotageUseController>() : null;
+
+        private void StartLocalCooldown(ItemDefinition item)
+        {
+            if (item.CooldownSeconds <= 0f) return;
+            localNextReadyTime[item.ItemName] = Time.time + item.CooldownSeconds;
+        }
+
+        // Seconds left before `itemName` is usable again -- 0 if it's not
+        // on cooldown (or has none tracked at all).
+        public float GetCooldownRemaining(string itemName)
+        {
+            if (string.IsNullOrEmpty(itemName)) return 0f;
+            return localNextReadyTime.TryGetValue(itemName, out float ready) ? Mathf.Max(0f, ready - Time.time) : 0f;
+        }
+
         private void Awake()
         {
             inventory = GetComponent<PlayerInventory>();
@@ -72,6 +102,11 @@ namespace RobEveryone.Sabotage
 
             if (Mouse.current.leftButton.wasPressedThisFrame)
             {
+                // Still cooling down (Taser) -- skip the whole attempt,
+                // animation included, rather than swinging/firing for
+                // nothing every time the server would reject it anyway.
+                if (GetCooldownRemaining(item.ItemName) > 0f) return;
+
                 PlayUseAnimation(item);
                 // HasFlag, not a plain == comparison -- SabotageType is
                 // [Flags] so a dual-mode item (Hammer: Melee | Thrown)
@@ -106,7 +141,11 @@ namespace RobEveryone.Sabotage
             if (Physics.Raycast(viewPoint.position, viewPoint.forward, out RaycastHit hit, item.Range, playerMask))
             {
                 NetworkIdentity targetIdentity = hit.collider.GetComponentInParent<NetworkIdentity>();
-                if (targetIdentity != null && targetIdentity != netIdentity) CmdUseMelee(targetIdentity);
+                if (targetIdentity != null && targetIdentity != netIdentity)
+                {
+                    StartLocalCooldown(item);
+                    CmdUseMelee(targetIdentity);
+                }
             }
         }
 
@@ -117,7 +156,11 @@ namespace RobEveryone.Sabotage
             if (Physics.Raycast(viewPoint.position, viewPoint.forward, out RaycastHit hit, item.Range, playerMask))
             {
                 NetworkIdentity targetIdentity = hit.collider.GetComponentInParent<NetworkIdentity>();
-                if (targetIdentity != null && targetIdentity != netIdentity) CmdUseRanged(targetIdentity);
+                if (targetIdentity != null && targetIdentity != netIdentity)
+                {
+                    StartLocalCooldown(item);
+                    CmdUseRanged(targetIdentity);
+                }
             }
         }
 
