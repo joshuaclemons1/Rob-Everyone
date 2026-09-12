@@ -1,4 +1,5 @@
 using Mirror;
+using RobEveryone.Audio;
 using RobEveryone.Interaction;
 using RobEveryone.Inventory;
 using UnityEngine;
@@ -125,11 +126,10 @@ namespace RobEveryone.Items
             // Played via PlayClipAtPoint rather than this object's own
             // AudioSource, since SetActive(false) right below would stop
             // a component-based sound the instant it started.
-            AudioClip[] pool = PickupSfxLibrary.Instance != null ? PickupSfxLibrary.Instance.Clips : null;
-            if (newValue && pool != null && pool.Length > 0)
+            if (newValue)
             {
-                AudioClip clip = pool[Random.Range(0, pool.Length)];
-                AudioSource.PlayClipAtPoint(clip, transform.position, pickupVolume);
+                AudioClip[] pool = PickupSfxLibrary.Instance != null ? PickupSfxLibrary.Instance.Clips : null;
+                SfxPlayer.PlayRandomAt(pool, transform.position, pickupVolume);
             }
 
             gameObject.SetActive(!newValue);

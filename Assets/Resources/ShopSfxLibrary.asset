@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b1f75214182efb4faf4ea9709da897d, type: 3}
+  m_Name: ShopSfxLibrary
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Shop.ShopSfxLibrary
+  purchaseSuccessClips:
+  - {fileID: 8300000, guid: adf3e8c6218a1434a9bad05dc1098f4e, type: 3}
+  - {fileID: 8300000, guid: 01c4495fd60ed0c4585ad02eeebbe576, type: 3}
+  - {fileID: 8300000, guid: da1e6b157ab2ea742acab67d6e5dc5d0, type: 3}
+  - {fileID: 8300000, guid: 2c5fb7cd0518ea8449045bd8948bef5b, type: 3}
+  insufficientFundsClips:
+  - {fileID: 8300000, guid: 2270f37164d5f4642a801d4df518ceb4, type: 3}
+  - {fileID: 8300000, guid: be32d238159de3d499c70f2df6e6c3e3, type: 3}
+  - {fileID: 8300000, guid: 15fd1e40a19805d41a7a973b098ec4b9, type: 3}
+  - {fileID: 8300000, guid: b24c9a62e55c9ae448e5d3af3ad5b909, type: 3}
+  itemSoldClips:
+  - {fileID: 8300000, guid: c66b263f1c10bcc4e84e5af8bc520443, type: 3}
+  - {fileID: 8300000, guid: 7282e9291ff51314fba6046f4fa74018, type: 3}

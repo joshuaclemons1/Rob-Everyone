@@ -173,6 +173,7 @@ MonoBehaviour:
     m_Bits: 4294967295
   animator: {fileID: 6674193371693205168}
   animatorSpeedParam: Speed
+  animatorSuspiciousParam: Suspicious
   suspicionBuildRate: 1
   suspicionDecayRate: 0.5
   suspicionThreshold: 2
@@ -180,11 +181,25 @@ MonoBehaviour:
   idleColor: {r: 0, g: 0, b: 0, a: 1}
   suspiciousColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   alertedColor: {r: 1, g: 0, b: 0, a: 1}
+  suspiciousClips:
+  - {fileID: 8300000, guid: 1c15943ac1260f041bfcbe5259f9601c, type: 3}
+  - {fileID: 8300000, guid: b4effaf3cde47aa4fadd3108f96c07fe, type: 3}
+  - {fileID: 8300000, guid: 3fb7dc5f65025674f87db9ac1ea467fc, type: 3}
+  - {fileID: 8300000, guid: 31418019f367c2b48a77e5c8191713eb, type: 3}
+  alertedClips:
+  - {fileID: 8300000, guid: b2749ea3da07d584184e9b87ff548afb, type: 3}
+  - {fileID: 8300000, guid: bd5f9ac54c3de3e498989a6bc99603b0, type: 3}
+  - {fileID: 8300000, guid: 49d5cd93e6ebfc345ba30af6f485a148, type: 3}
+  - {fileID: 8300000, guid: 0ec245342dd782145aab5ac8dd9b4ff3, type: 3}
+  suspiciousVolume: 0.5
+  alertedVolume: 0.7
   patrolPoints: []
   patrolSpeed: 2
+  bedSpot: {fileID: 0}
   alertedSearchDuration: 4
   suspiciousSearchDuration: 3
   suspiciousSpinSpeed: 180
+  animatorSpeedSmoothTime: 0.1
 --- !u!195 &4307175258002302095
 NavMeshAgent:
   m_ObjectHideFlags: 0

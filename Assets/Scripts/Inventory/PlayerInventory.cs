@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using Mirror;
+using RobEveryone.Audio;
 using RobEveryone.Core;
 using RobEveryone.Items;
+using RobEveryone.Shop;
 using UnityEngine;
 
 namespace RobEveryone.Inventory
@@ -630,6 +632,7 @@ namespace RobEveryone.Inventory
 
             cash += item.Value;
             RemoveSlot(index);
+            TargetPlayShopSfx(ShopSfx.ItemSold);
             return true;
         }
 
@@ -646,10 +649,36 @@ namespace RobEveryone.Inventory
         [Server]
         public bool TryPurchase(ItemDefinition item, int price)
         {
-            if (item == null || cash < price) return false;
-            if (!AddItem(item)) return false;
+            if (item == null || cash < price)
+            {
+                TargetPlayShopSfx(ShopSfx.InsufficientFunds);
+                return false;
+            }
+            if (!AddItem(item))
+            {
+                // Slot occupied/full -- same "can't do that" feedback as
+                // not having enough cash, no separate sound needed for
+                // this rarer case.
+                TargetPlayShopSfx(ShopSfx.InsufficientFunds);
+                return false;
+            }
             cash -= price;
+            TargetPlayShopSfx(ShopSfx.PurchaseSuccess);
             return true;
+        }
+
+        // Client-local only -- shop feedback is exclusively for the
+        // player who bought/sold/tried to, not a broadcast (unlike
+        // PlayerImpactRelay's RpcApplyImpact, which everyone needs to
+        // hear). No connection parameter needed: [TargetRpc] on a
+        // NetworkBehaviour method defaults to this object's own owning
+        // connection, which is exactly "whoever's PlayerInventory this
+        // is" here.
+        [TargetRpc]
+        private void TargetPlayShopSfx(ShopSfx sfx)
+        {
+            AudioClip[] pool = ShopSfxLibrary.Instance != null ? ShopSfxLibrary.Instance.ClipsFor(sfx) : null;
+            SfxPlayer.PlayRandomAt(pool, transform.position);
         }
 
         // Additive-only, no gate -- the jail-rescue payout (JailState.

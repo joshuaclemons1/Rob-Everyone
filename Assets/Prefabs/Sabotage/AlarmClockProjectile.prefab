@@ -111,7 +111,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
   sceneId: 0
-  _assetId: 623439678
+  _assetId: 1550533262
   serverOnly: 0
   visibility: 0
   hasSpawned: 0
@@ -214,3 +214,10 @@ MonoBehaviour:
   syncInterval: 0
   throwSpeed: 10
   fuseSeconds: 2.5
+  ringClips:
+  - {fileID: 8300000, guid: a15c80c99a29b8740aab809776c24b9d, type: 3}
+  - {fileID: 8300000, guid: 6d116755f76a2d84ba3c5c7470e9ce18, type: 3}
+  - {fileID: 8300000, guid: 06c92791fec6ee7448041d31a16d33d0, type: 3}
+  - {fileID: 8300000, guid: 259464b5f2540ec449dd919bd67c71cf, type: 3}
+  - {fileID: 8300000, guid: 06f6e566ca70aea488109b6ac21f7676, type: 3}
+  ringVolume: 0.8

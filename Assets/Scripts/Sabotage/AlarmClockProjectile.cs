@@ -1,6 +1,7 @@
 using System.Collections;
 using Mirror;
 using RobEveryone.AI;
+using RobEveryone.Audio;
 using RobEveryone.Inventory;
 using RobEveryone.Items;
 using UnityEngine;
@@ -22,6 +23,9 @@ namespace RobEveryone.Sabotage
     {
         [SerializeField] private float throwSpeed = 10f;
         [SerializeField] private float fuseSeconds = 2.5f;
+
+        [SerializeField] private AudioClip[] ringClips;
+        [SerializeField, Range(0f, 1f)] private float ringVolume = 0.8f;
 
         private Rigidbody body;
         private ItemDefinition sourceItem;
@@ -65,7 +69,14 @@ namespace RobEveryone.Sabotage
                 if (homeowner != null) homeowner.ForceAlert(transform.position, blamed);
             }
 
+            RpcRing();
             NetworkServer.Destroy(gameObject);
+        }
+
+        [ClientRpc]
+        private void RpcRing()
+        {
+            SfxPlayer.PlayRandomAt(ringClips, transform.position, ringVolume);
         }
 
         private PlayerInventory FindNearestOtherPlayer(float radius)

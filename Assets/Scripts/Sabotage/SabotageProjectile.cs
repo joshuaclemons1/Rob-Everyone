@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using Mirror;
+using RobEveryone.Audio;
 using RobEveryone.Items;
 using RobEveryone.Player;
 using UnityEngine;
@@ -20,6 +21,13 @@ namespace RobEveryone.Sabotage
     {
         [SerializeField] private float throwSpeed = 12f;
         [SerializeField] private float fuseSeconds = 2.5f;
+
+        // Not yet populated -- no CC0 explosion sound sourced yet (Kenney's
+        // Impact/Interface/RPG Audio packs don't have one). Wire this once
+        // an explosion pack is downloaded; empty is a safe no-op via
+        // SfxPlayer in the meantime, not a crash.
+        [SerializeField] private AudioClip[] explosionClips;
+        [SerializeField, Range(0f, 1f)] private float explosionVolume = 0.8f;
 
         private Rigidbody body;
         private ItemDefinition sourceItem;
@@ -76,7 +84,14 @@ namespace RobEveryone.Sabotage
                 }
             }
 
+            RpcExplode();
             NetworkServer.Destroy(gameObject);
+        }
+
+        [ClientRpc]
+        private void RpcExplode()
+        {
+            SfxPlayer.PlayRandomAt(explosionClips, transform.position, explosionVolume);
         }
     }
 }

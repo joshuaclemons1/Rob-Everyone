@@ -1,5 +1,6 @@
 using System.Collections;
 using Mirror;
+using RobEveryone.Audio;
 using UnityEngine;
 
 namespace RobEveryone.Player
@@ -25,6 +26,13 @@ namespace RobEveryone.Player
     [RequireComponent(typeof(PlayerRagdoll))]
     public class PlayerImpactRelay : NetworkBehaviour
     {
+        // One generic "hit" sound for every impact source (Bat/Hammer/
+        // Taser/Tranq Gun and a traffic-hazard car alike) -- RpcApplyImpact
+        // doesn't know or care which one caused it, same as the ragdoll
+        // knockdown itself doesn't vary by source.
+        [SerializeField] private AudioClip[] impactClips;
+        [SerializeField, Range(0f, 1f)] private float impactVolume = 0.6f;
+
         private PlayerRagdoll ragdoll;
 
         // Server-queryable "is this player currently stunned" flag --
@@ -118,6 +126,7 @@ namespace RobEveryone.Player
         private void RpcApplyImpact(Vector3 direction, float force, float duration)
         {
             ragdoll.ApplyImpact(direction, force, duration);
+            SfxPlayer.PlayRandomAt(impactClips, transform.position, impactVolume);
         }
     }
 }

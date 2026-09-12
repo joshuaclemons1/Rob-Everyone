@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Mirror;
+using RobEveryone.Audio;
 using RobEveryone.Core;
 using RobEveryone.Inventory;
 using UnityEngine;
@@ -64,6 +65,14 @@ namespace RobEveryone.AI
         [SerializeField] private Color idleColor = Color.black;
         [SerializeField] private Color suspiciousColor = Color.yellow;
         [SerializeField] private Color alertedColor = Color.red;
+
+        // Played from OnStateChanged -- already the one place every
+        // client (not just the server) reacts identically to a synced
+        // state transition, so no extra Rpc is needed here.
+        [SerializeField] private AudioClip[] suspiciousClips;
+        [SerializeField] private AudioClip[] alertedClips;
+        [SerializeField, Range(0f, 1f)] private float suspiciousVolume = 0.5f;
+        [SerializeField, Range(0f, 1f)] private float alertedVolume = 0.7f;
 
         // Same pattern as PoliceAI's own patrol -- cycles between these
         // points while Idle. Slower than Police's patrolSpeed (3.5) since
@@ -443,6 +452,9 @@ namespace RobEveryone.AI
         private void OnStateChanged(HomeownerState _, HomeownerState next)
         {
             if (animator != null) animator.SetBool(animatorSuspiciousParam, next == HomeownerState.Suspicious);
+
+            if (next == HomeownerState.Suspicious) SfxPlayer.PlayRandomAt(suspiciousClips, transform.position, suspiciousVolume);
+            else if (next == HomeownerState.Alerted) SfxPlayer.PlayRandomAt(alertedClips, transform.position, alertedVolume);
 
             if (bodyRenderers == null) return;
 

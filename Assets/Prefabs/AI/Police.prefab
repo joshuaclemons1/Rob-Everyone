@@ -633,7 +633,16 @@ MonoBehaviour:
   searchDuration: 3
   searchSweepAngle: 45
   searchSweepFrequency: 2
+  nightSpeedMultiplier: 1.4
+  nightViewDistanceMultiplier: 1.5
+  nightLoseInterestMultiplier: 2
   animatorSpeedSmoothTime: 0.1
+  chaseStartClips:
+  - {fileID: 8300000, guid: e0dd0b657df00c14ba2fa1a7f9e93f54, type: 3}
+  - {fileID: 8300000, guid: 219be0581edfc26409ef8980c1564c05, type: 3}
+  - {fileID: 8300000, guid: cb04984dd5294b441a0a0098537d39ba, type: 3}
+  - {fileID: 8300000, guid: 95b3dada0e2428047a5590798e660992, type: 3}
+  chaseStartVolume: 0.7
 --- !u!114 &8936154033201961846
 MonoBehaviour:
   m_ObjectHideFlags: 0

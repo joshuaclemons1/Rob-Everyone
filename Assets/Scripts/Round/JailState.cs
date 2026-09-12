@@ -1,4 +1,5 @@
 using Mirror;
+using RobEveryone.Audio;
 using RobEveryone.Core;
 using RobEveryone.Interaction;
 using RobEveryone.Inventory;
@@ -25,6 +26,11 @@ namespace RobEveryone.Round
         [SyncVar] private bool isJailed;
         [SyncVar] private bool isEndOfBatchJail;
         [SyncVar] private int jailedAtRoundOrdinal;
+
+        [SerializeField] private AudioClip[] jailedClips;
+        [SerializeField] private AudioClip[] rescuedClips;
+        [SerializeField, Range(0f, 1f)] private float jailedVolume = 0.8f;
+        [SerializeField, Range(0f, 1f)] private float rescuedVolume = 0.7f;
 
         public bool IsJailed => isJailed;
         public bool IsEndOfBatchJail => isEndOfBatchJail;
@@ -57,6 +63,16 @@ namespace RobEveryone.Round
             if (connectionToClient != null)
                 TargetShowJailNotification(connectionToClient, "Caught by police!\nGoing to jail...");
             RpcAnnounceJailed(GetComponent<PlayerInventory>().DisplayName, ComputeBailPrice());
+            RpcPlayJailedSfx();
+        }
+
+        // Separate from RpcAnnounceJailed -- that one deliberately skips
+        // the jailed player themselves (they get their own text message
+        // instead), but everyone including them should hear the cell door.
+        [ClientRpc]
+        private void RpcPlayJailedSfx()
+        {
+            SfxPlayer.PlayRandomAt(jailedClips, transform.position, jailedVolume);
         }
 
         [TargetRpc]
@@ -111,6 +127,13 @@ namespace RobEveryone.Round
             GameFlowManager.Instance?.TeleportToJailExit(transform);
             GameFlowManager.Instance?.TeleportToJailExit(rescuer.transform);
             GameFlowManager.Instance?.HandlePlayerRescued(self);
+            RpcPlayRescuedSfx();
+        }
+
+        [ClientRpc]
+        private void RpcPlayRescuedSfx()
+        {
+            SfxPlayer.PlayRandomAt(rescuedClips, transform.position, rescuedVolume);
         }
     }
 }

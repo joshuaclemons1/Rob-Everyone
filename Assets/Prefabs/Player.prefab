@@ -552,6 +552,13 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
+  impactClips:
+  - {fileID: 8300000, guid: b582969558ee43748ba12c3b9230bc9e, type: 3}
+  - {fileID: 8300000, guid: 70ad0df8cd8440c49af06aaaa81a7050, type: 3}
+  - {fileID: 8300000, guid: cf2bcabd1165f3a4dad267dd19d19b14, type: 3}
+  - {fileID: 8300000, guid: 47cf5ecf1711e5b4395a31e21a983b17, type: 3}
+  - {fileID: 8300000, guid: b88fedcc6391b2f4ba195c0ee5a5dbde, type: 3}
+  impactVolume: 0.6
 --- !u!114 &5108621698250719031
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -749,6 +756,13 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
+  jailedClips:
+  - {fileID: 8300000, guid: e115f9e86376df94880385103b297e1c, type: 3}
+  rescuedClips:
+  - {fileID: 8300000, guid: 48ba957496529b4419334eb4a2da5446, type: 3}
+  - {fileID: 8300000, guid: e365c07f1c604a14d920ab528a634ead, type: 3}
+  jailedVolume: 0.8
+  rescuedVolume: 0.7
 --- !u!114 &7344029612143130520
 MonoBehaviour:
   m_ObjectHideFlags: 0

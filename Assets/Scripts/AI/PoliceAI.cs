@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Mirror;
+using RobEveryone.Audio;
 using RobEveryone.Core;
 using RobEveryone.Inventory;
 using RobEveryone.Round;
@@ -90,6 +91,14 @@ namespace RobEveryone.AI
         // field instead of the property declaration itself.
         [field: SyncVar]
         public PoliceState State { get; private set; } = PoliceState.Patrol;
+
+        // Played via RpcChaseStarted from EnterChase -- State itself has
+        // no hook (see the [field: SyncVar] comment above), so a chase
+        // starting is broadcast the same way PlayerImpactRelay's own
+        // knockdown/sound is: an explicit ClientRpc rather than a synced-
+        // field hook.
+        [SerializeField] private AudioClip[] chaseStartClips;
+        [SerializeField, Range(0f, 1f)] private float chaseStartVolume = 0.7f;
 
         // Set by PoliceDispatcher right after spawning a new instance --
         // a dispatched officer heads home and despawns once it gives up
@@ -365,10 +374,23 @@ namespace RobEveryone.AI
 
         private void EnterChase(Transform target)
         {
+            bool wasAlreadyChasing = State == PoliceState.Chase;
             chaseTarget = target;
             State = PoliceState.Chase;
             agent.speed = EffectiveSpeed(chaseSpeed);
             timeSinceSeenPlayer = 0f;
+
+            // Only the moment a chase actually starts, not every frame it
+            // continues (EnterChase re-fires each time a fresh target is
+            // (re)acquired while already chasing -- e.g. CanSee reacquiring
+            // the same or a different player mid-chase).
+            if (!wasAlreadyChasing) RpcChaseStarted();
+        }
+
+        [ClientRpc]
+        private void RpcChaseStarted()
+        {
+            SfxPlayer.PlayRandomAt(chaseStartClips, transform.position, chaseStartVolume);
         }
 
         // Checks every connected player rather than one hardcoded target --
