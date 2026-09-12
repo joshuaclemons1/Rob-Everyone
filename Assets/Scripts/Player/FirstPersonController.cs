@@ -132,6 +132,14 @@ namespace RobEveryone.Player
         // when this used IsFrozen instead.
         public bool ExitCarFrozen { get; set; }
 
+        // Local-only, same shape as ExitCarFrozen -- set by PauseMenuUI
+        // while the in-game settings overlay is open. Deliberately NOT
+        // IsFrozen: this is a local UI state, not something the server
+        // or any other client needs to know about (the round, AI, and
+        // every other player keep running normally while one player has
+        // this open).
+        public bool MenuFrozen { get; set; }
+
         // Set by CarryController on the owner while hauling a downed rival.
         // Walk/sprint stay normal; this just kills air control and autohop
         // so you can't bhop a body around the map.
@@ -211,7 +219,7 @@ namespace RobEveryone.Player
             // own dead-reckoned guess and everyone else's simultaneously
             // self-moved position.
             if (!isOwned) return;
-            if (IsFrozen || SpectatingFrozen || ExitCarFrozen) return;
+            if (IsFrozen || SpectatingFrozen || ExitCarFrozen || MenuFrozen) return;
 
             // While the inventory / steal screen is open the mouse is the
             // cursor, so only mouse-look is parked -- you can still walk,

@@ -1,5 +1,10 @@
 # Settings menu — full build plan
 
+**✅ Done and playtested — Milestones A through G all complete**, including
+the in-game pause overlay working in both `Lobby.unity` and
+`SampleScene.unity`. Kept below as the build record (design decisions,
+what shipped, and the real bugs found along the way).
+
 Not part of `plan.md`'s original build order — this is a new cross-
 cutting feature, same standalone-doc treatment as `voip-setup.md`. The
 menu *shell* already exists: `MainMenu.unity` has a working
@@ -792,7 +797,7 @@ list showing your own portrait, independent of the Captions toggle
 
 ---
 
-## Milestone F — Assemble the real SettingsPanel
+## Milestone F — Assemble the real SettingsPanel — Pass 1 (shell + Accessibility) ✅ done
 
 **Goal:** replace the `SettingsPanel` stub's "Settings coming soon"
 label with real tabbed content wired to everything above, still
@@ -902,7 +907,7 @@ caps, sizing itself independently exactly as before.
 
 ---
 
-## Milestone F, Pass 2 — Controls tab (rebind list + sensitivity)
+## Milestone F, Pass 2 — Controls tab (rebind list + sensitivity) ✅ done
 
 **Goal:** the `RebindActionRow` list from Milestone B, actually
 populated, plus a mouse-sensitivity control that's *both* a slider and
@@ -953,9 +958,98 @@ in sync in both directions (drag the slider, the field updates; type in
 the field and press Enter/tab away, the slider jumps to match) and
 actually changes mouse-look sensitivity live in a test round.
 
+**Real bugs found during this pass, for the record (none of these were
+in the original plan, all surfaced only once actually built):**
+- `RebindRowTemplate` had drifted, mid-troubleshooting, into a nested
+  `Labels`/`Buttons` sub-group structure with the row's *root* using a
+  `Vertical Layout Group` (stacking the two sub-groups instead of a
+  single horizontal row) and **negative spacing (`-25`)**, which is
+  what was actually causing the text/button overlap — not anything in
+  the outer list. Fixed by flattening back to one level: all 4 items
+  (`ActionLabel`, `BindingLabel`, `RebindButton`, `ResetButton`) direct
+  children of the row root, one `Horizontal Layout Group`, no nesting.
+- `WaitingIndicator` (the "Press any key..." prompt) being a normal
+  layout-participating child meant activating it during a rebind
+  reflowed its siblings, visibly shifting them. Fixed with a
+  `Layout Element` set to **Ignore Layout** — it now overlays in place
+  instead of triggering a re-layout.
+- `ResetAllButton` had drifted to `AnchoredPosition (0, -850)` against
+  a center anchor, well outside `ControlsContent`'s actual `±630`
+  bounds. Re-anchored to bottom-center (`Anchor Min/Max (0.5, 0)`,
+  small positive offset) so it can't drift outside the panel again
+  regardless of the panel's exact size.
+- `MenuButton.prefab`'s `BlurBackdrop` needed to switch from a fixed
+  325×150 size to fully stretching its parent (`Anchor Min (0,0)` /
+  `Max (1,1)`, all offsets `0`) — the fixed size was fine only for the
+  one button size it happened to match (Play/Settings/Quit); every
+  smaller button (Rebind/Reset, Save, swatches) was carrying that same
+  oversized backdrop underneath it. This is a permanent fix at the
+  shared-prefab level, not per-instance.
+
 ---
 
-## Milestone G — In-game pause overlay
+## Milestone F, Pass 3 — Graphics tab
+
+**Goal:** resolution, screen mode, quality preset, FOV (slider + text
+field, same `SliderInputFieldSync` pattern as sensitivity), and VSync
+— all bound to `DisplaySettings` (already fully implemented and self-
+applying since Milestone D, no code changes needed there, only new UI).
+
+**New file `Assets/Scripts/UI/GraphicsTabUI.cs`** — populates the
+resolution/screen-mode/quality dropdowns from `Screen.resolutions` and
+fixed option lists, binds the FOV `SliderInputFieldSync` and the VSync
+toggle to `DisplaySettings`, and reads current values back in
+`OnEnable` the same way every other tab controller in this doc does.
+
+**Editor work:** full step-by-step walkthrough given directly to the
+user, covering the 3 dropdowns (Unity's stock `TMP_Dropdown`, no mosaic
+styling needed there — the pixel kit doesn't have a dropdown asset and
+this doc's whole pivot was about sliders/toggles specifically, not
+dropdowns), the FOV mosaic slider (built exactly like the sensitivity
+one), and the VSync toggle (built exactly like the Accessibility
+toggles).
+
+**Verify:** changing resolution/screen mode/quality/VSync all take
+effect immediately (no restart). FOV slider+field stay in sync and
+visibly widen/narrow the view in a test round. Close and reopen the
+game — every setting persisted.
+
+---
+
+## Milestone F, Pass 4 — Audio tab + mute list
+
+**Goal:** 4 volume sliders (Master/Music/SFX/Voice) bound to
+`AudioSettings`, plus a live per-connected-player mute row list driving
+`VoiceMuteList.SetMuted` — the one piece of this milestone that
+depends on an actual multiplayer session to test (mute rows only mean
+something with other players connected).
+
+**New file `Assets/Scripts/UI/AudioTabUI.cs`** — 4 `SliderInputFieldSync`
+bindings (identical shape to FOV/sensitivity), plus a mute-row list that
+**rebuilds every time the tab opens** (`OnEnable`, not built once like
+the fixed 8-action rebind list) — who's actually connected can change
+between visits, unlike the fixed set of rebindable actions.
+
+**New file `Assets/Scripts/UI/MuteRow.cs`** — one row per connected
+rival, a mosaic-filled `Toggle` bound to `VoiceMuteList.SetMuted`, keyed
+by that player's `netId` (the same session-local, never-persisted mute
+list `voip-setup.md` Part 5 designed). `AudioTabUI` explicitly skips
+`player.isOwned` — you can't mute yourself.
+
+**Editor work:** full step-by-step walkthrough given directly to the
+user — same flat-row recipe as every other pass (no nested sub-groups),
+4 mosaic sliders, and a `MuteRow` template list (no `ScrollView` needed
+this time — capped at this project's small player count, unlike the
+8-action rebind list).
+
+**Verify:** dragging Master to 0 silences everything (footsteps, voice).
+Voice to 0 with Master up still leaves SFX audible. With a second player
+connected, their name appears as a mute row; toggling it stops hearing
+just them. Restart — sliders persisted, mute list reset (by design).
+
+---
+
+## Milestone G — In-game pause overlay ✅ done (built + verified in Lobby.unity)
 
 **Goal:** the same `SettingsPanelController` content, reachable mid-
 round via Escape, without pausing the round for anyone (per the
@@ -1052,6 +1146,11 @@ same live effect as from the Main Menu. Press Escape again (or Back) —
 closes, cursor relocks, you can move again. Open the Tab inventory
 screen, press Escape — closes the inventory screen only, pause overlay
 does *not* also open on that same press.
+
+**Real bugs found building this milestone, for the record:**
+- `SettingsPanel` couldn't just get a nested `Canvas`/`Canvas Scaler` added inside `Lobby.unity`'s existing `Canvas` — Unity explicitly ignores a `Canvas Scaler` on any non-root canvas ("Non-root Canvases will not be scaled"), so nesting it deeper never gave it independent Screen-Space-Overlay behavior; it just kept inheriting whatever render mode the outer scene Canvas already used. Resolved a different way by the user directly (not by the nested-canvas approach floated here).
+- `PauseMenuUI`'s `Pause Panel` field ended up wired to **the same GameObject the script itself lives on** rather than a separate child. Since `SetOpen(false)` calls `pausePanel.SetActive(false)`, that made it disable itself the first time it closed — permanently stopping its own `Update()` from ever running again, so Escape did nothing afterward no matter how many times it was pressed. Fixed by re-enabling the object once and rewiring `Pause Panel` to the actual content child instead of the wrapper the script lives on — this is exactly the "script lives on an always-active wrapper, toggles a separate child" shape the design called for; the bug was in how it got wired, not the design itself.
+- Built and verified in **`Lobby.unity`** first, then the same `PauseMenu` setup was replicated into **`SampleScene.unity`** too — confirmed working in both, so the overlay is now genuinely reachable mid-round, not just in the pre-round Lobby/shop phase.
 
 ---
 
