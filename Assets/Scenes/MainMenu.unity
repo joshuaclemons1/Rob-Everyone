@@ -6501,6 +6501,7 @@ GameObject:
   - component: {fileID: 1019379347}
   - component: {fileID: 1019379346}
   - component: {fileID: 1019379345}
+  - component: {fileID: 1019379348}
   m_Layer: 0
   m_Name: NetworkManager
   m_TagString: Untagged
@@ -6726,6 +6727,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef4bffeda13d7a748973ff9204401c07, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteamManager
+--- !u!114 &1019379348
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1019379339}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1232568e91d65f74e90689f4c7cd1118, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Voice.SteamVoiceCapture
+  mode: 0
+  pushToTalkKey: 36
 --- !u!1001 &1032765620
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -288,6 +288,21 @@ namespace RobEveryone.Voice
 
 ---
 
+## Part 3.5 — talk-scale visual cue (implemented, replaces the floating icon idea below for now)
+
+New file `Assets/Scripts/Voice/PlayerHeadTalkScale.cs`. On the Player
+prefab, alongside `PlayerVoice`/`SteamVoicePlayback`. Reads
+`SteamVoicePlayback.Amplitude` (a new 0-1 property computed from the
+RMS of each decoded frame, decaying back to 0 between frames) and
+smoothly scales that player's `Head` bone (same exact-name-match
+convention `PlayerSkinSpawner`/`FirstPersonBodyTrim` already use) up to
++15% at full volume. Harmless on the owner's own client -- their own
+`Head` is already scaled to zero by `FirstPersonBodyTrim`, and they
+never receive their own frames anyway (`includeOwner:false`), so
+`Amplitude` just stays 0 for themselves. Every other client sees the
+un-trimmed `Head` on that player's model pulse normally, so it's
+visually obvious who's talking without needing a separate icon/UI.
+
 ## Part 4 — a talk indicator (optional but cheap)
 
 - `SteamVoiceCapture.Transmitting` → show a small mic icon on your own
@@ -329,13 +344,15 @@ namespace RobEveryone.Voice
 3. Add **Steam Voice Playback** (adds an `AudioSource` via
    `RequireComponent` — leave it, the script configures it in `Awake`).
 4. Add **Player Voice**.
-5. Make sure the Player prefab has an **AudioListener** only on the
+5. Add **Player Head Talk Scale** (needs `PlayerSkinSpawner`, already on
+   this prefab, alongside it — no fields to wire).
+6. Make sure the Player prefab has an **AudioListener** only on the
    *local* player's camera (it already does, from the FPS camera) — two
    listeners warns and breaks spatial audio.
 
 ### Project audio
 
-6. **Edit → Project Settings → Audio**: default settings are fine; if
+7. **Edit → Project Settings → Audio**: default settings are fine; if
    you raised **DSP Buffer Size** for latency elsewhere, voice will feel
    it too.
 
@@ -349,8 +366,10 @@ non-zero counts. No audio yet.
 
 Two Editors (ParrelSync), two Steam accounts (test AppID 480 gives real
 voice). Host + join, stand next to each other, hold `V` on one, talk —
-the other hears it out of the correct speaker side. You do **not** hear
-yourself.
+the other hears it out of the correct speaker side, and watches that
+player's head visibly (subtly) swell while they're talking. You do
+**not** hear yourself, and your own head doesn't pulse on your own
+screen.
 
 ### 🔴 Rest Point 3 — proximity + quality
 
