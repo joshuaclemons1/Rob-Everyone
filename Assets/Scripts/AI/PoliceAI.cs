@@ -7,21 +7,31 @@ using UnityEngine.AI;
 
 namespace RobEveryone.AI
 {
-    public enum PoliceState { Patrol, Respond, Searching, Chase }
+    public enum PoliceState { Patrol, Respond, Searching, Chase, Returning }
 
-    // Patrol -> Respond -> Chase -> Catch. Responds to any HomeownerAI going
-    // Alerted via the static HomeownerAI.OnAlertRaised event -- no manual
-    // wiring needed between homeowners and police. Once responding, uses its
-    // own vision check to actually spot a player and start a real chase.
+    // Patrol -> Respond -> Chase -> Catch. Doesn't listen for
+    // HomeownerAI.OnAlertRaised itself -- PoliceDispatcher is the sole
+    // subscriber and decides who actually responds to a given alert (see
+    // RespondTo below), so a single break-in doesn't pull every officer
+    // on the map off patrol at once. Once responding, uses its own
+    // vision check to actually spot a player and start a real chase.
     // Catching hands off to RoundManager.NotifyPlayerCaught -> JailState.
     // EnterJail (Stage 7 Jail & Bail) -- a reversible jailed+frozen state,
     // not a permanent freeze/round-ending event for everyone.
     //
-    // Networking (Stage 4): Police is a single hand-placed scene object
-    // (not spawned per-player), so it just needs a NetworkIdentity added
-    // in the Inspector -- Mirror auto-spawns scene-placed identities when
-    // the server starts, no NetworkServer.Spawn call needed here. All the
-    // actual AI logic (isServer-gated) now checks every connected player
+    // Networking (Stage 4): originally a single hand-placed scene object
+    // (NetworkIdentity added in the Inspector -- Mirror auto-spawns
+    // scene-placed identities when the server starts). Stage 7 Milestone D
+    // adds PoliceDispatcher, which runtime-Instantiates + NetworkServer.
+    // Spawns more of these from a real prefab as alerts come in -- see
+    // OnStartServer's roundManager self-heal and RespondTo below, both
+    // added specifically so a dispatched instance (no per-instance
+    // Inspector wiring possible) still works identically to the original
+    // hand-placed one. A dispatched instance also self-destructs once it
+    // walks itself back to its own spawn point after giving up
+    // (MarkDispatched/PoliceState.Returning) -- the original hand-placed
+    // officer(s) never do this, they just resume patrolling forever. All
+    // the actual AI logic (isServer-gated) checks every connected player
     // (PlayerInventory.AllPlayers) instead of one hardcoded target, and
     // State is a SyncVar so every client's Animator/Speed feed and Scene
     // gizmo stay correct without re-deriving the state machine themselves.
@@ -58,8 +68,8 @@ namespace RobEveryone.AI
         private float searchTimer;
         private float searchBaseYaw;
         // Whoever's currently being chased/responded to -- picked fresh
-        // each time a chase starts (EnterChase/HandleAlertRaised), since
-        // with multiple players it's no longer a fixed single target.
+        // each time a chase starts (EnterChase/RespondTo), since with
+        // multiple players it's no longer a fixed single target.
         private Transform chaseTarget;
 
         // [field: SyncVar], not [SyncVar] directly -- SyncVar only
@@ -69,24 +79,36 @@ namespace RobEveryone.AI
         [field: SyncVar]
         public PoliceState State { get; private set; } = PoliceState.Patrol;
 
+        // Set by PoliceDispatcher right after spawning a new instance --
+        // a dispatched officer heads home and despawns once it gives up
+        // (see UpdateSearching's timeout branch), instead of resuming
+        // patrol forever like the original hand-placed officer(s), which
+        // never call this and so leave isDispatched false.
+        private bool isDispatched;
+        private Vector3 dispatchSpawnPosition;
+
+        [Server]
+        public void MarkDispatched(Vector3 spawnPosition)
+        {
+            isDispatched = true;
+            dispatchSpawnPosition = spawnPosition;
+        }
+
         private void Awake()
         {
             agent = GetComponent<NavMeshAgent>();
             lastPosition = transform.position;
         }
 
-        private void OnEnable()
-        {
-            HomeownerAI.OnAlertRaised += HandleAlertRaised;
-        }
-
-        private void OnDisable()
-        {
-            HomeownerAI.OnAlertRaised -= HandleAlertRaised;
-        }
-
+        // Self-heals roundManager -- a hand-placed officer already has
+        // this wired in the Inspector, but a freshly-dispatched instance
+        // (PoliceDispatcher.Instantiate, Milestone D) can't have a
+        // per-instance Inspector reference set for it, since it doesn't
+        // exist at edit time.
         public override void OnStartServer()
         {
+            if (roundManager == null) roundManager = FindFirstObjectByType<RoundManager>();
+
             agent.speed = patrolSpeed;
             if (patrolPoints.Count > 0)
             {
@@ -140,13 +162,21 @@ namespace RobEveryone.AI
                 case PoliceState.Chase:
                     UpdateChase();
                     break;
+                case PoliceState.Returning:
+                    UpdateReturning();
+                    break;
             }
         }
 
-        private void HandleAlertRaised(Vector3 lastKnownPosition, PlayerInventory blamed)
+        // Called by PoliceDispatcher -- either the single closest
+        // available officer redirected to a fresh alert, or a
+        // newly-spawned one sent straight at the alert it was spawned
+        // for. No longer self-triggered off HomeownerAI.OnAlertRaised;
+        // PoliceDispatcher is the sole subscriber to that event now.
+        [Server]
+        public void RespondTo(Vector3 lastKnownPosition, PlayerInventory blamed)
         {
-            if (!isServer) return;
-            if (State == PoliceState.Chase) return;
+            if (State == PoliceState.Chase) return; // already got someone, don't interrupt that
 
             // A framed alert (the Alarm Clock) already knows exactly who
             // to blame -- skip straight to a real chase instead of just
@@ -176,9 +206,26 @@ namespace RobEveryone.AI
 
             if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
             {
-                patrolIndex = (patrolIndex + 1) % patrolPoints.Count;
-                agent.SetDestination(patrolPoints[patrolIndex].position);
+                agent.SetDestination(PickNextPatrolPoint().position);
             }
+        }
+
+        // Random instead of sequential -- a fixed cycle order made patrol
+        // routes fully predictable, easy to memorize and route around.
+        // Excludes whatever patrolIndex currently is so it never
+        // "re-picks" the point it's already standing at.
+        private Transform PickNextPatrolPoint()
+        {
+            if (patrolPoints.Count == 1) return patrolPoints[0];
+
+            int next;
+            do
+            {
+                next = Random.Range(0, patrolPoints.Count);
+            } while (next == patrolIndex);
+
+            patrolIndex = next;
+            return patrolPoints[patrolIndex];
         }
 
         private void UpdateRespond()
@@ -220,12 +267,46 @@ namespace RobEveryone.AI
             searchTimer -= Time.deltaTime;
             if (searchTimer <= 0f)
             {
+                if (isDispatched)
+                {
+                    ReturnToSpawn();
+                    return;
+                }
+
                 agent.speed = patrolSpeed;
                 State = PoliceState.Patrol;
                 if (patrolPoints.Count > 0)
                 {
                     agent.SetDestination(patrolPoints[patrolIndex].position);
                 }
+            }
+        }
+
+        // A dispatched officer doesn't just resume patrolling forever --
+        // it walks itself back to wherever it was spawned and despawns
+        // once it arrives (UpdateReturning below), freeing its slot
+        // against PoliceDispatcher's cap for a future alert.
+        private void ReturnToSpawn()
+        {
+            State = PoliceState.Returning;
+            agent.speed = patrolSpeed;
+            agent.SetDestination(dispatchSpawnPosition);
+        }
+
+        private void UpdateReturning()
+        {
+            // Still worth abandoning the walk home for a fresh sighting --
+            // same as every other non-Chase state.
+            Transform seen = FindVisiblePlayer();
+            if (seen != null)
+            {
+                EnterChase(seen);
+                return;
+            }
+
+            if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
+            {
+                NetworkServer.Destroy(gameObject);
             }
         }
 

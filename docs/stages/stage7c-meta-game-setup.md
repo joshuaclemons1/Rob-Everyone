@@ -25,7 +25,7 @@ there.
 - [x] **A** — Buy-side shop (pawn-shop shelves) + Lobby practice-mode gate + sabotage tier/pricing — **done, playtested**
 - [x] **B** — Real Jail & Bail — **done, playtested**
 - [x] **C** — Homeowner patrol — **done, playtested**
-- [ ] **D** — Police dispatch pooling
+- [x] **D** — Police dispatch pooling — **done, playtested**
 - [ ] **E** — Night mode
 - [ ] **F** — Rival-status HUD ping
 - [ ] **G** (optional, lowest priority) — Per-pickup randomized item value range
@@ -378,29 +378,68 @@ resuming patrol.
 
 ---
 
-## Milestone D — Police dispatch pooling — ⬜ Not started
+## Milestone D — Police dispatch pooling — ✅ Done
 
-Replaces the single hand-placed `PoliceAI` reacting to every alert with
-a spawnable/poolable prefab, dispatched per `HomeownerAI.OnAlertRaised`
-up to a cap that scales with player count (proposed default: `Max(2,
-Ceil(playerCount / 2))`, tune later). New `Assets/Scripts/AI/
-PoliceDispatcher.cs`, reusing `HousePoolSpawner.cs`'s exact `Instantiate`
-+ `NetworkServer.Spawn` runtime-spawn pattern. The cap only gates *new*
-dispatch spawns — already-active officers (including a kept hand-placed
-baseline one) keep reacting to every alert independently, as they do
-today.
+**What shipped**: new `Assets/Scripts/AI/PoliceDispatcher.cs`, the sole
+subscriber to `HomeownerAI.OnAlertRaised` now — `PoliceAI` itself no
+longer listens for that event directly (see Bugs below for why). One
+alert:
 
-**Editor**: turn the current hand-placed `PoliceAI` into a real prefab
-(`Assets/Prefabs/AI/PoliceOfficer.prefab`) with a `NetworkIdentity`,
-register it in `NetworkManager`'s Spawnable Prefabs list. Create a
-`PoliceDispatcher` object in `SampleScene`, wire the prefab + station
-spawn points.
+1. Redirects only the single **closest** officer currently in `Patrol`
+   state (`FindClosestAvailableOfficer`) — anyone already `Respond`/
+   `Searching`/`Chase`/`Returning` is left alone.
+2. Separately may dispatch a brand-new officer on top of that, reusing
+   `HousePoolSpawner.cs`'s exact `Instantiate` + `NetworkServer.Spawn`
+   runtime-spawn pattern, gated by a cap that scales with player count
+   (`ComputeCap`: `Max(Base Dispatch Cap, Ceil(playerCount *
+   Cap Per Player))`).
+
+The cap counts **every** currently-active officer (hand-placed baseline
+included, seeded in `OnStartServer`), not just dispatched ones — it only
+gates whether a *new* one gets spawned; the closest-officer redirect
+above always happens regardless of the cap. A dispatched officer also
+walks itself back to wherever it was spawned and despawns once it gives
+up searching (new `PoliceState.Returning`, `PoliceAI.MarkDispatched`),
+rather than patrolling forever like the original hand-placed officer(s).
+
+Also added, unplanned but requested during playtesting:
+`PoliceAI.UpdatePatrol` now picks a **random** patrol point each cycle
+instead of walking the list in order, so routes aren't fully
+predictable/memorizable.
+
+**Editor**: the hand-placed `PoliceAI` became a real prefab
+(`Assets/Prefabs/AI/PoliceOfficer.prefab`), registered in
+`NetworkManager`'s Spawnable Prefabs list. `PoliceDispatcher` lives in
+`SampleScene` (`Network Identity` + the component), wired to that prefab
+and a set of station spawn points. All 4 originally hand-placed officers
+were kept as permanent ambient baseline coverage.
+
+### Bugs found & fixed
+- **Every existing officer reacted to every single alert
+  independently.** This was the original design (each `PoliceAI`
+  subscribed to `HomeownerAI.OnAlertRaised` itself) but read as
+  unintentional in practice — one break-in pulled the *entire* police
+  force off patrol at once instead of just the nearest one. Fixed by
+  moving all alert-handling to `PoliceDispatcher` exclusively; `PoliceAI`
+  now only ever responds via its public `RespondTo`, called by the
+  dispatcher.
+- **No new officers ever spawned, only the 4 baseline ones responded.**
+  Not a bug — `Base Dispatch Cap`/`Cap Per Player` govern *total active
+  officers*, and the 4 hand-placed baseline officers were seeded into
+  that count before any alert ever fired. Any cap ≤ 4 (the defaults, and
+  every combination tried) meant the "already at capacity" check was
+  true from the very start. Needs `Base Dispatch Cap` set above however
+  many baseline officers already exist for any dispatch to ever have
+  room to happen.
 
 ### 🔴 Rest Point D
 Two-Editor test with 2+ players — trigger 3+ simultaneous alerts across
-different houses, confirm multiple distinct officers spawn and each
-heads to its own alert up to the computed cap; a 4th simultaneous alert
-past the cap gets no *new* officer.
+different houses, confirm only the closest available officer redirects
+to each (not every officer at once), and (with `Base Dispatch Cap` set
+high enough to clear the baseline count) a new officer spawns and heads
+to its own alert up to the computed cap. Let a dispatched officer give
+up searching — confirm it walks back to its spawn point and disappears
+once it arrives.
 
 ---
 
