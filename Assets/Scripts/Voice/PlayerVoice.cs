@@ -1,5 +1,7 @@
 #if !DISABLESTEAMWORKS
 using Mirror;
+using RobEveryone.Inventory;
+using RobEveryone.UI;
 using UnityEngine;
 
 namespace RobEveryone.Voice
@@ -13,8 +15,13 @@ namespace RobEveryone.Voice
     {
         private SteamVoiceCapture capture;   // resolved on the local player only
         private SteamVoicePlayback playback;
+        private PlayerInventory inventory;
 
-        private void Awake() => playback = GetComponent<SteamVoicePlayback>();
+        private void Awake()
+        {
+            playback = GetComponent<SteamVoicePlayback>();
+            inventory = GetComponent<PlayerInventory>();
+        }
 
         public override void OnStartLocalPlayer()
         {
@@ -23,6 +30,12 @@ namespace RobEveryone.Voice
             capture = FindFirstObjectByType<SteamVoiceCapture>();
             if (capture != null) capture.OnFrame += SendFrame;
         }
+
+        // Every copy on every client, including remote ones -- the
+        // captions HUD (Milestone E of settings-menu-setup.md) needs to
+        // know about every rival, not just the local player.
+        public override void OnStartClient() => VoiceCaptionsHUD.Instance?.Register(playback, inventory);
+        public override void OnStopClient() => VoiceCaptionsHUD.Instance?.Unregister(playback);
 
         private void OnDestroy()
         {

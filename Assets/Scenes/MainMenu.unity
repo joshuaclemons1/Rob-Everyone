@@ -6740,7 +6740,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Voice.SteamVoiceCapture
   mode: 0
-  pushToTalkKey: 36
 --- !u!1001 &1032765620
 PrefabInstance:
   m_ObjectHideFlags: 0

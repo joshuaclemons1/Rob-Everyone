@@ -72,7 +72,7 @@ AudioSource:
   m_GameObject: {fileID: 933537913851342181}
   m_Enabled: 1
   serializedVersion: 4
-  OutputAudioMixerGroup: {fileID: 0}
+  OutputAudioMixerGroup: {fileID: -6221274451182480959, guid: 29d556862547dc84286d8839ba1f0954, type: 2}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
   m_PlayOnAwake: 0
@@ -182,6 +182,7 @@ MonoBehaviour:
   yellClip: {fileID: 0}
   impactForce: 500
   impactUpwardBias: 0.7
+  impactCooldown: 0.5
 --- !u!114 &2180091828932757584
 MonoBehaviour:
   m_ObjectHideFlags: 0

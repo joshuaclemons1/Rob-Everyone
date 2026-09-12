@@ -381,7 +381,7 @@ interacts. Reset it, confirm `E` works again.
 
 ---
 
-## Milestone C — Audio mixer + volume/mute settings
+## Milestone C — Audio mixer + volume/mute settings — code done, one Editor asset remains
 
 **Goal:** a real `AudioMixer` with Master/Music/SFX/Voice groups, a
 slider per group, and the mute/per-player-volume system
@@ -504,19 +504,27 @@ public void EnqueueCompressed(byte[] frame)
 }
 ```
 
-**Editor work:**
-1. Create `MainMixer.mixer`, the 4 groups, expose the 4 volume params
-   (exact names above).
-2. Set `SteamVoicePlayback`'s `AudioSource.outputAudioMixerGroup` →
-   `Voice` (Inspector field on the Player prefab's component).
-3. Route every existing gameplay `AudioSource` into `SFX` (footsteps,
+**Deviation, code side:** `AudioMixerApplier` and the mute check are
+already implemented and committed — both self-bootstrap (the applier
+via `RuntimeInitializeOnLoadMethod`, same shape as `InputManager`/
+`DisplaySettingsApplier`; `SteamVoicePlayback.Awake` auto-finds the
+`Voice` group via `mixer.FindMatchingGroups("Voice")` at runtime).
+Neither needs any Inspector field wired — only the asset itself needs
+creating.
+
+**Editor work (the only remaining part of this milestone):**
+1. Create `Assets/Resources/MainMixer.mixer` (must be exactly this path
+   — that's what `Resources.Load<AudioMixer>("MainMixer")` looks for),
+   the 4 groups (`Master` → `Music`/`SFX`/`Voice` children), expose the
+   4 volume params with these **exact** names: `MasterVolume`,
+   `MusicVolume`, `SFXVolume`, `VoiceVolume`.
+2. Route every existing gameplay `AudioSource` into `SFX` (footsteps,
    car horn/yell, item pickup, etc. — whatever exists today) and any
    future music source into `Music`. **Nothing plays through `Music`
    yet** (`todo.md` confirms ambient music isn't built) — the group and
    slider exist now so that work slots in later without another mixer
-   pass.
-4. Add `AudioMixerApplier` to the same persistent bootstrap object as
-   `SteamManager`, wire its `mixer` field.
+   pass. `Voice` routes itself automatically once this asset exists —
+   no manual step needed there.
 
 **Verify:** drag Master to 0 → silent (footsteps, voice, everything).
 Drag Voice to 0 with Master up → still hear SFX/footsteps, not voice.
@@ -526,7 +534,7 @@ game → sliders persisted; mute list resets (by design, session-local).
 
 ---
 
-## Milestone D — Graphics/Display settings
+## Milestone D — Graphics/Display settings — ✅ code done, no Editor work needed
 
 **Goal:** resolution, fullscreen mode, quality preset, FOV, VSync —
 all either genuinely new or (for quality) finally exposed.
@@ -588,49 +596,57 @@ object:
 
 ```csharp
 using UnityEngine;
-using RobEveryone.Graphics;
 
-public class DisplaySettingsApplier : MonoBehaviour
+namespace RobEveryone.Graphics
 {
-    private void OnEnable()
+    public static class DisplaySettingsApplier
     {
-        DisplaySettings.OnChanged += Apply;
-        Apply();
-    }
-
-    private void OnDisable() => DisplaySettings.OnChanged -= Apply;
-
-    private void Apply()
-    {
-        Resolution[] resolutions = Screen.resolutions;
-        int index = DisplaySettings.ResolutionIndex;
-        if (index >= 0 && index < resolutions.Length)
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void Bootstrap()
         {
-            Resolution r = resolutions[index];
-            Screen.SetResolution(r.width, r.height, DisplaySettings.ScreenMode);
-        }
-        else
-        {
-            Screen.fullScreenMode = DisplaySettings.ScreenMode;
+            DisplaySettings.OnChanged += Apply;
+            Apply();
         }
 
-        QualitySettings.SetQualityLevel(DisplaySettings.QualityIndex, applyExpensiveChanges: true);
-        QualitySettings.vSyncCount = DisplaySettings.VSync ? 1 : 0;
+        private static void Apply()
+        {
+            Resolution[] resolutions = Screen.resolutions;
+            int index = DisplaySettings.ResolutionIndex;
+            if (index >= 0 && index < resolutions.Length)
+            {
+                Resolution r = resolutions[index];
+                Screen.SetResolution(r.width, r.height, DisplaySettings.ScreenMode);
+            }
+            else
+            {
+                Screen.fullScreenMode = DisplaySettings.ScreenMode;
+            }
+
+            QualitySettings.SetQualityLevel(DisplaySettings.QualityIndex, applyExpensiveChanges: true);
+            QualitySettings.vSyncCount = DisplaySettings.VSync ? 1 : 0;
+        }
     }
 }
 ```
 
-**FOV** needs a live consumer — `PlayerCameraRig.cs` already has
-`cutFov`/`dockFov` fields for cutscene cuts but no "normal gameplay FOV"
-concept. Add a `NormalFov` property there that `FirstPersonController`
-sets from `DisplaySettings.FieldOfView` (subscribe to `OnChanged`, apply
-to the actual `Camera.fieldOfView` whenever not mid-cutscene-cut) —
-exact wiring point depends on reading `PlayerCameraRig.cs`'s cut-state
-machine at implementation time; flagged here rather than guessed, since
-that file wasn't read in this planning pass.
+Static + `RuntimeInitializeOnLoadMethod`, not a MonoBehaviour on a
+bootstrap object — same self-bootstrapping shape `InputManager` and
+`AudioMixerApplier` already use, so **no Editor wiring needed** here
+either.
 
-**Editor work:** add `DisplaySettingsApplier` to the bootstrap object,
-alongside `AudioMixerApplier`.
+**FOV** got its live consumer directly in `PlayerCameraRig.cs` (read
+during implementation, not guessed): a new `SetNormalFov(float)` method
+sets `cam.fieldOfView` immediately while the rig is `Docked` (the
+ordinary case), or updates `dockFov` if a cutscene cut is currently
+active (`BlendingIn`/`Held`/`BlendingOut`) so the new value takes over
+the moment the cut ends and restores it — `cutFov`'s own cut-specific
+value is left completely alone either way. `PlayerCameraRig` subscribes
+to `DisplaySettings.OnChanged` itself (`OnEnable`/`OnDisable`) and
+applies once in `Awake`, so `FirstPersonController` never needed
+touching for this.
+
+**Editor work: none** — same as Milestone A, this is fully self-
+contained, no scene/Inspector changes.
 
 **Verify:** change resolution/fullscreen, quality preset, VSync — each
 takes effect immediately and survives a restart. Slide FOV — visibly
@@ -639,11 +655,14 @@ camera cuts.
 
 ---
 
-## Milestone E — Gameplay/Accessibility
+## Milestone E — Gameplay/Accessibility — code done, one Editor step remains
 
 **Goal:** invert-Y look, and a voice-chat captions/name-tag HUD.
 
-**New file `Assets/Scripts/Player/ControlSettings.cs`**:
+**`Assets/Scripts/Player/ControlSettings.cs`** — also picked up
+`MouseSensitivity` here (moved up from Milestone F, since
+`FirstPersonController` was already being touched for invert-Y in this
+same milestone — no separate pass needed later):
 
 ```csharp
 using System;
@@ -655,81 +674,121 @@ namespace RobEveryone.Player
     {
         public static event Action OnChanged;
 
-        public static bool InvertY
-        {
-            get => PlayerPrefs.GetInt("RobEveryone.InvertY", 0) == 1;
-            set { PlayerPrefs.SetInt("RobEveryone.InvertY", value ? 1 : 0); PlayerPrefs.Save(); OnChanged?.Invoke(); }
-        }
-
-        public static bool CaptionsEnabled
-        {
-            get => PlayerPrefs.GetInt("RobEveryone.Captions", 0) == 1;
-            set { PlayerPrefs.SetInt("RobEveryone.Captions", value ? 1 : 0); PlayerPrefs.Save(); OnChanged?.Invoke(); }
-        }
+        public static bool InvertY { get; set; } // PlayerPrefs-backed, see source
+        public static bool CaptionsEnabled { get; set; } // PlayerPrefs-backed, see source
+        public static float MouseSensitivity { get; set; } // PlayerPrefs-backed, default 2f, see source
     }
 }
 ```
 
-**Modify `FirstPersonController.cs`** where `InputManager.Gameplay.Look`
-is read (Milestone A's new call site): multiply the Y component by `-1`
-when `ControlSettings.InvertY` is true, same line that already applies
-`mouseSensitivity`.
+`FirstPersonController.cs`'s old `[SerializeField] private float
+mouseSensitivity = 2f;` field was removed entirely — `HandleLook` now
+reads `ControlSettings.MouseSensitivity` and applies `InvertY` (flips
+`delta.y`) live, no restart needed.
 
-**New file `Assets/Scripts/UI/VoiceCaptionsHUD.cs`** — one HUD-corner
-list of currently-speaking names, a supplemental cue to
-`PlayerHeadTalkScale`'s pulse (not a replacement — some players want
-both, some want this one because they can't easily see a distant
-head):
+**`Assets/Scripts/UI/VoiceCaptionsHUD.cs`** — one HUD-corner list of
+currently-speaking rivals, a supplemental cue to `PlayerHeadTalkScale`'s
+pulse (not a replacement). Keyed by the `SteamVoicePlayback` instance
+itself, not a display-name string — two rivals can both still read
+"rival" before their name's `SyncVar` arrives, so the name is looked up
+fresh from a paired `PlayerInventory` every frame instead of captured
+once at register time:
 
 ```csharp
-using System.Collections.Generic;
-using TMPro;
-using UnityEngine;
-using RobEveryone.Player;
-using RobEveryone.Voice;
-
-namespace RobEveryone.UI
+public class VoiceCaptionsHUD : MonoBehaviour
 {
-    public class VoiceCaptionsHUD : MonoBehaviour
-    {
-        [SerializeField] private TMP_Text listText;
-        [SerializeField] private float speakingThreshold = 0.05f; // matches roughly what PlayerHeadTalkScale's pulse starts responding to
+    [SerializeField] private TMP_Text listText;
+    public static VoiceCaptionsHUD Instance { get; private set; }
+    private readonly Dictionary<SteamVoicePlayback, PlayerInventory> tracked = new();
 
-        private readonly Dictionary<string, SteamVoicePlayback> tracked = new();
-
-        // Every PlayerVoice registers itself here on spawn (one call in
-        // PlayerVoice.OnStartClient, alongside its existing OnStartLocalPlayer)
-        // -- see Editor/code wiring note below rather than guessing
-        // PlayerVoice's exact lifecycle methods without re-reading it here.
-        public void Register(string displayName, SteamVoicePlayback playback) => tracked[displayName] = playback;
-        public void Unregister(string displayName) => tracked.Remove(displayName);
-
-        private void Update()
-        {
-            if (!ControlSettings.CaptionsEnabled) { listText.text = ""; return; }
-
-            listText.text = "";
-            foreach (KeyValuePair<string, SteamVoicePlayback> pair in tracked)
-            {
-                if (pair.Value != null && pair.Value.Amplitude > speakingThreshold)
-                {
-                    listText.text += $"{pair.Key}\n";
-                }
-            }
-        }
-    }
+    public void Register(SteamVoicePlayback playback, PlayerInventory inventory) => tracked[playback] = inventory;
+    public void Unregister(SteamVoicePlayback playback) => tracked.Remove(playback);
+    // Update() rebuilds listText.text from every tracked pair whose
+    // Amplitude is above threshold, gated entirely on CaptionsEnabled
 }
 ```
 
-**Editor work:** add a `VoiceCaptionsHUD` text element to the gameplay
-HUD Canvas (corner, small, per `ui-design.md`'s existing conventions),
-gated invisible by default until `ControlSettings.CaptionsEnabled` is
-turned on.
+`PlayerVoice.cs` already calls `VoiceCaptionsHUD.Instance?.Register(...)`
+/ `Unregister(...)` from its own `OnStartClient`/`OnStopClient` (added
+alongside the rest of Milestone A/E's changes) — every player object on
+every client registers itself, not just the local one, since captions
+need to show every rival talking. The null-conditional means this is a
+no-op wherever the HUD element doesn't exist yet (Lobby, Main Menu).
+
+**Beyond the original plan — live head portraits, not just names.**
+Per the user's request, each caption row now shows an actual live
+render of that speaker's real skin/color next to their name, not just
+text. New `Assets/Scripts/Voice/VoicePortraitPool.cs`: a small fixed
+pool (default 8, matching voip-setup.md's stated player-count target)
+of offstage "rig" GameObjects, each built entirely at runtime (no
+per-slot Editor authoring) far below the map (`(0,-500,0)` + spacing) —
+nothing else is ever near there, so no special culling layer is needed
+to isolate the shot. Each slot has its own `Camera` rendering into its
+own `RenderTexture` (transparent background), reusing the exact
+`PlayerSkinRoster`/`PlayerColorPalette` + `PlayerColorizer` pattern
+`CustomizationUI`'s own preview already establishes — `Acquire(player)`
+spawns/re-skins a free slot to match that player's real
+`PlayerSkinSpawner.SkinIndex`/`ColorIndex` (both newly exposed as
+public read-only properties) and returns the `RenderTexture`;
+`Release(player)` frees it. `VoiceCaptionsHUD` was reworked from a
+single concatenated `Text` block into a proper row list (new
+`Assets/Scripts/UI/VoiceCaptionRow.cs`: `RawImage` + `TMP_Text`,
+instantiated per currently-speaking player from a hidden template —
+same template-and-instantiate shape `CustomizationUI`'s swatches and
+`RebindActionRow` already use), each row's `RawImage.texture` set to
+that player's acquired portrait.
+
+**Untested geometric assumption, flagged rather than guessed:** the
+portrait camera assumes this character pack's skins face `+Z` (the
+standard authored-forward for the Quaternius rig, matching how
+`PlayerSkinSpawner` instantiates a skin under the Player's own
+`transform`) and positions the camera in front of that face looking
+back at it. If a portrait comes out showing the back of someone's head
+instead of their face, flip `cameraDistance` to a negative value on the
+`VoicePortraitPool` component (Inspector) rather than editing code.
+
+**Also beyond the original plan — your own row, in the same list.** The
+rival caption list structurally can't show your own talking status:
+your own voice frames never reach your own `SteamVoicePlayback`
+(`PlayerVoice`'s `RpcReceiveVoice` is `includeOwner:false`, the same
+"never hear yourself" rule the head-pulse feature already follows), so
+there's no `Amplitude` signal for yourself to key off. `VoiceCaptionsHUD`
+handles this with a second, parallel code path (`UpdateSelfRow`) that
+reads `SteamVoiceCapture.Transmitting` directly instead — already-local
+state (true exactly while PTT is held / open mic is on), no network
+signal needed — and instantiates/destroys **one row in the exact same
+`rowContainer`** the rival rows use (`SetAsFirstSibling()` so "you"
+consistently show first, rivals below), rather than a separate
+indicator elsewhere. Portrait comes from the same
+`VoicePortraitPool.Acquire(PlayerInventory.LocalPlayer)` a rival's row
+uses. Your own row is **not** gated by `ControlSettings.CaptionsEnabled`
+— it's your own mic status, not a rival caption, so it shows regardless
+of that accessibility toggle.
+
+**Editor work (the only remaining part of this milestone):**
+1. Add a `VoicePortraitPool` component to a GameObject in `SampleScene`
+   (and `Lobby.unity`, since voice chat works there too) — wire its
+   **Skin Roster** field to `Assets/PlayerSkinRoster.asset` and
+   **Palette** field to `Assets/PlayerColorPalette.asset` (the same two
+   assets already wired on the Player prefab's `PlayerSkinSpawner`).
+2. Build a `VoiceCaptionRow` template prefab (a small horizontal row:
+   a `RawImage` on the left ~64×64, a `TMP_Text` beside it) and a
+   `RowContainer` (a `Vertical Layout Group`) on the gameplay HUD Canvas
+   in `SampleScene`, wire `VoiceCaptionsHUD`'s **Row Container**/**Row
+   Template** fields to them — per the full walkthrough given directly
+   to the user — then repeat the same container+`VoiceCaptionsHUD`
+   setup in `Lobby.unity`'s Canvas. No second row/object needed anywhere
+   — the self row lives in this same container automatically.
 
 **Verify:** enable Invert-Y, confirm mouse-look Y flips immediately (no
-restart needed). Enable captions, have another player talk — their
-name appears in the HUD list while they're transmitting and fades out
-when they stop; toggle captions off — the list disappears entirely.
+restart needed). Enable captions, have another player talk — a row
+appears in the HUD showing their actual skin/color (facing the right
+way) beside their name while they're transmitting, and disappears when
+they stop; toggle captions off — every rival row disappears. Two people
+talking at once — two independent rows, correct portraits each. Hold
+your own push-to-talk key — a "You" row appears at the top of that same
+list showing your own portrait, independent of the Captions toggle
+(toggling it off hides rivals but never your own row).
 
 ---
 

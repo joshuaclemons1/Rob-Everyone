@@ -48,6 +48,12 @@ namespace RobEveryone.Player
         // during the stun -- kept as the single source of truth here
         // rather than a second, separately-configured field there.
         public LayerMask SkinLayer => skinLayer;
+        // VoicePortraitPool reads these to spawn a matching head portrait
+        // for whoever's currently talking -- read-only, the SyncVars
+        // themselves stay private since nothing outside this class
+        // should ever set them directly.
+        public int SkinIndex => syncedSkinIndex;
+        public int ColorIndex => syncedColorIndex;
 
         public override void OnStartLocalPlayer()
         {

@@ -1,4 +1,5 @@
 using System;
+using RobEveryone.Graphics;
 using UnityEngine;
 
 namespace RobEveryone.Player
@@ -51,6 +52,26 @@ namespace RobEveryone.Player
             cam = GetComponentInChildren<Camera>(true);
             if (cam != null) camT = cam.transform;
             skinSpawner = GetComponent<PlayerSkinSpawner>();
+
+            if (cam != null) cam.fieldOfView = DisplaySettings.FieldOfView;
+        }
+
+        private void OnEnable() => DisplaySettings.OnChanged += ApplyNormalFov;
+        private void OnDisable() => DisplaySettings.OnChanged -= ApplyNormalFov;
+
+        private void ApplyNormalFov() => SetNormalFov(DisplaySettings.FieldOfView);
+
+        // Docked -- applies immediately, the ordinary case. Mid-cut --
+        // just updates what dockFov restores to once the current cut
+        // ends, since cam.fieldOfView is deliberately owned by the cut
+        // itself (cutFov) until then. Harmless to call on a remote
+        // player's disabled camera too -- no visible effect, negligible
+        // cost.
+        public void SetNormalFov(float fov)
+        {
+            if (cam == null) return;
+            if (phase == Phase.Docked) cam.fieldOfView = fov;
+            else dockFov = fov;
         }
 
         // Cut to a fixed world pose (facing `lookAt`) and hold it.

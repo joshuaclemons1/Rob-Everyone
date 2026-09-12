@@ -47,6 +47,7 @@ namespace RobEveryone.Input
 
             asset = Resources.Load<InputActionAsset>("RobEveryoneControls");
             asset.Enable();
+            KeybindPersistence.Load();
 
             gameplay = new GameplayActions(asset.FindActionMap("Gameplay", throwIfNotFound: true));
             ui = new UiActions(asset.FindActionMap("UI", throwIfNotFound: true));

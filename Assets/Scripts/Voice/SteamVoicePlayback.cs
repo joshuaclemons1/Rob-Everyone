@@ -1,6 +1,8 @@
 #if !DISABLESTEAMWORKS
+using Mirror;
 using Steamworks;
 using UnityEngine;
+using UnityEngine.Audio;
 
 namespace RobEveryone.Voice
 {
@@ -16,6 +18,7 @@ namespace RobEveryone.Voice
         [SerializeField] private float amplitudeDecayPerSecond = 3f; // how fast the cue falls back to 0 between frames, so it doesn't read as "stuck loud" after the speaker stops
 
         private AudioSource source;
+        private NetworkIdentity identity;
         private uint sampleRate;
 
         private readonly byte[] decompressed = new byte[22050];        // ~0.9 s @ 24 kHz, 16-bit mono
@@ -32,6 +35,7 @@ namespace RobEveryone.Voice
         private void Awake()
         {
             source = GetComponent<AudioSource>();
+            identity = GetComponent<NetworkIdentity>();
             sampleRate = SteamManager.Initialized ? SteamUser.GetVoiceOptimalSampleRate() : 24000;
 
             source.clip = AudioClip.Create("SteamVoice", (int)sampleRate, 1, (int)sampleRate, true, PcmRead);
@@ -40,6 +44,19 @@ namespace RobEveryone.Voice
             source.rolloffMode = AudioRolloffMode.Linear;
             source.minDistance = 3f;
             source.maxDistance = 40f;          // proximity range -- tune vs. map scale
+
+            // Auto-routes into the mixer's Voice group once
+            // Assets/Resources/MainMixer.mixer exists (settings-menu-
+            // setup.md Milestone C) -- no per-prefab Inspector wiring
+            // needed. Silently stays on the default (unrouted) output
+            // until then.
+            AudioMixer mixer = Resources.Load<AudioMixer>("MainMixer");
+            if (mixer != null)
+            {
+                AudioMixerGroup[] groups = mixer.FindMatchingGroups("Voice");
+                if (groups.Length > 0) source.outputAudioMixerGroup = groups[0];
+            }
+
             source.Play();
         }
 
@@ -52,6 +69,7 @@ namespace RobEveryone.Voice
         public void EnqueueCompressed(byte[] frame)
         {
             if (!SteamManager.Initialized) return;
+            if (identity != null && VoiceMuteList.IsMuted(identity.netId)) return;
 
             EVoiceResult r = SteamUser.DecompressVoice(
                 frame, (uint)frame.Length,

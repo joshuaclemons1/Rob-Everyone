@@ -27,7 +27,6 @@ namespace RobEveryone.Player
         [SerializeField] private float walkSpeed = 5f;
         [SerializeField] private float sprintSpeed = 8f;
         [SerializeField] private float crouchSpeed = 2.5f;
-        [SerializeField] private float mouseSensitivity = 2f;
         [SerializeField] private float gravity = -9.81f;
         [SerializeField] private float jumpHeight = 1.2f;
         [SerializeField, Range(0.3f, 1f)] private float crouchHeightRatio = 0.55f;
@@ -227,7 +226,8 @@ namespace RobEveryone.Player
         {
             if (cameraTransform == null) return;
 
-            Vector2 delta = InputManager.Gameplay.Look.ReadValue<Vector2>() * (mouseSensitivity * 0.02f);
+            Vector2 delta = InputManager.Gameplay.Look.ReadValue<Vector2>() * (ControlSettings.MouseSensitivity * 0.02f);
+            if (ControlSettings.InvertY) delta.y = -delta.y;
 
             transform.Rotate(Vector3.up, delta.x);
 
