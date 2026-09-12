@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using Mirror;
 using RobEveryone.Inventory;
-using RobEveryone.Player;
 using RobEveryone.Round;
 using UnityEngine;
 using UnityEngine.AI;
@@ -14,8 +13,9 @@ namespace RobEveryone.AI
     // Alerted via the static HomeownerAI.OnAlertRaised event -- no manual
     // wiring needed between homeowners and police. Once responding, uses its
     // own vision check to actually spot a player and start a real chase.
-    // Catching freezes just that one player (see FirstPersonController's
-    // IsFrozen SyncVar) rather than ending the round for everyone.
+    // Catching hands off to RoundManager.NotifyPlayerCaught -> JailState.
+    // EnterJail (Stage 7 Jail & Bail) -- a reversible jailed+frozen state,
+    // not a permanent freeze/round-ending event for everyone.
     //
     // Networking (Stage 4): Police is a single hand-placed scene object
     // (not spawned per-player), so it just needs a NetworkIdentity added
@@ -295,8 +295,10 @@ namespace RobEveryone.AI
         private void CatchPlayer(Transform target)
         {
             PlayerInventory caught = target.GetComponentInParent<PlayerInventory>();
-            FirstPersonController controller = target.GetComponentInParent<FirstPersonController>();
-            if (controller != null) controller.IsFrozen = true; // SyncVar -- freezes input on that player's own client
+            // Freezing now happens in JailState.EnterJail, triggered by
+            // RoundManager.NotifyPlayerCaught below -- Jail & Bail means
+            // this is no longer a permanent freeze, just the start of a
+            // reversible jailed state.
 
             if (roundManager != null && caught != null)
             {

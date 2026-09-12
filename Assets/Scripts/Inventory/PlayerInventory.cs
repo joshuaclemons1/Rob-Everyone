@@ -611,6 +611,16 @@ namespace RobEveryone.Inventory
             return true;
         }
 
+        // Additive-only, no gate -- the jail-rescue payout (JailState.
+        // Interact). The jailed player pays/loses nothing themselves;
+        // only the rescuer's Cash moves.
+        [Server]
+        public void GrantCash(int amount)
+        {
+            if (amount <= 0) return;
+            cash += amount;
+        }
+
         // Anti-hoarding: called by GameFlowManager on a batch's final
         // round -- Cash above the batch quota is deleted rather than
         // banked indefinitely, per gameplay-design.md's Quota Batches

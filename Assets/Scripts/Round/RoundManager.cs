@@ -40,6 +40,13 @@ namespace RobEveryone.Round
         [SyncVar] private bool roundActive;
 
         private readonly HashSet<PlayerInventory> resolvedPlayers = new();
+        // Caught-but-not-yet-finalized players (Jail & Bail) -- kept
+        // separate from resolvedPlayers so a rescue (NotifyPlayerRescued)
+        // can pull someone back out and keep the round running for them.
+        // Only actually counted as Caught (folded into resolvedPlayers)
+        // once the round ends with them still in here -- CheckForEarlyEnd
+        // or the timeout branch below.
+        private readonly HashSet<PlayerInventory> jailedPlayers = new();
 
         public int Quota => quota;
         public float RoundDuration => roundDuration;
@@ -80,6 +87,10 @@ namespace RobEveryone.Round
             timeRemaining -= Time.deltaTime;
             if (timeRemaining <= 0f)
             {
+                // Still-jailed players time out as Caught, not as a normal
+                // RoundComplete -- finalize them first so the timeout loop
+                // below doesn't also resolve them the other way.
+                FinalizeJailedPlayersAsCaught();
                 ResolveRemainingPlayersOnTimeout();
                 EndRound();
             }
@@ -89,6 +100,7 @@ namespace RobEveryone.Round
         public void StartRound()
         {
             resolvedPlayers.Clear();
+            jailedPlayers.Clear();
 
             // Discards whatever carried loot (not Cash) survived from the
             // previous round -- unsold loot at ready-up is simply lost, a
@@ -111,14 +123,42 @@ namespace RobEveryone.Round
             ResolvePlayer(player, RoundResult.RoundComplete);
         }
 
+        // Jail & Bail: no longer resolves the round for this player
+        // immediately. Loot loss (below) is instant and irreversible, but
+        // the round outcome itself stays open -- JailState.EnterJail puts
+        // them in a real cell, and only a still-jailed player at the
+        // moment the round actually ends gets finalized as Caught
+        // (FinalizeJailedPlayersAsCaught). A rescue before then
+        // (NotifyPlayerRescued) keeps them playing this same round.
         [Server]
         public void NotifyPlayerCaught(PlayerInventory player)
         {
             // Caught players lose whatever they were carrying -- an exited
             // (or timed-out) player keeps theirs to sell at the Lobby.
             player.ResetInventory();
-            ResolvePlayer(player, RoundResult.Caught);
+            player.GetComponent<JailState>()?.EnterJail(endOfBatch: false);
+            NotifyPlayerJailed(player, endOfBatch: false);
         }
+
+        // Also called directly by GameFlowManager.HandleRoundStarted for
+        // the separate end-of-batch quota-failure jailing (that jailing
+        // itself, EnterJail, is called there too -- this just adds the
+        // round-tracking half).
+        [Server]
+        public void NotifyPlayerJailed(PlayerInventory player, bool endOfBatch)
+        {
+            if (!roundActive) return;
+            if (resolvedPlayers.Contains(player) || jailedPlayers.Contains(player)) return;
+
+            jailedPlayers.Add(player);
+            CheckForEarlyEnd();
+        }
+
+        // Called by JailState.Interact on a successful rescue -- pulls
+        // the player back out of jail-tracking so they keep playing this
+        // round instead of being finalized Caught at its end.
+        [Server]
+        public void NotifyPlayerRescued(PlayerInventory player) => jailedPlayers.Remove(player);
 
         private void ResolvePlayer(PlayerInventory player, RoundResult result)
         {
@@ -126,10 +166,34 @@ namespace RobEveryone.Round
             if (!resolvedPlayers.Add(player)) return; // already resolved -- ignore a second catch/exit
 
             OnPlayerResolved?.Invoke(player, result);
+            CheckForEarlyEnd();
+        }
 
-            if (resolvedPlayers.Count >= PlayerInventory.AllPlayers.Count)
+        // The round ends early the instant every connected player is
+        // *either* resolved *or* currently jailed -- a jailed player no
+        // longer blocks this the way an old permanent-freeze catch
+        // effectively did, since they can still be rescued and keep
+        // playing right up until this check (or the timeout) fires.
+        private void CheckForEarlyEnd()
+        {
+            if (resolvedPlayers.Count + jailedPlayers.Count < PlayerInventory.AllPlayers.Count) return;
+
+            FinalizeJailedPlayersAsCaught();
+            EndRound();
+        }
+
+        // Whoever's still jailed the instant the round actually ends
+        // (early via CheckForEarlyEnd, or via the Update() timeout) never
+        // got rescued in time -- finalize them as Caught now. A copy of
+        // jailedPlayers is iterated since ForceRelease below doesn't
+        // itself touch the set, but this keeps the loop safe regardless.
+        private void FinalizeJailedPlayersAsCaught()
+        {
+            foreach (PlayerInventory player in new List<PlayerInventory>(jailedPlayers))
             {
-                EndRound();
+                jailedPlayers.Remove(player);
+                player.GetComponent<JailState>()?.ForceRelease();
+                if (resolvedPlayers.Add(player)) OnPlayerResolved?.Invoke(player, RoundResult.Caught);
             }
         }
 

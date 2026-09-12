@@ -1,6 +1,7 @@
 using Mirror;
 using RobEveryone.Inventory;
 using RobEveryone.Player;
+using RobEveryone.UI;
 using UnityEngine;
 
 namespace RobEveryone.Core
@@ -88,6 +89,46 @@ namespace RobEveryone.Core
             base.OnClientSceneChanged();
 
             if (GameFlowManager.Instance != null) GameFlowManager.Instance.HandleClientSceneChanged();
+        }
+
+        // Hosting's own "Loading..." is shown here instead of
+        // OnClientConnect below -- OnStartHost fires synchronously as the
+        // very first step of StartHost(), before ServerChangeScene's
+        // scene load or NetworkServer.SpawnObjects() can possibly have
+        // run yet, which guarantees this always happens before
+        // GameFlowManager.OnStartServer's matching Hide() (see its own
+        // comment). OnClientConnect's local-host connection message isn't
+        // processed on that same synchronous timeline -- it can land on a
+        // *later* frame than OnStartServer's hide, which was the actual
+        // bug: Show() firing after the one moment meant to hide it, with
+        // nothing left to ever hide it again.
+        public override void OnStartHost()
+        {
+            base.OnStartHost();
+
+            LoadingScreenUI screen = FindFirstObjectByType<LoadingScreenUI>();
+            if (screen != null) screen.Show("Loading...");
+        }
+
+        // Fires the moment this client's connection to the server is
+        // actually established. For a genuine remote connection this is
+        // the earliest point that can show "Joining game..." -- its own
+        // OnClientSceneChanged (above) fires once its local copy of the
+        // Online Scene finishes loading, the natural moment to hide it.
+        // Skipped entirely while hosting -- OnStartHost above already
+        // showed the host's own message earlier and more reliably; this
+        // firing again on top of it risked landing *after*
+        // GameFlowManager.OnStartServer's hide instead of before it
+        // (frame-timing dependent, unlike OnStartHost), re-showing the
+        // screen with nothing left to hide it again.
+        public override void OnClientConnect()
+        {
+            base.OnClientConnect();
+
+            if (NetworkServer.active) return;
+
+            LoadingScreenUI screen = FindFirstObjectByType<LoadingScreenUI>();
+            if (screen != null) screen.Show("Joining game...");
         }
     }
 }

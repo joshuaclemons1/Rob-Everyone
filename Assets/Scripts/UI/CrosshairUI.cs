@@ -1,5 +1,6 @@
 using Mirror;
 using RobEveryone.Interaction;
+using RobEveryone.Round;
 using TMPro;
 using UnityEngine;
 
@@ -33,6 +34,8 @@ namespace RobEveryone.UI
         [SerializeField] private TextMeshProUGUI warningText;
 
         private Interactor interactor;
+        private JailState localJail;
+        private SpectatorController localSpectator;
 
         private void Update()
         {
@@ -40,17 +43,29 @@ namespace RobEveryone.UI
             {
                 if (NetworkClient.localPlayer == null) return;
                 interactor = NetworkClient.localPlayer.GetComponent<Interactor>();
+                localJail = NetworkClient.localPlayer.GetComponent<JailState>();
+                localSpectator = NetworkClient.localPlayer.GetComponent<SpectatorController>();
                 if (interactor == null) return;
             }
 
-            bool hasTarget = interactor.CurrentTarget != null;
+            bool jailed = localJail != null && localJail.IsJailed;
+            bool spectating = localSpectator != null && localSpectator.IsSpectating;
+            // While jailed, FirstPersonController's entire look/move loop
+            // is frozen and there's nothing meaningful left to aim at --
+            // this line shows the spectate hint instead of the normal
+            // per-target prompt.
+            bool hasTarget = !jailed && interactor.CurrentTarget != null;
 
             if (interactHint != null) interactHint.SetActive(hasTarget);
 
             if (promptText != null)
             {
-                promptText.text = hasTarget ? $"[E] {interactor.CurrentTarget.InteractionPrompt}" : "";
-                promptText.enabled = hasTarget;
+                promptText.text = spectating
+                    ? "[T] Stop spectating   Click to switch"
+                    : jailed
+                        ? "Press T to spectate"
+                        : hasTarget ? $"[E] {interactor.CurrentTarget.InteractionPrompt}" : "";
+                promptText.enabled = jailed || hasTarget;
             }
 
             if (warningText != null)

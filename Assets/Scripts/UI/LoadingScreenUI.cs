@@ -5,11 +5,20 @@ using UnityEngine.UI;
 
 namespace RobEveryone.UI
 {
-    // Persistent (lives on the same DontDestroyOnLoad object GameFlowManager
-    // carries the Player under) full-screen cover shown while a scene
-    // transition is actually loading. The script's own GameObject stays
-    // enabled at all times (so GameFlowManager can always find it) -- only
-    // `panel` (the actual visible content) gets toggled by Show/Hide.
+    // Full-screen cover shown while a scene transition is actually
+    // loading. Must live as a child of the "NetworkManager" GameObject in
+    // MainMenu.unity (the one carrying RobEveryoneNetworkManager/
+    // GameFlowManager, marked Don't Destroy On Load) -- NOT as a normal
+    // object inside Lobby or SampleScene. Those two get destroyed and
+    // recreated on every single round-trip; a copy living in just one of
+    // them only ever exists for the handful of frames between a Show()
+    // call and that scene's own teardown, which is exactly why this used
+    // to flash on-screen for a fraction of a second with its spinner
+    // frozen on frame 0 instead of actually covering the load, and never
+    // appeared at all for the Lobby -> gameplay transition. The script's
+    // own GameObject stays enabled at all times (so
+    // FindFirstObjectByType can always find it) -- only `panel` (the
+    // actual visible content) gets toggled by Show/Hide.
     public class LoadingScreenUI : MonoBehaviour
     {
         [SerializeField] private GameObject panel;

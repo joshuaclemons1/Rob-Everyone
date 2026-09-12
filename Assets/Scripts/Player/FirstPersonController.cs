@@ -95,12 +95,15 @@ namespace RobEveryone.Player
         private bool jumpPending;
         private float jumpPendingSince;
 
-        // Server-set, client-visible -- true while PoliceAI has this
-        // specific player in custody (Stage 4's per-player jail/catch
-        // handling; see RoundManager). Only the owner's own Update loop
-        // needs to check it, but it's a SyncVar (not server-only state)
-        // since a caught player's own client is exactly who needs to stop
-        // processing input.
+        // Server-set, client-visible -- a general "can't act at all" flag,
+        // synced since whoever this is set on needs their own client to
+        // stop processing input. Jail no longer uses this (a jailed
+        // player can walk around their cell -- see SpectatingFrozen
+        // below for why that still needs pausing sometimes); nothing
+        // currently sets this true, but it's kept as the general-purpose
+        // freeze other systems (CarryController, InventoryScreenUI,
+        // PlayerRagdoll) already read, for whatever future case needs a
+        // real full stop.
         [SyncVar] public bool IsFrozen;
 
         // Local-only (deliberately NOT synced, unlike IsFrozen) -- set by
@@ -110,6 +113,15 @@ namespace RobEveryone.Player
         // world (a rival can still tase you mid-rearrange); this just
         // parks your own input.
         public bool LookSuppressed { get; set; }
+
+        // Local-only, same shape as LookSuppressed -- set by
+        // SpectatorController while actively spectating (T key). Your
+        // camera view has been handed off to someone else's chase-cam
+        // entirely at that point, so walking/looking with your own body
+        // would just happen off-screen and out of your control; this
+        // parks input the same way LookSuppressed does, just for both
+        // look and movement instead of only look.
+        public bool SpectatingFrozen { get; set; }
 
         // Set by CarryController on the owner while hauling a downed rival.
         // Walk/sprint stay normal; this just kills air control and autohop
@@ -167,11 +179,18 @@ namespace RobEveryone.Player
         {
             if (isOwned) return;
 
-            Camera cam = GetComponentInChildren<Camera>(true);
-            if (cam != null) cam.enabled = false;
-
-            AudioListener listener = GetComponentInChildren<AudioListener>(true);
-            if (listener != null) listener.enabled = false;
+            // Plural, not just the first match -- SpectatorController adds
+            // a second Camera/AudioListener pair (its own chase-cam) to
+            // this same prefab, and GetComponentInChildren<T> singular
+            // would only disable whichever of the two happens to come
+            // first in the hierarchy, potentially leaving the other (e.g.
+            // the normal FP camera) live on every other client's copy of
+            // this player. Harmless either way for the spectator camera
+            // specifically (it starts disabled and only ever gets enabled
+            // by its own owning client), but this stays correct regardless
+            // of hierarchy order.
+            foreach (Camera cam in GetComponentsInChildren<Camera>(true)) cam.enabled = false;
+            foreach (AudioListener listener in GetComponentsInChildren<AudioListener>(true)) listener.enabled = false;
         }
 
         private void Update()
@@ -183,13 +202,12 @@ namespace RobEveryone.Player
             // own dead-reckoned guess and everyone else's simultaneously
             // self-moved position.
             if (!isOwned) return;
-            if (IsFrozen) return;
+            if (IsFrozen || SpectatingFrozen) return;
 
             // While the inventory / steal screen is open the mouse is the
             // cursor, so only mouse-look is parked -- you can still walk,
             // sprint, jump and crouch (deliberate: keep moving toward the
-            // exit while you sort loot). IsFrozen (jail) still stops
-            // everything.
+            // exit while you sort loot).
             if (!LookSuppressed) HandleLook();
             HandleCrouch();
             HandleMove();

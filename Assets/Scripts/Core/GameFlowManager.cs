@@ -61,6 +61,30 @@ namespace RobEveryone.Core
         public int BatchNumber => batchNumber;
         public int RoundInBatch => roundInBatch;
 
+        // A simple globally-incrementing "which round is this" counter --
+        // the natural clock JailState's self-bail check needs ("released
+        // after exactly one full round unrescued"), since roundInBatch
+        // alone resets every batch and can't tell "a round has passed"
+        // apart from "a new batch started."
+        [SyncVar] private int roundOrdinal;
+        public int RoundOrdinal => roundOrdinal;
+
+        // Players who failed the batch quota this round, queued here at
+        // HandleRoundEnded and actually jailed once the *next* round
+        // starts (HandleRoundStarted) -- jailing them immediately would
+        // put them in a cell in a round that's already over.
+        private readonly HashSet<PlayerInventory> pendingEndOfBatchJail = new();
+
+        // Which physical JailPoint slot each currently-jailed player is
+        // occupying -- claimed in TeleportToJail (ClaimJailPoint below),
+        // released in TeleportToJailExit, so multiple simultaneous
+        // jailings spread across however many cell slots exist instead of
+        // everyone stacking on the same one marker. Cleared at the start
+        // of every fresh round (HandleRoundStarted) since the gameplay
+        // scene's own JailPoint objects are recreated then -- any old
+        // reference in here would otherwise be stale.
+        private readonly Dictionary<PlayerInventory, JailPoint> occupiedJailPoints = new();
+
         // The gameplay-vs-shop phase gate (used by PlayerInventory's
         // Prison Wallet rules: stash only mid-round, retrieve only in the
         // Lobby). ServerChangeScene is single-mode, so the active scene
@@ -111,6 +135,20 @@ namespace RobEveryone.Core
             // *current* active scene once here, manually, catches that
             // first scene the same way a real sceneLoaded event would.
             HandleSceneLoaded(SceneManager.GetActiveScene(), LoadSceneMode.Single);
+
+            // Hides the host's own "Loading..." screen (RobEveryoneNetworkManager.
+            // OnClientConnect) -- a hosting client never gets a real
+            // OnClientSceneChanged callback for its own local connection
+            // the way a genuine remote client does (there's no separate
+            // client-side scene load to wait on, since the server
+            // already loaded it here), so nothing would otherwise ever
+            // hide it. OnStartServer only fires once per server lifetime
+            // for this persistent, never-respawned object, so this can't
+            // accidentally re-fire on every later round's scene change.
+            // Harmless no-op on a headless dedicated server (nothing to
+            // find/hide there) and on a joining, non-hosting client
+            // (their own OnClientSceneChanged already covers it).
+            HandleClientSceneChanged();
         }
 
         public override void OnStopServer()
@@ -152,24 +190,63 @@ namespace RobEveryone.Core
             PlayerSpawnPoint[] spawns = FindObjectsByType<PlayerSpawnPoint>(FindObjectsSortMode.None);
             if (spawns.Length == 0) return;
 
-            Transform spawn = spawns[0].transform;
+            TeleportPlayerTo(player, spawns[0].transform);
+        }
 
-            NetworkIdentity identity = player.GetComponent<NetworkIdentity>();
-            bool remote = identity != null && !identity.isLocalPlayer && identity.connectionToClient != null;
+        // Jail & Bail: teleports the just-caught (or end-of-batch-jailed)
+        // player to a free JailPoint slot in the gameplay scene's real
+        // jail cells.
+        [Server]
+        public void TeleportToJail(Transform player)
+        {
+            JailPoint slot = ClaimJailPoint(player.GetComponent<PlayerInventory>());
+            if (slot != null) TeleportPlayerTo(player, slot.transform);
+        }
 
-            if (remote)
+        // Hands out a free JailPoint slot and records who's standing in
+        // it (TeleportToJailExit below is what frees it back up again) --
+        // spreads simultaneous jailings across however many physical
+        // slots exist instead of stacking everyone on one marker.
+        [Server]
+        private JailPoint ClaimJailPoint(PlayerInventory player)
+        {
+            JailPoint[] slots = FindObjectsByType<JailPoint>(FindObjectsSortMode.None);
+            if (slots.Length == 0) return null;
+
+            foreach (JailPoint slot in slots)
             {
-                TargetPositionPlayer(identity.connectionToClient, spawn.position, spawn.rotation);
-                return;
+                if (occupiedJailPoints.ContainsValue(slot)) continue;
+                if (player != null) occupiedJailPoints[player] = slot;
+                return slot;
             }
 
-            WithCharacterControllerDisabled(player, () =>
-            {
-                NetworkTransformReliable netTransform = player.GetComponent<NetworkTransformReliable>();
-                if (netTransform != null) netTransform.ServerTeleport(spawn.position, spawn.rotation);
-                else player.SetPositionAndRotation(spawn.position, spawn.rotation);
-            });
+            // Every slot already occupied (more jailed players than
+            // physical cell slots) -- overlap the first one rather than
+            // leaving this player un-teleported.
+            return slots[0];
         }
+
+        // Jail & Bail: teleports a just-released player (rescued or
+        // self-bailed) to the jail's exit point -- also used to bring the
+        // rescuer along, per gameplay-design.md's "teleports both players
+        // outside the back door." Frees this player's claimed JailPoint
+        // slot, if any (a no-op for the rescuer, who never claimed one).
+        [Server]
+        public void TeleportToJailExit(Transform player)
+        {
+            PlayerInventory inventory = player.GetComponent<PlayerInventory>();
+            if (inventory != null) occupiedJailPoints.Remove(inventory);
+
+            JailExitPoint exit = FindFirstObjectByType<JailExitPoint>();
+            if (exit != null) TeleportPlayerTo(player, exit.transform);
+        }
+
+        // Jail & Bail: forwards a successful rescue to the active round's
+        // own jailed-player bookkeeping (RoundManager.NotifyPlayerRescued)
+        // so that player keeps playing this round instead of being
+        // finalized Caught once it ends.
+        [Server]
+        public void HandlePlayerRescued(PlayerInventory player) => currentRoundManager?.NotifyPlayerRescued(player);
 
         // Separate from the server-only subscription above -- wiring a
         // Screen Space - Camera Canvas's Render Camera is a purely local,
@@ -291,6 +368,47 @@ namespace RobEveryone.Core
             currentRoundManager = roundManager;
             roundManager.OnPlayerResolved += HandlePlayerResolved;
             roundManager.OnRoundEnded += HandleRoundEnded;
+            roundManager.OnRoundStarted += HandleRoundStarted;
+            roundOrdinal++;
+        }
+
+        // Fires every time a fresh round's RoundManager.StartRound() runs
+        // -- registration above happens *before* OnStartServer's own
+        // StartRound() call, so this subscription is already in place by
+        // the time OnRoundStarted first invokes for a given RoundManager
+        // instance. That also means this runs after that same round's own
+        // resolvedPlayers/jailedPlayers.Clear(), so nothing here can race
+        // against a stale jailedPlayers entry from the previous round.
+        [Server]
+        private void HandleRoundStarted()
+        {
+            // The gameplay scene's own JailPoint objects were just
+            // recreated by this scene load -- any slot claimed by the
+            // old, now-destroyed instances would be stale.
+            occupiedJailPoints.Clear();
+
+            // Self-bail: an end-of-batch jailed player is released
+            // unconditionally after exactly one full round unrescued,
+            // regardless of what happens in it.
+            foreach (PlayerInventory player in PlayerInventory.AllPlayers)
+            {
+                JailState jail = player.GetComponent<JailState>();
+                if (jail == null || !jail.IsJailed || !jail.IsEndOfBatchJail) continue;
+                if (roundOrdinal > jail.JailedAtRoundOrdinal) jail.ForceRelease();
+            }
+
+            // Apply any end-of-batch jailing queued by the batch boundary
+            // that just passed -- this round is that jailed player's
+            // "round 1" of being caught, so JailedAtRoundOrdinal (used by
+            // the self-bail check above on some *future* round) is set
+            // relative to the current roundOrdinal, already incremented
+            // for this round by RegisterRoundManager above.
+            foreach (PlayerInventory player in pendingEndOfBatchJail)
+            {
+                player.GetComponent<JailState>()?.EnterJail(endOfBatch: true);
+                currentRoundManager?.NotifyPlayerJailed(player, true);
+            }
+            pendingEndOfBatchJail.Clear();
         }
 
         // Called from ReadySpot's own OnStartServer -- same reasoning as
@@ -323,14 +441,23 @@ namespace RobEveryone.Core
             PlayerSpawnPoint[] spawns = FindObjectsByType<PlayerSpawnPoint>(FindObjectsSortMode.None);
             if (spawns.Length == 0) return;
 
-            Transform spawn = spawns[index % spawns.Length].transform;
+            TeleportPlayerTo(player, spawns[index % spawns.Length].transform);
+        }
 
+        // Shared host-vs-remote-client teleport body -- originally
+        // PositionPlayer's own, now also used by RescuePlayer and the two
+        // Jail & Bail teleport helpers above so there's exactly one place
+        // that has to know about the isLocalPlayer/ServerTeleport vs.
+        // TargetRpc split.
+        [Server]
+        private void TeleportPlayerTo(Transform player, Transform target)
+        {
             NetworkIdentity identity = player.GetComponent<NetworkIdentity>();
             bool remote = identity != null && !identity.isLocalPlayer && identity.connectionToClient != null;
 
             if (remote)
             {
-                TargetPositionPlayer(identity.connectionToClient, spawn.position, spawn.rotation);
+                TargetPositionPlayer(identity.connectionToClient, target.position, target.rotation);
                 return;
             }
 
@@ -341,8 +468,8 @@ namespace RobEveryone.Core
             WithCharacterControllerDisabled(player, () =>
             {
                 NetworkTransformReliable netTransform = player.GetComponent<NetworkTransformReliable>();
-                if (netTransform != null) netTransform.ServerTeleport(spawn.position, spawn.rotation);
-                else player.SetPositionAndRotation(spawn.position, spawn.rotation);
+                if (netTransform != null) netTransform.ServerTeleport(target.position, target.rotation);
+                else player.SetPositionAndRotation(target.position, target.rotation);
             });
         }
 
@@ -446,6 +573,7 @@ namespace RobEveryone.Core
             {
                 currentRoundManager.OnPlayerResolved -= HandlePlayerResolved;
                 currentRoundManager.OnRoundEnded -= HandleRoundEnded;
+                currentRoundManager.OnRoundStarted -= HandleRoundStarted;
             }
 
             // Only the batch's 3rd round actually decides anything --
@@ -464,6 +592,11 @@ namespace RobEveryone.Core
                     // Anti-hoarding: Cash above quota is deleted at the
                     // batch boundary, not carried forward indefinitely.
                     player.WipeCashSurplus(currentQuota);
+
+                    // Independent of wasCaught -- a player caught and
+                    // rescued earlier in this same final round who's also
+                    // under quota still gets end-of-batch jailed.
+                    if (!metQuota) pendingEndOfBatchJail.Add(player);
                 }
 
                 string message = wasCaught
@@ -477,11 +610,6 @@ namespace RobEveryone.Core
                 {
                     TargetShowLoadingScreen(identity.connectionToClient, message);
                 }
-
-                // Undo PoliceAI.CatchPlayer's freeze if that's what ended
-                // this player's round -- no-op otherwise.
-                FirstPersonController fpc = player.GetComponent<FirstPersonController>();
-                if (fpc != null) fpc.IsFrozen = false;
 
                 // Whatever ended the round (timeout, extraction, caught),
                 // nobody should carry a body through the scene change --

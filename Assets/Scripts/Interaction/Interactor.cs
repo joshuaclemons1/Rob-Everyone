@@ -1,6 +1,7 @@
 using Mirror;
 using RobEveryone.Items;
 using RobEveryone.Player;
+using RobEveryone.Round;
 using RobEveryone.Shop;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -41,6 +42,12 @@ namespace RobEveryone.Interaction
         // my general direction and within range" -- this angle is how
         // generous that cone is, not tied to any collider size.
         [SerializeField] private float ragdollAssistMaxAngle = 30f;
+        // Same idea as ragdollAssistMaxAngle, for a different collider
+        // problem: a jailed player's cell (bars/walls) sits physically
+        // between the raycast and them, so the precise raycast above can
+        // never resolve them at all, not even imprecisely. See
+        // FindJailedPlayerNearby below.
+        [SerializeField] private float jailAssistMaxAngle = 30f;
 
         private IInteractable currentTarget;
         private CarryController carry;
@@ -128,7 +135,10 @@ namespace RobEveryone.Interaction
                 }
             }
 
-            return FindRagdolledPlayerNearby();
+            IInteractable ragdollTarget = FindRagdolledPlayerNearby();
+            if (ragdollTarget != null) return ragdollTarget;
+
+            return FindJailedPlayerNearby();
         }
 
         // Fallback only, and deliberately collider-free -- picks the
@@ -172,13 +182,56 @@ namespace RobEveryone.Interaction
             return target;
         }
 
+        // Same collider-free shape as FindRagdolledPlayerNearby above --
+        // a jail cell's own bars/walls block the precise raycast from
+        // ever reaching whoever's inside, so this checks every currently-
+        // jailed player's real distance/angle from the viewpoint instead
+        // of going through physics at all.
+        private IInteractable FindJailedPlayerNearby()
+        {
+            JailState best = null;
+            float bestAngle = jailAssistMaxAngle;
+
+            foreach (JailState candidate in FindObjectsByType<JailState>(FindObjectsSortMode.None))
+            {
+                if (candidate.gameObject == gameObject || !candidate.IsJailed) continue;
+
+                Vector3 toTarget = candidate.transform.position - viewPoint.position;
+                if (toTarget.magnitude > interactRange) continue;
+
+                float angle = Vector3.Angle(viewPoint.forward, toTarget);
+                if (angle >= bestAngle) continue;
+
+                bestAngle = angle;
+                best = candidate;
+            }
+
+            return best; // JailState.CanInteract already mirrors IsJailed
+        }
+
         [Command]
         private void CmdInteract(NetworkIdentity targetIdentity)
         {
             if (targetIdentity == null) return;
 
-            IInteractable interactable = targetIdentity.GetComponent<IInteractable>();
-            interactable?.Interact(gameObject);
+            // A player's own NetworkIdentity can now carry more than one
+            // IInteractable (PlayerTheftTarget for robbing a ragdolled
+            // rival, JailState for a bail) -- plain GetComponent<T>
+            // would arbitrarily return whichever one happens to be
+            // earliest in the component list regardless of which is
+            // actually valid right now (confirmed bug: pressing E on a
+            // jailed player silently ran PlayerTheftTarget.Interact
+            // instead, which no-ops since it's not also ragdoll-stunned).
+            // They're mutually exclusive by design (see JailState's own
+            // comment), so the one whose CanInteract is true is the same
+            // one this client's own FindTarget would have shown a prompt
+            // for.
+            foreach (IInteractable candidate in targetIdentity.GetComponents<IInteractable>())
+            {
+                if (!candidate.CanInteract) continue;
+                candidate.Interact(gameObject);
+                return;
+            }
         }
     }
 }

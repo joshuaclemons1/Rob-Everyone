@@ -23,7 +23,7 @@ there.
 ## Status overview
 
 - [x] **A** — Buy-side shop (pawn-shop shelves) + Lobby practice-mode gate + sabotage tier/pricing — **done, playtested**
-- [ ] **B** — Real Jail & Bail
+- [x] **B** — Real Jail & Bail — **done, playtested**
 - [ ] **C** — Homeowner patrol
 - [ ] **D** — Police dispatch pooling
 - [ ] **E** — Night mode
@@ -46,8 +46,8 @@ starter tiering, adjust by playtesting:
 
 | Batch | Items |
 |---|---|
-| 1 | Taser |
-| 2 | Baseball Bat, Alarm Clock |
+| 1 | Baseball Bat |
+| 2 | Taser, Alarm Clock |
 | 3 | Hammer, Tranquilizer Gun |
 | 4 | Dynamite |
 
@@ -161,7 +161,7 @@ consumption resumes. Crosshair dot + prompt text work correctly in
 
 ---
 
-## Milestone B — Real Jail & Bail — ⬜ Not started
+## Milestone B — Real Jail & Bail — ✅ Done
 
 Replaces `PoliceAI.CatchPlayer`'s instant "strip loot and finalize the
 round" with a reversible **Jailed** state: lose your 5 slots
@@ -199,19 +199,79 @@ spirit as `PlayerSpawnPoint.cs`, gameplay scene only).
   every round, batch or not) is the clock — an end-of-batch jailing
   auto-releases once a full round has passed unrescued.
 
-**Editor**: place one `JailPoint` and one `JailExitPoint` marker in
-`SampleScene`'s police-station interior. Add `JailState` to the Player
-prefab (self-finds its dependencies, nothing to wire).
+Also added during playtesting, beyond the original plan: since being
+jailed no longer needs to be a hard freeze (see the movement note
+below), a jailed player can pop into a simple third-person spectate cam
+(`Assets/Scripts/Round/SpectatorController.cs`) — **T** toggles it,
+left-click cycles through non-jailed players to watch. `CrosshairUI`
+shows "Press T to spectate" (or the stop/switch hint once active)
+instead of the normal interact prompt while jailed.
+
+**Editor**: your actual layout is 3 jail cells, 2 player slots each — so
+6 `JailPoint` markers total (one per physical *slot*, not one per
+cell), not just one. `GameFlowManager.ClaimJailPoint` hands out a free
+slot per jailed player and tracks who's in which, so simultaneous
+jailings spread across the layout instead of stacking. One
+`JailExitPoint` marker (shared by everyone released) outside the
+station's back door. Add `JailState` to the Player prefab (self-finds
+its dependencies, nothing to wire). Add `SpectatorController` too —
+needs a second Camera + Audio Listener child (disabled by default) for
+the chase-cam, wired alongside the existing FPS camera/listener; see
+the component's own tooltips/fields.
+
+### Bugs found & fixed
+- **`Interactor`'s raycast couldn't reach a jailed player at all** — the
+  cell's own wall/bars collider sat between the raycast and whoever was
+  inside, so no prompt ever showed. Fixed the same way `Interactor`
+  already handles grabbing a ragdolled rival through its messy limb
+  colliders: a collider-free fallback (`FindJailedPlayerNearby`) that
+  just checks real distance/angle to every currently-jailed player.
+- **E did nothing even once the prompt showed up.** `Interactor.
+  CmdInteract` resolved the target with `GetComponent<IInteractable>()`
+  — but a Player's root GameObject can carry *two* `IInteractable`s now
+  (`PlayerTheftTarget` for robbing a ragdolled rival, `JailState` for a
+  bail), and plain `GetComponent<T>` arbitrarily returns whichever is
+  earliest in the component list regardless of which is actually valid.
+  It was silently running `PlayerTheftTarget.Interact` (a no-op, since
+  a merely-jailed player isn't also ragdoll-stunned) instead of
+  `JailState.Interact`. Fixed by checking every `IInteractable` on the
+  target and using whichever one's `CanInteract` is actually true right
+  now.
+- **Non-jailed players couldn't see into the cell, but the jailed
+  player could see out.** Not a script bug — backface culling on the
+  cell wall/bars material (normals facing outward render solid from
+  outside, cull to invisible from inside). Fixed by setting the
+  material's **Render Face** to `Both` instead of `Front`.
+- **`PlayerCamera` had no `AudioListener`.** `FirstPersonController.
+  OnStartClient` already expected one (disables it on every non-owned
+  copy) — it just silently no-op'd since none existed. Added one
+  directly to `PlayerCamera`. Also hardened that same disable logic to
+  use `GetComponentsInChildren` (plural) instead of singular, now that
+  `SpectatorController` adds a second Camera/AudioListener pair to the
+  same prefab — singular would have arbitrarily picked only one of the
+  two to disable on a remote copy, depending on hierarchy order.
+- **Jailed players were fully frozen, including movement** — the
+  original plan reused `FirstPersonController.IsFrozen` (a full input
+  freeze) for jail. Changed so jail no longer freezes anything —
+  physical cell geometry is what actually confines a jailed player now,
+  and they can walk/look around inside it. A new local-only
+  `SpectatingFrozen` flag (same shape as the existing `LookSuppressed`)
+  pauses movement/look specifically while the third-person spectate cam
+  above is active, since your real body shouldn't be wandering
+  off-screen while you're watching someone else.
 
 ### 🔴 Rest Point B
-Get caught mid-round — slots empty, teleported to the cell, frozen, but
-the round keeps running for everyone else. Another player presses E on
-you — their Cash goes up by `CurrentQuota / 6`, you're freed, both land
-at the jail exit, you can keep playing that round. Get caught and *not*
-rescued before the timer — finalized Caught, round ends normally. Force
-a batch to end under quota — jailed at the new batch's round 1, Cash
-untouched, a rescue there pays `CurrentQuota / 3`. Same but nobody
-rescues — self-bail releases you at the start of the round after that.
+Get caught mid-round — slots empty, teleported to a free cell slot,
+round keeps running for everyone else, and you can still walk around
+inside the cell. Another player presses E on you — their Cash goes up
+by `CurrentQuota / 6`, you're freed, both land at the jail exit, you can
+keep playing that round. Press T while jailed — chase-cam follows
+another player, click cycles targets, movement pauses until you press T
+again. Get caught and *not* rescued before the timer — finalized
+Caught, round ends normally. Force a batch to end under quota — jailed
+at the new batch's round 1, Cash untouched, a rescue there pays
+`CurrentQuota / 3`. Same but nobody rescues — self-bail releases you at
+the start of the round after that.
 
 ---
 
