@@ -47,7 +47,12 @@ namespace RobEveryone.AI
         [SerializeField] private float searchSweepAngle = 45f;
         [SerializeField] private float searchSweepFrequency = 2f;
 
+        [SerializeField] private float animatorSpeedSmoothTime = 0.1f;
+
         private NavMeshAgent agent;
+        private Vector3 lastPosition;
+        private float animatorSpeedSmoothed;
+        private float animatorSpeedSmoothVelocity;
         private int patrolIndex;
         private float timeSinceSeenPlayer;
         private float searchTimer;
@@ -67,6 +72,7 @@ namespace RobEveryone.AI
         private void Awake()
         {
             agent = GetComponent<NavMeshAgent>();
+            lastPosition = transform.position;
         }
 
         private void OnEnable()
@@ -90,15 +96,33 @@ namespace RobEveryone.AI
 
         private void Update()
         {
-            // Feed the real-time NavMeshAgent speed into the Animator every
-            // frame, on every client -- a NavMeshAgent's own movement is
-            // synced to clients via the same NetworkTransform pattern as
-            // everything else that moves, so agent.velocity reads
-            // correctly everywhere, not just on the server.
+            // Feed the Animator from actual observed movement (position
+            // delta over time), not agent.velocity -- confirmed bug:
+            // agent.velocity read correctly on the host (server and
+            // client are the same process there, so the NavMeshAgent
+            // really is simulating locally) but stayed permanently zero
+            // on every other client, since all of this script's actual
+            // pathing (SetDestination, the whole state machine below) is
+            // isServer-gated -- a remote client's own NavMeshAgent copy
+            // never receives a destination and never simulates anything,
+            // even though the object visibly moves (NetworkTransform
+            // interpolates the position independently of any local
+            // NavMeshAgent state). Measuring the position change directly
+            // is correct everywhere regardless of what's actually driving
+            // the Transform. Still SmoothDamp'd before reaching the
+            // Animator, though -- confirmed bug: the raw instantaneous
+            // value is noisy on a remote client specifically, since
+            // NetworkTransform interpolates position between network
+            // snapshots rather than moving it smoothly every single
+            // frame, so an unsmoothed per-frame delta jumps around and
+            // reads as jerky blending.
             if (animator != null)
             {
-                animator.SetFloat(animatorSpeedParam, agent.velocity.magnitude);
+                float rawSpeed = Vector3.Distance(transform.position, lastPosition) / Mathf.Max(Time.deltaTime, 0.0001f);
+                animatorSpeedSmoothed = Mathf.SmoothDamp(animatorSpeedSmoothed, rawSpeed, ref animatorSpeedSmoothVelocity, animatorSpeedSmoothTime);
+                animator.SetFloat(animatorSpeedParam, animatorSpeedSmoothed);
             }
+            lastPosition = transform.position;
 
             if (!isServer) return;
 

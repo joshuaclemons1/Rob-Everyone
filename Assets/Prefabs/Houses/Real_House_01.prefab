@@ -1,5 +1,36 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &56730627754360323
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4845250436320620179}
+  m_Layer: 0
+  m_Name: PatrolPoint2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4845250436320620179
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 56730627754360323}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 4.5945945, y: 0, z: 8.613445}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4670763935167653672}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &603915419484231575
 GameObject:
   m_ObjectHideFlags: 0
@@ -83,6 +114,12 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   lootTable: {fileID: 11400000, guid: 7af9713feb964c14697a6c9ccb6d6bb4, type: 2}
+  overlapResolveMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  maxOverlapResolveIterations: 4
+  groundSnapMaxDistance: 1
+  groundSnapMinGap: 0.02
 --- !u!1 &1253993577027643543
 GameObject:
   m_ObjectHideFlags: 0
@@ -151,6 +188,37 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.World.DoorTeleporter
   destination: {fileID: 8992427717656911423}
   cooldown: 0.5
+--- !u!1 &1427146543501896860
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3028168445723186375}
+  m_Layer: 0
+  m_Name: PatrolPoint1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3028168445723186375
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1427146543501896860}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1.4864864, y: 0, z: 4.2016807}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4670763935167653672}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1597333668119286029
 GameObject:
   m_ObjectHideFlags: 0
@@ -199,6 +267,43 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   lootTable: {fileID: 11400000, guid: 460355eb810d34b3a92ea1a425ab5a3b, type: 2}
+  overlapResolveMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  maxOverlapResolveIterations: 4
+  groundSnapMaxDistance: 1
+  groundSnapMinGap: 0.02
+--- !u!1 &2135272001521528037
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4828260515323522975}
+  m_Layer: 0
+  m_Name: PatrolPoint3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4828260515323522975
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2135272001521528037}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 8.91892, y: 0, z: 3.7815123}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4670763935167653672}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2552128098070044930
 GameObject:
   m_ObjectHideFlags: 0
@@ -247,6 +352,12 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   lootTable: {fileID: 11400000, guid: 7af9713feb964c14697a6c9ccb6d6bb4, type: 2}
+  overlapResolveMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  maxOverlapResolveIterations: 4
+  groundSnapMaxDistance: 1
+  groundSnapMinGap: 0.02
 --- !u!1 &2842771105277858859
 GameObject:
   m_ObjectHideFlags: 0
@@ -282,6 +393,37 @@ Transform:
   - {fileID: 2165172007723957842}
   - {fileID: 6590323440362154343}
   m_Father: {fileID: 7260909964819832458}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &3568028564734479683
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1922212094000654962}
+  m_Layer: 0
+  m_Name: PatrolPoint4
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1922212094000654962
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3568028564734479683}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 7.297298, y: 0, z: 7.983193}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4670763935167653672}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &3708439062499278587
 GameObject:
@@ -331,6 +473,12 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   lootTable: {fileID: 11400000, guid: 7af9713feb964c14697a6c9ccb6d6bb4, type: 2}
+  overlapResolveMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  maxOverlapResolveIterations: 4
+  groundSnapMaxDistance: 1
+  groundSnapMinGap: 0.02
 --- !u!1 &3818649446782177653
 GameObject:
   m_ObjectHideFlags: 0
@@ -361,6 +509,41 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 2799207902169815172}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &3940356689058052184
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4670763935167653672}
+  m_Layer: 0
+  m_Name: PatrolPoints
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4670763935167653672
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3940356689058052184}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 3028168445723186375}
+  - {fileID: 4845250436320620179}
+  - {fileID: 4828260515323522975}
+  - {fileID: 1922212094000654962}
+  m_Father: {fileID: 5616105037470413378}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4581867366594622645
 GameObject:
@@ -410,6 +593,12 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   lootTable: {fileID: 11400000, guid: 7af9713feb964c14697a6c9ccb6d6bb4, type: 2}
+  overlapResolveMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  maxOverlapResolveIterations: 4
+  groundSnapMaxDistance: 1
+  groundSnapMinGap: 0.02
 --- !u!1 &4902948897607776180
 GameObject:
   m_ObjectHideFlags: 0
@@ -458,6 +647,12 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   lootTable: {fileID: 11400000, guid: 460355eb810d34b3a92ea1a425ab5a3b, type: 2}
+  overlapResolveMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  maxOverlapResolveIterations: 4
+  groundSnapMaxDistance: 1
+  groundSnapMinGap: 0.02
 --- !u!1 &5075302085199363042
 GameObject:
   m_ObjectHideFlags: 0
@@ -540,6 +735,12 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   lootTable: {fileID: 11400000, guid: 460355eb810d34b3a92ea1a425ab5a3b, type: 2}
+  overlapResolveMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  maxOverlapResolveIterations: 4
+  groundSnapMaxDistance: 1
+  groundSnapMinGap: 0.02
 --- !u!1 &5835756713688283349
 GameObject:
   m_ObjectHideFlags: 0
@@ -860,6 +1061,7 @@ Transform:
   - {fileID: 7631820452634464752}
   - {fileID: 6954839329292685444}
   - {fileID: 637886689007063774}
+  - {fileID: 4670763935167653672}
   m_Father: {fileID: 1472444548885787387}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &580463279312770537
@@ -2771,6 +2973,26 @@ PrefabInstance:
       propertyPath: m_Name
       value: Homeowner
       objectReference: {fileID: 0}
+    - target: {fileID: 5696931748142061037, guid: a956916dcfea11845b5d313359e5830c, type: 3}
+      propertyPath: patrolPoints.Array.size
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 5696931748142061037, guid: a956916dcfea11845b5d313359e5830c, type: 3}
+      propertyPath: 'patrolPoints.Array.data[0]'
+      value: 
+      objectReference: {fileID: 3028168445723186375}
+    - target: {fileID: 5696931748142061037, guid: a956916dcfea11845b5d313359e5830c, type: 3}
+      propertyPath: 'patrolPoints.Array.data[1]'
+      value: 
+      objectReference: {fileID: 4845250436320620179}
+    - target: {fileID: 5696931748142061037, guid: a956916dcfea11845b5d313359e5830c, type: 3}
+      propertyPath: 'patrolPoints.Array.data[2]'
+      value: 
+      objectReference: {fileID: 4828260515323522975}
+    - target: {fileID: 5696931748142061037, guid: a956916dcfea11845b5d313359e5830c, type: 3}
+      propertyPath: 'patrolPoints.Array.data[3]'
+      value: 
+      objectReference: {fileID: 1922212094000654962}
     - target: {fileID: 7572839879092666578, guid: a956916dcfea11845b5d313359e5830c, type: 3}
       propertyPath: m_LocalPosition.x
       value: 4.24

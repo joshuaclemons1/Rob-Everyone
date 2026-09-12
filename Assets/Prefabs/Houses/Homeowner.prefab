@@ -44,6 +44,8 @@ GameObject:
   - component: {fileID: 8533736428723396510}
   - component: {fileID: 705144624701498011}
   - component: {fileID: 5696931748142061037}
+  - component: {fileID: 4307175258002302095}
+  - component: {fileID: 8726528602864186590}
   m_Layer: 0
   m_Name: Homeowner
   m_TagString: Untagged
@@ -59,15 +61,15 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 679288895126953325}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: -0.38268343, z: 0, w: 0.92387956}
-  m_LocalPosition: {x: 20, y: 1, z: 0}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 4573309271277751027}
   - {fileID: 756414891781758154}
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: -45, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &3834968818356071341
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -169,13 +171,76 @@ MonoBehaviour:
   obstructionMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  animator: {fileID: 6674193371693205168}
+  animatorSpeedParam: Speed
   suspicionBuildRate: 1
   suspicionDecayRate: 0.5
   suspicionThreshold: 2
-  bodyRenderer: {fileID: 8533736428723396510}
-  idleColor: {r: 1, g: 1, b: 1, a: 1}
+  bodyRenderers: []
+  idleColor: {r: 0, g: 0, b: 0, a: 1}
   suspiciousColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   alertedColor: {r: 1, g: 0, b: 0, a: 1}
+  patrolPoints: []
+  patrolSpeed: 2
+  alertedSearchDuration: 4
+  suspiciousSearchDuration: 3
+  suspiciousSpinSpeed: 180
+--- !u!195 &4307175258002302095
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 679288895126953325}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.5
+  m_Speed: 3.5
+  m_Acceleration: 8
+  avoidancePriority: 50
+  m_AngularSpeed: 120
+  m_StoppingDistance: 0
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 2
+  m_BaseOffset: 1
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 4
+--- !u!114 &8726528602864186590
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 679288895126953325}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8ff3ba0becae47b8b9381191598957c8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror.Components::Mirror.NetworkTransformReliable
+  syncDirection: 1
+  syncMode: 0
+  syncInterval: 0
+  target: {fileID: 7572839879092666578}
+  syncPosition: 1
+  syncRotation: 1
+  syncScale: 0
+  onlySyncOnChange: 1
+  compressRotation: 1
+  interpolatePosition: 1
+  interpolateRotation: 1
+  interpolateScale: 1
+  coordinateSpace: 0
+  timelineOffset: 1
+  showGizmos: 0
+  showOverlay: 0
+  overlayColor: {r: 0, g: 0, b: 0, a: 0.5}
+  onlySyncOnChangeCorrectionMultiplier: 2
+  useFixedUpdate: 0
+  rotationSensitivity: 0.01
+  positionPrecision: 0.01
+  scalePrecision: 0.01
 --- !u!1001 &1005967563832359713
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -240,5 +305,10 @@ PrefabInstance:
 --- !u!4 &756414891781758154 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 8ee889166b449410585929e6f1375a24, type: 3}
+  m_PrefabInstance: {fileID: 1005967563832359713}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &6674193371693205168 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 8ee889166b449410585929e6f1375a24, type: 3}
   m_PrefabInstance: {fileID: 1005967563832359713}
   m_PrefabAsset: {fileID: 0}

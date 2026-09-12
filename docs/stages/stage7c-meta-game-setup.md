@@ -24,7 +24,7 @@ there.
 
 - [x] **A** — Buy-side shop (pawn-shop shelves) + Lobby practice-mode gate + sabotage tier/pricing — **done, playtested**
 - [x] **B** — Real Jail & Bail — **done, playtested**
-- [ ] **C** — Homeowner patrol
+- [x] **C** — Homeowner patrol — **done, playtested**
 - [ ] **D** — Police dispatch pooling
 - [ ] **E** — Night mode
 - [ ] **F** — Rival-status HUD ping
@@ -259,6 +259,26 @@ the component's own tooltips/fields.
   pauses movement/look specifically while the third-person spectate cam
   above is active, since your real body shouldn't be wandering
   off-screen while you're watching someone else.
+- **The end-of-round loading screen flashed for a fraction of a second
+  with its spinner frozen on frame 0, and never showed at all for the
+  Lobby -> gameplay transition.** `LoadingScreenUI` lived as a normal
+  object inside `SampleScene` itself, which gets destroyed and recreated
+  every round-trip -- it only ever survived the handful of frames
+  between a `Show()` call and that scene's own teardown. Fixed by moving
+  it to live as a child of the persistent `NetworkManager` object in
+  `MainMenu.unity` (`Don't Destroy On Load`) instead. Also added a
+  "Joining game..."/host's own "Loading..." cover for the initial
+  connect (`RobEveryoneNetworkManager.OnClientConnect`/`OnStartHost`) --
+  the host's variant needed its own dedicated hide trigger
+  (`GameFlowManager.OnStartServer`) since a hosting client never gets a
+  real `OnClientSceneChanged` callback for its own local connection the
+  way a genuine remote client does.
+- **The Lobby's `ReadySpot` silently stopped working.** Its
+  `NetworkIdentity` had gone missing (likely lost while re-parenting it
+  during level dressing) -- without one, Mirror never recognizes it as a
+  real networked object at all, so `OnStartServer` (and therefore
+  `GameFlowManager.RegisterReadySpot`) never ran. Re-added the
+  `NetworkIdentity`.
 
 ### 🔴 Rest Point B
 Get caught mid-round — slots empty, teleported to a free cell slot,
@@ -275,27 +295,86 @@ the start of the round after that.
 
 ---
 
-## Milestone C — Homeowner patrol — ⬜ Not started
+## Milestone C — Homeowner patrol — ✅ Done
 
-Gives `HomeownerAI` its own `NavMeshAgent` patrol loop between rooms,
-reusing `PoliceAI`'s exact patrol-point-cycling pattern, per
-`gameplay-design.md`'s explicit instruction. Only active while not yet
-Alerted (the existing state check already halts it for free once
-Alerted).
+**What shipped**: `HomeownerAI` now has its own `NavMeshAgent` patrol
+loop between hand-placed points, reusing `PoliceAI`'s exact
+patrol-point-cycling pattern. Both non-Idle states go well beyond the
+original plan's scope, worked out during playtesting once a real
+character model made the old "just stop and do nothing" states read as
+obviously broken:
 
-**Editor**: place patrol points per house prefab (`Real_House_01`/
-`Real_House_02`, any future variant). **Required, not optional**: add a
-`NetworkTransformReliable` to each Homeowner now that it actually
-moves — `completed.md`'s Stage 4 bug list already records this exact
-failure mode once for `PoliceAI` (frozen on every non-host client
-without one). Art follow-up, not blocking: the Homeowner animator only
-has an Idle state today, so walking will visually slide without a Walk
-clip.
+- **Suspicious (yellow)**: stops in place and stares directly at
+  whoever triggered it while still visible; if it loses sight, spins in
+  place looking around for `suspiciousSearchDuration` (3s, tunable)
+  before giving up and resuming patrol. A frozen first-frame pose
+  (`Shoot_OneHanded`, driven by a new `Suspicious` Animator bool) makes
+  it visibly look like it's pointing at whoever it's watching.
+- **Alerted (red)**: flees to its own spawn point (captured
+  automatically at startup, no marker needed) instead of standing and
+  fighting. Waits there until the area's genuinely clear --
+  `AreaClear()` checks every `PoliceAI` in the scene is back to plain
+  `Patrol`, combined with no longer seeing the player, so it can't calm
+  down mid-chase just because Police hasn't reacted yet on the very
+  first frame. Only one hand-placed officer exists before Milestone D's
+  dispatch pooling, so today this really just means "that one officer
+  calmed down," but the check already generalizes correctly once more
+  officers exist.
+
+Both states also drive a full walk/point animation set now (see Bugs
+below), not just color.
+
+**Editor**: patrol points placed per house prefab. Added a
+`NetworkTransformReliable` to each Homeowner (same fix `PoliceAI` needed
+once for the identical reason -- frozen on every non-host client
+without one).
+
+### Bugs found & fixed
+- **Alert status coloring stopped working after swapping the capsule
+  placeholder for a real `BaseCharacter` model.** `HomeownerAI`'s
+  `bodyRenderer` field still pointed at the old capsule's now-disabled
+  `MeshRenderer` -- color changes landed on a renderer nobody could ever
+  see. Fixed by auto-discovering every renderer under the Homeowner in
+  `Awake` (`GetComponentsInChildren<Renderer>`) and tinting every
+  material slot on each, instead of one hand-wired reference -- also
+  makes this survive any future model swap for free.
+- **The model sat half-buried in the ground.** The nested
+  `BaseCharacter` model sits at local Y `-1` relative to the Homeowner
+  root (its rig's own origin is at hip height, not its feet), but
+  `NavMeshAgent.baseOffset` was still `0`. Set to `1` to compensate.
+- **Going Alerted didn't actually stop movement.** Clearing the
+  NavMeshAgent's path (`ResetPath()`) doesn't zero out whatever velocity
+  it already had -- it kept coasting for a beat after a mid-patrol
+  alert. Fixed by explicitly zeroing `agent.velocity` too.
+- **Police's Animator only worked on the host, never on another
+  client.** `PoliceAI` fed `agent.velocity.magnitude` into the Animator
+  under the assumption it "reads correctly everywhere" -- it doesn't. A
+  remote client's own `NavMeshAgent` never receives a destination (all
+  the actual pathing is `[Server]`-gated), so it never simulates
+  anything and its velocity sits at zero forever, even though the
+  object visibly moves via `NetworkTransform`. The host doesn't hit this
+  since host and server are the same process there. Fixed by measuring
+  actual position change frame-to-frame instead
+  (`Vector3.Distance(transform.position, lastPosition) / Time.
+  deltaTime`), which is correct regardless of what's driving the
+  Transform -- then `Mathf.SmoothDamp`'d before reaching the Animator,
+  since the raw instantaneous value is noisy on an interpolated remote
+  client and read as jerky blending otherwise. Applied to both
+  `PoliceAI` and `HomeownerAI`'s own new Speed feed.
+- **`Interactor.CmdInteract` resolved the wrong `IInteractable`.**
+  Same root cause as one of Milestone B's own bugs (`GetComponent<T>`
+  arbitrarily picking whichever matching component is earliest, not
+  whichever is actually valid) -- fixed there already applies here too,
+  no separate change needed.
 
 ### 🔴 Rest Point C
 Two-Editor test — a Homeowner visibly patrols between its points on
-*both* clients, not just the host's. Suspicion/Alerted behavior
-unchanged once seen; patrol stops the instant it goes Alerted.
+*both* clients, with a smooth walk animation on each, not just the
+host's. Getting seen freezes it staring/pointing at you (yellow); break
+line of sight and it spins looking around for a few seconds before
+resuming patrol. Fully alerting it (red) sends it fleeing to its own
+spawn point, where it waits until Police calms back down before
+resuming patrol.
 
 ---
 
