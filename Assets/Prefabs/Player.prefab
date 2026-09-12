@@ -340,6 +340,7 @@ GameObject:
   - component: {fileID: 2354612280010268942}
   - component: {fileID: 2769242573910325723}
   - component: {fileID: 6985670110692925475}
+  - component: {fileID: 5901966218566560062}
   m_Layer: 8
   m_Name: Player
   m_TagString: Untagged
@@ -409,7 +410,6 @@ MonoBehaviour:
   walkSpeed: 5
   sprintSpeed: 8
   crouchSpeed: 2.5
-  mouseSensitivity: 2
   gravity: -9.81
   jumpHeight: 1.2
   crouchHeightRatio: 0.55
@@ -652,7 +652,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Inventory.PlayerDropController
   dropForward: 1
   dropHeight: -0.4
-  dropKey: 31
 --- !u!114 &4315552027403160315
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -721,8 +720,6 @@ MonoBehaviour:
   minThrowForce: 8
   maxThrowForce: 45
   throwChargeTime: 1.2
-  grabKey: 19
-  setDownKey: 21
   grabAssistMaxAngle: 30
 --- !u!114 &7664136054049044517
 MonoBehaviour:
@@ -929,3 +926,39 @@ MonoBehaviour:
   headBoneName: Head
   maxScaleBoost: 0.15
   smoothTime: 0.08
+--- !u!114 &5901966218566560062
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4564336539568727325}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 79ea3f2b7d05f56418faf87dfdfa37f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Player.PlayerFootstepAudio
+  walkClips:
+  - {fileID: 8300000, guid: 7dd91cee7e1964541b2098e068baea58, type: 3}
+  - {fileID: 8300000, guid: 3d7e936ebae9107448af3e5245b4a1d2, type: 3}
+  - {fileID: 8300000, guid: 892d5f90d4b2f58469cc83db6d0cf0d9, type: 3}
+  - {fileID: 8300000, guid: 3346b55914947954b9bed4feb08f473b, type: 3}
+  - {fileID: 8300000, guid: 0db3ef4d827f77549b634f430649cd91, type: 3}
+  sprintClips:
+  - {fileID: 8300000, guid: 7dd91cee7e1964541b2098e068baea58, type: 3}
+  - {fileID: 8300000, guid: 3d7e936ebae9107448af3e5245b4a1d2, type: 3}
+  - {fileID: 8300000, guid: 892d5f90d4b2f58469cc83db6d0cf0d9, type: 3}
+  - {fileID: 8300000, guid: 3346b55914947954b9bed4feb08f473b, type: 3}
+  - {fileID: 8300000, guid: 0db3ef4d827f77549b634f430649cd91, type: 3}
+  crouchClips:
+  - {fileID: 8300000, guid: 7dd91cee7e1964541b2098e068baea58, type: 3}
+  - {fileID: 8300000, guid: 3d7e936ebae9107448af3e5245b4a1d2, type: 3}
+  - {fileID: 8300000, guid: 892d5f90d4b2f58469cc83db6d0cf0d9, type: 3}
+  - {fileID: 8300000, guid: 3346b55914947954b9bed4feb08f473b, type: 3}
+  - {fileID: 8300000, guid: 0db3ef4d827f77549b634f430649cd91, type: 3}
+  walkStepInterval: 0.5
+  sprintStepInterval: 0.42
+  crouchStepInterval: 0.7
+  minSpeedToStep: 0.5
+  volume: 0.1
+  maxAudibleDistance: 20

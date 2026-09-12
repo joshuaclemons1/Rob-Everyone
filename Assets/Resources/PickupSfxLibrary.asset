@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 86e6715556488c84da79cab4d5016c01, type: 3}
+  m_Name: PickupSfxLibrary
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Items.PickupSfxLibrary
+  clips:
+  - {fileID: 8300000, guid: 26dd1a351636e204fa7be8e00ed94722, type: 3}
+  - {fileID: 8300000, guid: 70e7c1c985b2c954c84f12d8cb2fb6c3, type: 3}
+  - {fileID: 8300000, guid: 19a7d7056d1f8444cb7c4f6015e33596, type: 3}
+  - {fileID: 8300000, guid: baca1e002a0a4b1458cbed5498e6937a, type: 3}

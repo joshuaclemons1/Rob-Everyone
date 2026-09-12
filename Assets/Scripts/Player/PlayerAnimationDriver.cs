@@ -94,6 +94,16 @@ namespace RobEveryone.Player
         [SyncVar(hook = nameof(OnSyncedSpeedChanged))] private float syncedSpeed;
         [SyncVar(hook = nameof(OnSyncedGroundedChanged))] private bool syncedGrounded;
 
+        // The one correct source for "how fast/grounded is this player
+        // right now" regardless of which copy you're asking -- owner
+        // reads its own live FirstPersonController (never stale), a
+        // remote copy reads the synced values instead (its own
+        // FirstPersonController.Update never runs, so those fields
+        // would just be frozen at their spawn defaults). PlayerFootstepAudio
+        // is built on these rather than duplicating this branch itself.
+        public float EffectiveSpeed => isOwned ? firstPersonController.HorizontalSpeed : syncedSpeed;
+        public bool EffectiveGrounded => isOwned ? firstPersonController.IsGrounded : syncedGrounded;
+
         private void Awake()
         {
             firstPersonController = GetComponent<FirstPersonController>();

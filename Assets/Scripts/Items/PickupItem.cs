@@ -55,6 +55,8 @@ namespace RobEveryone.Items
         [SerializeField] private float dropBobHeight = 0.12f; // metres
         [SerializeField] private float dropBobSpeed = 2f;
 
+        [SerializeField, Range(0f, 1f)] private float pickupVolume = 0.7f;
+
         private Vector3 droppedBasePos;
         private bool capturedDroppedBase;
 
@@ -120,6 +122,16 @@ namespace RobEveryone.Items
 
         private void OnTakenChanged(bool _, bool newValue)
         {
+            // Played via PlayClipAtPoint rather than this object's own
+            // AudioSource, since SetActive(false) right below would stop
+            // a component-based sound the instant it started.
+            AudioClip[] pool = PickupSfxLibrary.Instance != null ? PickupSfxLibrary.Instance.Clips : null;
+            if (newValue && pool != null && pool.Length > 0)
+            {
+                AudioClip clip = pool[Random.Range(0, pool.Length)];
+                AudioSource.PlayClipAtPoint(clip, transform.position, pickupVolume);
+            }
+
             gameObject.SetActive(!newValue);
         }
 

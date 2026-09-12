@@ -27,6 +27,15 @@ namespace RobEveryone.Player
         [SerializeField] private float walkSpeed = 5f;
         [SerializeField] private float sprintSpeed = 8f;
         [SerializeField] private float crouchSpeed = 2.5f;
+
+        // Read-only exposure of the three tuned speeds above -- lets
+        // PlayerFootstepAudio pick a walk/sprint/crouch clip pool by
+        // comparing the current (possibly remote-synced) speed against
+        // these same thresholds, instead of hardcoding a second copy of
+        // these numbers that could drift out of sync when retuned here.
+        public float WalkSpeed => walkSpeed;
+        public float SprintSpeed => sprintSpeed;
+        public float CrouchSpeed => crouchSpeed;
         [SerializeField] private float gravity = -9.81f;
         [SerializeField] private float jumpHeight = 1.2f;
         [SerializeField, Range(0.3f, 1f)] private float crouchHeightRatio = 0.55f;
