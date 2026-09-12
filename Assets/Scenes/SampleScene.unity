@@ -18517,8 +18517,9 @@ MonoBehaviour:
   normalHousePrefabs:
   - {fileID: 6263268317038855916, guid: efbcbd008126a954eb6b75e39833484f, type: 3}
   - {fileID: 7908491633482741636, guid: bb43142bd9d97ce439ef2725673f99cb, type: 3}
+  - {fileID: 8320809791798525431, guid: 83c654a55feddfd49b3a43222380e165, type: 3}
   goodHousePrefabs:
-  - {fileID: 7908491633482741636, guid: bb43142bd9d97ce439ef2725673f99cb, type: 3}
+  - {fileID: 8320809791798525431, guid: 83c654a55feddfd49b3a43222380e165, type: 3}
   normalSlots:
   - {fileID: 722578812}
   - {fileID: 500205199}
