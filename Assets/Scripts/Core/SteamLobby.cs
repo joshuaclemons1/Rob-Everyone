@@ -15,6 +15,11 @@ namespace RobEveryone.Core
     // RobEveryoneNetworkManager. #if !DISABLESTEAMWORKS matches the
     // symbol Steamworks.NET itself defines/checks, so this compiles out
     // cleanly on a build where Steamworks.NET isn't present.
+    //
+    // Both the Host and Join buttons in MainMenu.unity are wired directly
+    // to this component's own methods (HostLobby / OpenOverlay) rather
+    // than routing through MenuActions -- there's no manual IP-typing
+    // flow left at all, so MenuActions has nothing left to add here.
     public class SteamLobby : MonoBehaviour
     {
         public static SteamLobby Instance { get; private set; }
@@ -44,9 +49,9 @@ namespace RobEveryone.Core
             lobbyEntered = Callback<LobbyEnter_t>.Create(OnLobbyEntered);
         }
 
-        // Call this from MenuActions.HostGame instead of StartHost
-        // directly -- the actual StartHost() call happens once
-        // OnLobbyCreated confirms Steam's side succeeded, not before.
+        // Wired directly to the Host button's OnClick -- the actual
+        // Mirror StartHost() call happens once OnLobbyCreated confirms
+        // Steam's side succeeded, not before.
         public void HostLobby()
         {
             if (!SteamManager.Initialized)
@@ -97,6 +102,18 @@ namespace RobEveryone.Core
 
             RobEveryoneNetworkManager.singleton.networkAddress = hostAddress;
             RobEveryoneNetworkManager.singleton.StartClient();
+        }
+
+        // Wire the "Join" button's OnClick to this -- there's no manual
+        // join flow anymore (typing an address/lobby ID). A friend
+        // invites/gets invited and accepts entirely through Steam's own
+        // overlay, and OnGameLobbyJoinRequested/OnLobbyEntered above
+        // handle the rest automatically the instant that happens; this
+        // just saves the player from having to remember the Shift+Tab
+        // shortcut themselves by jumping straight to the Friends tab.
+        public void OpenOverlay()
+        {
+            if (SteamManager.Initialized) SteamFriends.ActivateGameOverlay("Friends");
         }
     }
 }

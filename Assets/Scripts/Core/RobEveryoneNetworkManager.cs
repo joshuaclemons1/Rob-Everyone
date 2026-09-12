@@ -3,6 +3,9 @@ using RobEveryone.Inventory;
 using RobEveryone.Player;
 using RobEveryone.UI;
 using UnityEngine;
+#if !DISABLESTEAMWORKS
+using Steamworks;
+#endif
 
 namespace RobEveryone.Core
 {
@@ -49,18 +52,53 @@ namespace RobEveryone.Core
             {
                 DontDestroyOnLoad(conn.identity.gameObject);
 
-                // Placeholder label until real Steam persona names are
-                // wired (Stage 5 follow-up). By this point the new
-                // player's PlayerInventory.OnStartServer has already added
-                // it to AllPlayers, so Count is the join ordinal.
                 var inv = conn.identity.GetComponent<PlayerInventory>();
-                if (inv != null) inv.SetDisplayName($"Player {PlayerInventory.AllPlayers.Count}");
+                if (inv != null) inv.SetDisplayName(ResolveDisplayName(conn));
             }
 
             if (GameFlowManager.Instance != null)
             {
                 GameFlowManager.Instance.HandlePlayerAdded(conn.identity);
             }
+        }
+
+        // FizzySteamworks' own server implementation (NextServer.
+        // ServerGetClientAddress) returns the remote peer's SteamID64 as a
+        // string -- Mirror's own NetworkConnectionToClient.address is set
+        // straight from that at connect time (NetworkServer.
+        // OnTransportConnectedWithAddress), so this needs no networking of
+        // its own to resolve a real Steam name server-side.
+        // GetFriendPersonaName works for anyone sharing a Steam lobby with
+        // you, not only an actual Friends-list entry (Valve's own doc for
+        // that call) -- covers every player here, since SteamLobby only
+        // ever creates FriendsOnly lobbies. Falls back to a join-ordinal
+        // placeholder off Steam entirely (the KCP transport path used for
+        // local testing, or if anything above comes back empty).
+        private static string ResolveDisplayName(NetworkConnectionToClient conn)
+        {
+#if !DISABLESTEAMWORKS
+            if (SteamManager.Initialized)
+            {
+                // The host's own player connects through Mirror's special
+                // LocalConnectionToClient, whose address is always the
+                // literal string "localhost" (see its own constructor) --
+                // never a SteamID to parse, since the host never actually
+                // dials itself through the transport. GetPersonaName (no
+                // ID needed) is the local user's own name instead.
+                if (conn.connectionId == NetworkConnection.LocalConnectionId)
+                    return SteamFriends.GetPersonaName();
+
+                if (ulong.TryParse(conn.address, out ulong steamId64))
+                {
+                    string personaName = SteamFriends.GetFriendPersonaName(new CSteamID(steamId64));
+                    if (!string.IsNullOrEmpty(personaName) && personaName != "[unknown]") return personaName;
+                }
+            }
+#endif
+            // By this point the new player's PlayerInventory.OnStartServer
+            // has already added it to AllPlayers, so Count is the join
+            // ordinal.
+            return $"Player {PlayerInventory.AllPlayers.Count}";
         }
 
         public override void OnServerDisconnect(NetworkConnectionToClient conn)
