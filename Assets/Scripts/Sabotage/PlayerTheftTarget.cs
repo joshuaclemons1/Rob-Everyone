@@ -13,7 +13,12 @@ namespace RobEveryone.Sabotage
     //    (PlayerImpactRelay.IsStealable), they're a valid E target.
     //    Pressing E grants the *steal window* to that one thief and opens
     //    a steal screen on the thief's client -- it does NOT transfer
-    //    anything on its own.
+    //    anything on its own. Being seated at the exit car (ExitCarState)
+    //    deliberately does NOT plug into this on its own -- a seated
+    //    player is just no longer *immune* to being stunned there (see
+    //    FirstPersonController.ExitCarFrozen's own comment), the same as
+    //    anywhere else; a rival still has to actually knock them out
+    //    first, same as any other player.
     //
     //  - THIEF: the steal screen shows the victim's hotbar above the
     //    thief's own; dragging one item down fires CmdStealItem here,
@@ -30,6 +35,8 @@ namespace RobEveryone.Sabotage
         private PlayerImpactRelay relay;
         private PlayerInventory inventory;
         private Carryable carryable;
+
+        private bool IsStealable => relay != null && relay.IsStealable;
 
         // Server-only. The thief currently granted this player's steal
         // window (they pressed E, their screen is open). Null = the
@@ -52,8 +59,7 @@ namespace RobEveryone.Sabotage
         // since activeThief isn't synced. A carried player is
         // theft-protected -- carrying is a grief/relocate toy, not a way
         // to strip-mine someone or pass a body around stealing from it.
-        public bool CanInteract => relay != null && relay.IsStealable
-                                && (carryable == null || !carryable.IsCarried);
+        public bool CanInteract => IsStealable && (carryable == null || !carryable.IsCarried);
 
         private void Awake()
         {
@@ -68,7 +74,7 @@ namespace RobEveryone.Sabotage
             // warns every frame on a client).
             if (!isServer) return;
             // Window lapsed with nobody having stolen -- release it.
-            if (activeThief != null && (relay == null || !relay.IsStealable)) activeThief = null;
+            if (activeThief != null && !IsStealable) activeThief = null;
         }
 
         // VICTIM side. Server-only -- see Interactor.CmdInteract, the only
@@ -76,7 +82,7 @@ namespace RobEveryone.Sabotage
         // their steal screen.
         public void Interact(GameObject interactorObject)
         {
-            if (!isServer || relay == null || !relay.IsStealable) return;
+            if (!isServer || !IsStealable) return;
             if (carryable != null && carryable.IsCarried) return; // theft-protected while carried
             if (activeThief != null) return; // someone is already robbing this stun
 
@@ -120,8 +126,8 @@ namespace RobEveryone.Sabotage
             if (victimIdentity == null) return;
             PlayerTheftTarget victim = victimIdentity.GetComponent<PlayerTheftTarget>();
             if (victim == null || victim == this) return;
-            if (victim.activeThief != netIdentity) return;                 // not your window
-            if (victim.relay == null || !victim.relay.IsStealable) return; // window lapsed
+            if (victim.activeThief != netIdentity) return; // not your window
+            if (!victim.IsStealable) return;                // window lapsed
             if (victim.carryable != null && victim.carryable.IsCarried) return; // theft-protected while carried
 
             if (victimHead < 0 || victimHead >= PlayerInventory.SlotCount) return;

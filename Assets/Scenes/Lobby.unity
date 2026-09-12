@@ -393,6 +393,56 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1548943621}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &62755909
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 62755911}
+  - component: {fileID: 62755910}
+  m_Layer: 0
+  m_Name: NightModeVisuals
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &62755910
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 62755909}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5bab8e67b67cf94285ada1dac394ded, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.World.NightModeVisuals
+  morningSkybox: {fileID: 2100000, guid: b4bdd61e27a8664479c13a4e36836aa6, type: 2}
+  daySkybox: {fileID: 2100000, guid: 62ff947110addb24c81d47192ae7d66a, type: 2}
+  nightSkybox: {fileID: 2100000, guid: 8fd3bdac5d7db2e4588f76a61cba3aa1, type: 2}
+  sun: {fileID: 203844588}
+  dayIntensity: 1
+  nightIntensity: 0.15
+--- !u!4 &62755911
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 62755909}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &72399306
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1342,6 +1392,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 7841155556163827564, guid: b191b19e58826ff46b4fcb6f03ad1182, type: 3}
       insertIndex: -1
       addedObject: {fileID: 202313996}
+    - targetCorrespondingSourceObject: {fileID: 7841155556163827564, guid: b191b19e58826ff46b4fcb6f03ad1182, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 202313997}
   m_SourcePrefab: {fileID: 100100000, guid: b191b19e58826ff46b4fcb6f03ad1182, type: 3}
 --- !u!4 &202313994 stripped
 Transform:
@@ -1367,6 +1420,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Shop.ShopShelfItem
   item: {fileID: 11400000, guid: 07a40dba0d0d2794b80cdd9fe7f4fba6, type: 2}
   unlockBatch: 2
+--- !u!114 &202313997
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 202313995}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 440621371
+  _assetId: 868158324
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
 --- !u!1 &203844586
 GameObject:
   m_ObjectHideFlags: 0
@@ -1724,6 +1794,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 7841155556163827564, guid: b191b19e58826ff46b4fcb6f03ad1182, type: 3}
       insertIndex: -1
       addedObject: {fileID: 310904964}
+    - targetCorrespondingSourceObject: {fileID: 7841155556163827564, guid: b191b19e58826ff46b4fcb6f03ad1182, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 310904965}
   m_SourcePrefab: {fileID: 100100000, guid: b191b19e58826ff46b4fcb6f03ad1182, type: 3}
 --- !u!4 &310904962 stripped
 Transform:
@@ -1749,6 +1822,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Shop.ShopShelfItem
   item: {fileID: 11400000, guid: 07a40dba0d0d2794b80cdd9fe7f4fba6, type: 2}
   unlockBatch: 2
+--- !u!114 &310904965
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 310904963}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 1360777240
+  _assetId: 868158324
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
 --- !u!1001 &335389129
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2169,6 +2259,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 7841155556163827564, guid: b191b19e58826ff46b4fcb6f03ad1182, type: 3}
       insertIndex: -1
       addedObject: {fileID: 371829768}
+    - targetCorrespondingSourceObject: {fileID: 7841155556163827564, guid: b191b19e58826ff46b4fcb6f03ad1182, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 371829769}
   m_SourcePrefab: {fileID: 100100000, guid: b191b19e58826ff46b4fcb6f03ad1182, type: 3}
 --- !u!4 &371829766 stripped
 Transform:
@@ -2194,6 +2287,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Shop.ShopShelfItem
   item: {fileID: 11400000, guid: 07a40dba0d0d2794b80cdd9fe7f4fba6, type: 2}
   unlockBatch: 2
+--- !u!114 &371829769
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 371829767}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 1809980185
+  _assetId: 868158324
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
 --- !u!1 &376371224
 GameObject:
   m_ObjectHideFlags: 0
@@ -11099,3 +11209,4 @@ SceneRoots:
   - {fileID: 483608088}
   - {fileID: 1278369950}
   - {fileID: 1319490896}
+  - {fileID: 62755911}

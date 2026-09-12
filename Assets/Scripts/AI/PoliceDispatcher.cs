@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Mirror;
+using RobEveryone.Core;
 using RobEveryone.Inventory;
 using UnityEngine;
 
@@ -25,6 +26,9 @@ namespace RobEveryone.AI
         // playerCount * capPerPlayer)), e.g. 2 base, +1 more per 2 players.
         [SerializeField] private int baseDispatchCap = 2;
         [SerializeField] private float capPerPlayer = 0.5f;
+        // Night round (Milestone E) -- more officers dispatchable on top
+        // of the player-scaled cap above.
+        [SerializeField] private int nightDispatchCapBonus = 2;
 
         // Every officer currently in the scene, dispatched or the
         // original hand-placed one -- used both to count against the cap
@@ -100,7 +104,9 @@ namespace RobEveryone.AI
 
         private int ComputeCap()
         {
-            return Mathf.Max(baseDispatchCap, Mathf.CeilToInt(PlayerInventory.AllPlayers.Count * capPerPlayer));
+            int cap = Mathf.Max(baseDispatchCap, Mathf.CeilToInt(PlayerInventory.AllPlayers.Count * capPerPlayer));
+            if (GameFlowManager.Instance != null && GameFlowManager.Instance.IsNightRound) cap += nightDispatchCapBonus;
+            return cap;
         }
     }
 }

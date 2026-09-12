@@ -1,38 +1,69 @@
-using Mirror;
+using RobEveryone.Interaction;
 using RobEveryone.Inventory;
 using UnityEngine;
 
 namespace RobEveryone.Round
 {
-    // Trigger volume at the map's extraction point (the taxi). Needs a
-    // Collider with "Is Trigger" checked.
-    //
-    // Networking (Stage 4): every client has its own local copy of this
-    // trigger volume and would otherwise independently fire OnTriggerEnter
-    // the instant *their own* local player's collider touches it -- the
-    // NetworkServer.active guard means only the server's evaluation (the
-    // one everyone actually needs to agree on) ever counts. Reaching the
-    // exit resolves *that one player* (RoundManager.NotifyPlayerReachedExit)
-    // -- the round itself only actually ends once every connected player
-    // is resolved, whether by exiting or by being caught elsewhere (see
-    // RoundManager, which replaces the old single-player PartyGate: a
-    // caught player can never physically reach this trigger, so "wait for
-    // everyone to arrive here" alone would deadlock the round once anyone
-    // gets caught).
+    // The map's extraction point (the taxi/car). No longer a walk-in
+    // trigger -- press E ("Press E to get away!") to seat yourself in
+    // the car (ExitCarState.EnterCar), which doesn't resolve the round
+    // immediately. Instead you sit there, frozen and robbable, for
+    // CarWaitDuration -- a rival gets one last chance at you, and you
+    // can still climb back out yourself (ExitCarState's own "Press E to
+    // exit the car" prompt) if you need to react to something. Only
+    // actually finishes the round for you if you ride it out
+    // (ExitCarState.FinalizeExit -> NotifyPlayerExtracted below).
     [RequireComponent(typeof(Collider))]
-    public class ExitPoint : MonoBehaviour
+    public class ExitPoint : MonoBehaviour, IInteractable, IInteractableWarning
     {
         [SerializeField] private RoundManager roundManager;
+        [SerializeField] private Transform seatPoint;
+        [SerializeField] private Transform standPoint;
+        // Nobody can leave until this many seconds of the round have
+        // elapsed -- keeps the very start of a round from being a
+        // footrace straight to the exit.
+        [SerializeField] private float exitBlockedUntilSeconds = 120f;
+        // How long a seated player stays vulnerable/robbable before
+        // actually getting away on their own.
+        [SerializeField] private float carWaitDuration = 5f;
 
-        private void OnTriggerEnter(Collider other)
+        public Transform SeatPoint => seatPoint;
+        public Transform StandPoint => standPoint;
+        public float CarWaitDuration => carWaitDuration;
+
+        public string InteractionPrompt => "Press E to get away!";
+
+        // Always true (same reasoning as ShopShelfItem's locked shelf) --
+        // Interactor only ever shows *any* prompt when CanInteract is
+        // true, so gating this on the time-block too would silently
+        // swallow the WarningText below along with it. Interact() is
+        // what actually enforces the block, by simply no-oping.
+        public bool CanInteract => true;
+
+        private bool IsBlocked => roundManager != null && ElapsedSeconds < exitBlockedUntilSeconds;
+        private float ElapsedSeconds => roundManager.RoundDuration - roundManager.TimeRemaining;
+
+        public string WarningText =>
+            IsBlocked ? $"Can't leave for another {Mathf.CeilToInt(exitBlockedUntilSeconds - ElapsedSeconds)}s" : "";
+
+        public void Interact(GameObject interactor)
         {
-            if (!NetworkServer.active) return;
-            if (roundManager == null) return;
+            if (IsBlocked) return;
 
-            PlayerInventory inventory = other.GetComponentInParent<PlayerInventory>();
-            if (inventory == null) return;
+            ExitCarState carState = interactor.GetComponent<ExitCarState>();
+            if (carState == null) return;
 
-            roundManager.NotifyPlayerReachedExit(inventory);
+            carState.EnterCar(this);
+        }
+
+        // Called by ExitCarState once a seated player's wait window runs
+        // out without them climbing back out -- the actual moment their
+        // round resolves, same RoundResult.RoundComplete path the old
+        // walk-in trigger used.
+        public void NotifyPlayerExtracted(PlayerInventory player)
+        {
+            if (roundManager == null || player == null) return;
+            roundManager.NotifyPlayerReachedExit(player);
         }
     }
 }

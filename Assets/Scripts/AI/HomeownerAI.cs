@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Mirror;
+using RobEveryone.Core;
 using RobEveryone.Inventory;
 using UnityEngine;
 using UnityEngine.AI;
@@ -70,6 +71,12 @@ namespace RobEveryone.AI
         // own house.
         [SerializeField] private List<Transform> patrolPoints = new();
         [SerializeField] private float patrolSpeed = 2f;
+        // Night round (Milestone E) -- warped here instead of starting
+        // patrol, and stays here all round (Update's own IsNightRound
+        // early-return skips patrol/vision/suspicion entirely). Actual
+        // bed prop/pose is art/level-design work; left null this just
+        // stays wherever it was placed instead of moving to a bed.
+        [SerializeField] private Transform bedSpot;
 
         // Alerted behavior -- retreat to spawn (wherever this Homeowner
         // started, captured in Awake) and wait there rather than stand
@@ -142,6 +149,18 @@ namespace RobEveryone.AI
         public override void OnStartServer()
         {
             agent.speed = patrolSpeed;
+
+            bool night = GameFlowManager.Instance != null && GameFlowManager.Instance.IsNightRound;
+            if (night && bedSpot != null)
+            {
+                // NavMeshAgent.Warp, not a raw transform.position set --
+                // keeps the agent's own internal state (path, sampled
+                // position) consistent with actually being there.
+                agent.Warp(bedSpot.position);
+                transform.rotation = bedSpot.rotation;
+                return;
+            }
+
             if (patrolPoints.Count > 0) agent.SetDestination(patrolPoints[0].position);
         }
 
@@ -169,6 +188,13 @@ namespace RobEveryone.AI
             lastPosition = transform.position;
 
             if (!isServer) return;
+
+            // Homeowners are inert on a night round -- no suspicion
+            // buildup even standing right in front of one, warped to bed
+            // at OnStartServer and just staying there for the rest of
+            // the round. This skips patrol cycling too, not only the
+            // vision/suspicion checks below.
+            if (GameFlowManager.Instance != null && GameFlowManager.Instance.IsNightRound) return;
 
             if (state == HomeownerState.Alerted)
             {

@@ -61,6 +61,22 @@ namespace RobEveryone.Core
         public int BatchNumber => batchNumber;
         public int RoundInBatch => roundInBatch;
 
+        // Named visual/time-of-day concept for round 1/2/3 within a
+        // batch -- zero new state, roundInBatch (1/2/3) is already the
+        // persistent source of truth (survives the Lobby round-trip the
+        // same way batch/quota already do). Morning and Day are
+        // gameplay-identical to each other (IsNightRound below only ever
+        // distinguishes Night) -- this only exists to give the distinct
+        // *visual* variety between rounds 1 and 2 a real name instead of
+        // keying two skybox slots off a raw int.
+        public enum TimeOfDay { Morning, Day, Night }
+        public TimeOfDay CurrentTimeOfDay => (TimeOfDay)(roundInBatch - 1);
+
+        // The last round of every 3-round batch is a deterministic night
+        // round, with real gameplay effects (HomeownerAI/PoliceAI/
+        // PoliceDispatcher) -- Morning and Day never differ here.
+        public bool IsNightRound => CurrentTimeOfDay == TimeOfDay.Night;
+
         // A simple globally-incrementing "which round is this" counter --
         // the natural clock JailState's self-bail check needs ("released
         // after exactly one full round unrescued"), since roundInBatch
@@ -382,6 +398,26 @@ namespace RobEveryone.Core
         [Server]
         private void HandleRoundStarted()
         {
+            // A fresh batch's Morning round (roundInBatch is set to 1 at
+            // the previous batch's own final-round-end, well before this
+            // fires) wipes every player's Cash down to zero -- not just
+            // the anti-hoarding cap-at-quota WipeCashSurplus already does
+            // at that round-end. That still runs first and only trims
+            // anything *above* quota, so at-or-below-quota Cash survives
+            // into the Lobby in between -- spendable there (sabotage
+            // shop) -- but this is what actually takes it away the
+            // moment real gameplay resumes, instead of letting it quietly
+            // carry forward batch after batch. Reuses WipeCashSurplus(0)
+            // rather than a separate method -- "cap at zero" and "wipe
+            // everything" are the same operation.
+            if (roundInBatch == 1)
+            {
+                foreach (PlayerInventory player in PlayerInventory.AllPlayers)
+                {
+                    player.WipeCashSurplus(0);
+                }
+            }
+
             // The gameplay scene's own JailPoint objects were just
             // recreated by this scene load -- any slot claimed by the
             // old, now-destroyed instances would be stale.
@@ -445,12 +481,15 @@ namespace RobEveryone.Core
         }
 
         // Shared host-vs-remote-client teleport body -- originally
-        // PositionPlayer's own, now also used by RescuePlayer and the two
-        // Jail & Bail teleport helpers above so there's exactly one place
-        // that has to know about the isLocalPlayer/ServerTeleport vs.
-        // TargetRpc split.
+        // PositionPlayer's own, now also used by RescuePlayer, the two
+        // Jail & Bail teleport helpers above, and ExitCarState (seating/
+        // un-seating a player at the exit car) -- exactly one place that
+        // has to know about the isLocalPlayer/ServerTeleport vs. TargetRpc
+        // split. Public so ExitCarState (a different NetworkBehaviour, on
+        // the Player prefab) can call it directly instead of duplicating
+        // this.
         [Server]
-        private void TeleportPlayerTo(Transform player, Transform target)
+        public void TeleportPlayerTo(Transform player, Transform target)
         {
             NetworkIdentity identity = player.GetComponent<NetworkIdentity>();
             bool remote = identity != null && !identity.isLocalPlayer && identity.connectionToClient != null;
@@ -599,11 +638,16 @@ namespace RobEveryone.Core
                     if (!metQuota) pendingEndOfBatchJail.Add(player);
                 }
 
+                // Includes carried-but-unsold loot value alongside Cash --
+                // only Cash actually counts toward metQuota above (loot
+                // has to be sold first), but showing just Cash here made
+                // it look like unsold loot didn't count for anything at
+                // all toward the quota.
                 string message = wasCaught
                     ? "Caught by the police!"
                     : isFinalRound
                         ? (metQuota ? "Batch quota met!" : "Batch quota not met.")
-                        : $"Batch progress: ${player.Cash} / ${currentQuota}";
+                        : $"Batch progress: ${player.Cash} cash + ${player.TotalValue} inventory / ${currentQuota}";
 
                 NetworkIdentity identity = player.GetComponent<NetworkIdentity>();
                 if (identity != null && identity.connectionToClient != null)
@@ -618,6 +662,15 @@ namespace RobEveryone.Core
                 // carrying anyone.
                 CarryController carry = player.GetComponent<CarryController>();
                 if (carry != null) carry.ServerDrop(false);
+
+                // Safety net: a player still mid-wait in the exit car when
+                // the round ends some other way (e.g. the overall timer
+                // ran out before their own short wait window did) would
+                // otherwise stay stuck ExitCarFrozen forever -- ExitCarState.
+                // FinalizeExit is what normally clears this, but that
+                // never gets a chance to run here.
+                ExitCarState exitCar = player.GetComponent<ExitCarState>();
+                if (exitCar != null) exitCar.ForceRelease();
             }
 
             lastResults.Clear();

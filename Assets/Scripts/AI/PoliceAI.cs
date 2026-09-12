@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Mirror;
+using RobEveryone.Core;
 using RobEveryone.Inventory;
 using RobEveryone.Round;
 using UnityEngine;
@@ -35,6 +36,10 @@ namespace RobEveryone.AI
     // (PlayerInventory.AllPlayers) instead of one hardcoded target, and
     // State is a SyncVar so every client's Animator/Speed feed and Scene
     // gizmo stay correct without re-deriving the state machine themselves.
+    // Milestone E (night mode): every agent.speed assignment goes through
+    // EffectiveSpeed, CanSee's distance check through the same IsNight
+    // multiplier, and UpdateChase's lose-interest timer too -- faster,
+    // sees farther, and gives up chasing more slowly at night.
     [RequireComponent(typeof(NavMeshAgent))]
     public class PoliceAI : NetworkBehaviour
     {
@@ -56,6 +61,13 @@ namespace RobEveryone.AI
         [SerializeField] private float searchDuration = 3f;
         [SerializeField] private float searchSweepAngle = 45f;
         [SerializeField] private float searchSweepFrequency = 2f;
+
+        // Night round (Milestone E) -- faster, sees farther, and chases
+        // longer after losing line-of-sight. Proposed defaults, tune by
+        // playtesting.
+        [SerializeField] private float nightSpeedMultiplier = 1.4f;
+        [SerializeField] private float nightViewDistanceMultiplier = 1.5f;
+        [SerializeField] private float nightLoseInterestMultiplier = 2f;
 
         [SerializeField] private float animatorSpeedSmoothTime = 0.1f;
 
@@ -94,6 +106,9 @@ namespace RobEveryone.AI
             dispatchSpawnPosition = spawnPosition;
         }
 
+        private bool IsNight => GameFlowManager.Instance != null && GameFlowManager.Instance.IsNightRound;
+        private float EffectiveSpeed(float baseSpeed) => IsNight ? baseSpeed * nightSpeedMultiplier : baseSpeed;
+
         private void Awake()
         {
             agent = GetComponent<NavMeshAgent>();
@@ -109,7 +124,7 @@ namespace RobEveryone.AI
         {
             if (roundManager == null) roundManager = FindFirstObjectByType<RoundManager>();
 
-            agent.speed = patrolSpeed;
+            agent.speed = EffectiveSpeed(patrolSpeed);
             if (patrolPoints.Count > 0)
             {
                 agent.SetDestination(patrolPoints[0].position);
@@ -189,7 +204,7 @@ namespace RobEveryone.AI
             }
 
             State = PoliceState.Respond;
-            agent.speed = chaseSpeed;
+            agent.speed = EffectiveSpeed(chaseSpeed);
             agent.SetDestination(lastKnownPosition);
         }
 
@@ -273,7 +288,7 @@ namespace RobEveryone.AI
                     return;
                 }
 
-                agent.speed = patrolSpeed;
+                agent.speed = EffectiveSpeed(patrolSpeed);
                 State = PoliceState.Patrol;
                 if (patrolPoints.Count > 0)
                 {
@@ -289,7 +304,7 @@ namespace RobEveryone.AI
         private void ReturnToSpawn()
         {
             State = PoliceState.Returning;
-            agent.speed = patrolSpeed;
+            agent.speed = EffectiveSpeed(patrolSpeed);
             agent.SetDestination(dispatchSpawnPosition);
         }
 
@@ -341,7 +356,8 @@ namespace RobEveryone.AI
             }
 
             timeSinceSeenPlayer += Time.deltaTime;
-            if (timeSinceSeenPlayer >= loseInterestTime)
+            float effectiveLoseInterestTime = IsNight ? loseInterestTime * nightLoseInterestMultiplier : loseInterestTime;
+            if (timeSinceSeenPlayer >= effectiveLoseInterestTime)
             {
                 State = PoliceState.Respond;
             }
@@ -351,7 +367,7 @@ namespace RobEveryone.AI
         {
             chaseTarget = target;
             State = PoliceState.Chase;
-            agent.speed = chaseSpeed;
+            agent.speed = EffectiveSpeed(chaseSpeed);
             timeSinceSeenPlayer = 0f;
         }
 
@@ -374,7 +390,8 @@ namespace RobEveryone.AI
 
             Vector3 toPlayer = target.position - eye.position;
             float distance = toPlayer.magnitude;
-            if (distance > viewDistance) return false;
+            float effectiveViewDistance = IsNight ? viewDistance * nightViewDistanceMultiplier : viewDistance;
+            if (distance > effectiveViewDistance) return false;
 
             // Angle is measured on the horizontal plane only. Comparing the
             // full 3D direction would make height differences (a low eye

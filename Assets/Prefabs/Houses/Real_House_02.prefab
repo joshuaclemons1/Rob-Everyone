@@ -178,6 +178,7 @@ Transform:
   - {fileID: 6256314542107985825}
   - {fileID: 5073935356135953874}
   - {fileID: 8405239131177866760}
+  - {fileID: 2521363676084151161}
   m_Father: {fileID: 6335930966154849719}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &769311037278147316
@@ -1731,6 +1732,37 @@ MonoBehaviour:
   maxOverlapResolveIterations: 4
   groundSnapMaxDistance: 1
   groundSnapMinGap: 0.02
+--- !u!1 &9067522081039131940
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2521363676084151161}
+  m_Layer: 0
+  m_Name: bedSpot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2521363676084151161
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9067522081039131940}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: 0.7071064, w: 0.7071072}
+  m_LocalPosition: {x: -10.5, y: 1, z: 4.25}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5148146166299024032}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 90}
 --- !u!1001 &407895455683658391
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -34,7 +34,7 @@ namespace RobEveryone.Round
     public class RoundManager : NetworkBehaviour
     {
         [SerializeField] private int quota = 200;
-        [SerializeField] private float roundDuration = 180f;
+        [SerializeField] private float roundDuration = 300f;
 
         [SyncVar] private float timeRemaining;
         [SyncVar] private bool roundActive;
@@ -102,14 +102,17 @@ namespace RobEveryone.Round
             resolvedPlayers.Clear();
             jailedPlayers.Clear();
 
-            // Discards whatever carried loot (not Cash) survived from the
-            // previous round -- unsold loot at ready-up is simply lost, a
-            // deliberate consequence of Cash being the persistent value
-            // now instead of TotalValue. Every connected player, not just
-            // one.
+            // Discards whatever carried *loot* (not Cash, not sabotage
+            // items) survived from the previous round -- unsold loot at
+            // ready-up is simply lost, a deliberate consequence of Cash
+            // being the persistent value now instead of TotalValue.
+            // Sabotage items bought in the shop persist across this
+            // round-trip on purpose (ClearLoot leaves them alone) --
+            // only dropping the item or running out of uses removes
+            // them. Every connected player, not just one.
             foreach (PlayerInventory player in PlayerInventory.AllPlayers)
             {
-                player.ResetInventory();
+                player.ClearLoot();
             }
 
             timeRemaining = roundDuration;

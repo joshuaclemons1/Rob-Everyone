@@ -558,12 +558,53 @@ namespace RobEveryone.Inventory
         // Clears the 5 normal slots -- deliberately does NOT touch the
         // Prison Wallet (walletItemName/walletUses aren't in this loop),
         // which is the whole point of the wallet: RoundManager calls this
-        // on a caught player and the wallet item survives.
+        // on a caught player and the wallet item survives. Being caught
+        // strips *everything*, sabotage items included -- see ClearLoot
+        // below for the round-start version, which doesn't.
         [Server]
         public void ResetInventory()
         {
             for (int i = 0; i < SlotCount; i++)
             {
+                slotItemNames[i] = string.Empty;
+                slotUses[i] = 0;
+            }
+        }
+
+        // Called by RoundManager.StartRound at the top of every fresh
+        // round -- unlike ResetInventory (a full wipe, used when a
+        // player is actually Caught), this only clears ordinary loot
+        // (ItemDefinition.SabotageType == None). Sabotage items bought
+        // in the shop are meant to persist across the Lobby <-> gameplay
+        // round-trip until the player drops them or runs out of uses,
+        // not get wiped just because a new round started -- confirmed
+        // bug: a purchased Bat/Hammer/etc. vanished the instant the next
+        // round loaded.
+        [Server]
+        public void ClearLoot()
+        {
+            // Tracks whether the head slot just decided for the current
+            // span should be kept -- a continuation slot has no item
+            // name of its own (see ContinuationMarker), so it has to
+            // inherit its head's decision rather than being resolved
+            // independently.
+            bool keepCurrentSpan = false;
+
+            for (int i = 0; i < SlotCount; i++)
+            {
+                string raw = slotItemNames[i];
+
+                if (raw == ContinuationMarker)
+                {
+                    if (keepCurrentSpan) continue;
+                }
+                else
+                {
+                    ItemDefinition item = !string.IsNullOrEmpty(raw) && catalog != null ? catalog.GetByName(raw) : null;
+                    keepCurrentSpan = item != null && item.SabotageType != SabotageType.None;
+                    if (keepCurrentSpan) continue;
+                }
+
                 slotItemNames[i] = string.Empty;
                 slotUses[i] = 0;
             }
@@ -624,7 +665,10 @@ namespace RobEveryone.Inventory
         // Anti-hoarding: called by GameFlowManager on a batch's final
         // round -- Cash above the batch quota is deleted rather than
         // banked indefinitely, per gameplay-design.md's Quota Batches
-        // section.
+        // section. Also called with quota == 0 at the very start of the
+        // next batch's Morning round (GameFlowManager.HandleRoundStarted)
+        // to wipe whatever's left entirely -- "cap at zero" and "wipe
+        // everything" are the same operation, no separate method needed.
         [Server]
         public void WipeCashSurplus(int quota)
         {

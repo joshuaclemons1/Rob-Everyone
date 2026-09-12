@@ -7,12 +7,17 @@ using UnityEngine;
 
 namespace RobEveryone.AI
 {
-    // Drives a fixed lap around a waypoint loop, then returns to its origin
-    // point and despawns -- no vision, no reaction to the player, it just
-    // follows its route (per design: "completely oblivious," a hazard to
-    // dodge rather than an AI that hunts). CarSpawnManager owns deciding
-    // when/whether to spawn one of these at all; this script only knows how
-    // to drive once it exists.
+    // Drives a fixed route out to each hand-placed waypoint and back to its
+    // origin point, then despawns -- no vision, no reaction to the player,
+    // it just follows its route (per design: "completely oblivious," a
+    // hazard to dodge rather than an AI that hunts). The actual point list
+    // it walks (see Init) is a dense, pre-smoothed curve through those
+    // waypoints (CarSpawnManager.BuildSmoothedPath), not the sparse
+    // waypoints themselves -- this script has no idea it's driving a
+    // spline, it just walks whatever points it's handed the same simple
+    // way either way. CarSpawnManager owns deciding when/whether to spawn
+    // one of these at all; this script only knows how to drive once it
+    // exists.
     //
     // Networking (Stage 4): only the server actually runs the movement/
     // impact logic below (isServer guards) -- a NetworkTransform component
@@ -29,7 +34,20 @@ namespace RobEveryone.AI
     {
         [SerializeField] private float moveSpeed = 8f;
         [SerializeField] private float turnSpeed = 120f;
-        [SerializeField] private float waypointArrivalDistance = 1.5f;
+        // Confirmed bug: at the defaults above, the car's own minimum
+        // turning radius (moveSpeed / turnSpeed-in-radians, ~3.8 units
+        // here) is *larger* than this used to be (1.5) -- meaning it
+        // could physically orbit a target forever without ever
+        // "arriving," a stable pursuit-curve limit cycle, confirmed via
+        // logging (pathIndex stuck at 1, distance oscillating between
+        // ~6 and ~12, never dropping below the old 1.5). Sparse
+        // waypoints never exposed this (plenty of room to curve in
+        // before getting anywhere near arrival distance); the dense
+        // spline points now can be closer together than that turning
+        // radius. Raised well above the turning radius as a safety
+        // margin -- see the passedTarget check below for the real fix
+        // that doesn't depend on this staying tuned correctly forever.
+        [SerializeField] private float waypointArrivalDistance = 5f;
 
         [SerializeField] private AudioClip hornClip;
         [SerializeField] private AudioClip yellClip;
@@ -51,21 +69,25 @@ namespace RobEveryone.AI
 
         private readonly Dictionary<PlayerInventory, float> lastImpactTime = new();
 
-        private List<Transform> waypoints;
-        private Transform originPoint;
+        // A dense, pre-smoothed point list (CarSpawnManager.
+        // BuildSmoothedPath -- a Catmull-Rom spline through the original
+        // sparse waypoints), not the raw hand-placed waypoints
+        // themselves. Already includes the return-to-origin leg as its
+        // own trailing points, so driving through this list start-to-end
+        // *is* the whole route -- no separate "now returning to origin"
+        // state needed anymore.
+        private List<Vector3> path;
         private CarSpawnManager spawnManager;
 
-        private int waypointIndex;
-        private bool returningToOrigin;
+        private int pathIndex;
         private AudioSource audioSource;
 
         // Called by CarSpawnManager right after Instantiate -- this is
-        // per-spawn data (which lap, which origin, who to report back to),
-        // not something to hand-configure per prefab in the Inspector.
-        public void Init(List<Transform> lapWaypoints, Transform origin, CarSpawnManager manager)
+        // per-spawn data (which route, who to report back to), not
+        // something to hand-configure per prefab in the Inspector.
+        public void Init(List<Vector3> smoothedPath, CarSpawnManager manager)
         {
-            waypoints = lapWaypoints;
-            originPoint = origin;
+            path = smoothedPath;
             spawnManager = manager;
         }
 
@@ -78,33 +100,7 @@ namespace RobEveryone.AI
         {
             if (!isServer) return;
 
-            Transform target = CurrentTarget();
-            if (target == null) return;
-
-            Vector3 toTarget = target.position - transform.position;
-            toTarget.y = 0f;
-
-            if (toTarget.sqrMagnitude <= waypointArrivalDistance * waypointArrivalDistance)
-            {
-                AdvanceTarget();
-                return;
-            }
-
-            Quaternion desiredRotation = Quaternion.LookRotation(toTarget.normalized, Vector3.up);
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, desiredRotation, turnSpeed * Time.deltaTime);
-            transform.position += transform.forward * (moveSpeed * Time.deltaTime);
-        }
-
-        private Transform CurrentTarget()
-        {
-            if (returningToOrigin) return originPoint;
-            if (waypoints == null || waypointIndex >= waypoints.Count) return null;
-            return waypoints[waypointIndex];
-        }
-
-        private void AdvanceTarget()
-        {
-            if (returningToOrigin)
+            if (path == null || pathIndex >= path.Count)
             {
                 spawnManager.NotifyCarDespawned(this);
                 // NetworkServer.Destroy, not a plain Destroy -- this
@@ -116,11 +112,43 @@ namespace RobEveryone.AI
                 return;
             }
 
-            waypointIndex++;
-            if (waypoints == null || waypointIndex >= waypoints.Count)
+            Vector3 toTarget = path[pathIndex] - transform.position;
+            toTarget.y = 0f;
+
+            // Confirmed bug: distance-only arrival let the car get stuck
+            // in a stable pursuit-curve orbit around a target it could
+            // never physically turn tightly enough to reach (its own
+            // minimum turning radius was larger than the old arrival
+            // distance) -- it would circle the same point forever,
+            // pathIndex never advancing.
+            bool arrived = toTarget.sqrMagnitude <= waypointArrivalDistance * waypointArrivalDistance;
+
+            // Confirmed second bug: a bare "is the target behind us"
+            // check (no distance gate) fired even for a point the car
+            // had never actually attempted to approach yet -- if its
+            // current heading (e.g. straight off the spawn rotation)
+            // happened to point away from several points in a row, it
+            // kept incrementing pathIndex every frame without ever
+            // reaching the rotate/move code below (which is the only
+            // place transform.forward changes), blowing through the
+            // entire path in about a second without moving at all.
+            // Gating this on actually being close first -- comparable to
+            // the orbit radius this was built to catch -- means it can
+            // only ever fire once the car has genuinely closed in on a
+            // point, never as a substitute for trying at all.
+            float passedCheckRadius = waypointArrivalDistance * 3f;
+            bool nearEnoughToHaveOrbited = toTarget.sqrMagnitude <= passedCheckRadius * passedCheckRadius;
+            bool passedTarget = nearEnoughToHaveOrbited && Vector3.Dot(transform.forward, toTarget) < 0f;
+
+            if (arrived || passedTarget)
             {
-                returningToOrigin = true;
+                pathIndex++;
+                return;
             }
+
+            Quaternion desiredRotation = Quaternion.LookRotation(toTarget.normalized, Vector3.up);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, desiredRotation, turnSpeed * Time.deltaTime);
+            transform.position += transform.forward * (moveSpeed * Time.deltaTime);
         }
 
         // Oblivious means it doesn't brake or swerve -- but it still needs

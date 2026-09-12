@@ -26,9 +26,9 @@ there.
 - [x] **B** — Real Jail & Bail — **done, playtested**
 - [x] **C** — Homeowner patrol — **done, playtested**
 - [x] **D** — Police dispatch pooling — **done, playtested**
-- [ ] **E** — Night mode
-- [ ] **F** — Rival-status HUD ping
-- [ ] **G** (optional, lowest priority) — Per-pickup randomized item value range
+- [x] **E** — Night mode — **done, playtested**
+- [ ] **F** — Rival-status HUD ping — not started, coming later
+- [ ] **G** (optional, lowest priority) — Per-pickup randomized item value range — not started, coming later
 
 ---
 
@@ -443,39 +443,50 @@ once it arrives.
 
 ---
 
-## Milestone E — Night mode — ⬜ Not started
+## Milestone E — Night mode — ✅ Done
 
-The last round of every 3-round batch (`roundInBatch == 3`,
-`GameFlowManager.IsNightRound`) is a deterministic night round:
+**What shipped**: the last round of every 3-round batch (`roundInBatch
+== 3`) is a deterministic night round:
 
 1. **Homeowners go inert** — no suspicion/vision-cone logic and no
    patrol movement at all for the whole round; warped to a `bedSpot`
    marker instead of starting patrol.
-2. **Police move faster** — `nightSpeedMultiplier` (proposed `1.4×`)
-   applied everywhere `patrolSpeed`/`chaseSpeed` gets assigned.
+2. **Police move faster** — `nightSpeedMultiplier` (`1.4×`) applied
+   everywhere `patrolSpeed`/`chaseSpeed` gets assigned.
 3. **Police see farther and chase longer** —
-   `nightViewDistanceMultiplier` (proposed `1.5×`) on the vision-cone
-   distance check, `nightLoseInterestMultiplier` (proposed `2×`) on how
-   long they keep chasing after losing line-of-sight.
+   `nightViewDistanceMultiplier` (`1.5×`) on the vision-cone distance
+   check, `nightLoseInterestMultiplier` (`2×`) on how long they keep
+   chasing after losing line-of-sight.
 4. **More police can be dispatched** — `PoliceDispatcher`'s cap gets a
-   night-only bonus (proposed `+2`) on top of Milestone D's player-count
-   scaling.
-5. **Visual swap** — new `Assets/Scripts/World/NightModeVisuals.cs`
-   (plain, unnetworked — every client independently reads the
-   already-synced `IsNightRound` flag) swaps the skybox/sun intensity
-   at scene start. Secondary/atmospheric, don't let it block testing
-   1-4.
+   night-only bonus (`+2`) on top of Milestone D's player-count scaling.
+5. **Visual swap** — `Assets/Scripts/World/NightModeVisuals.cs` (plain,
+   unnetworked — every client independently reads the already-synced
+   time-of-day) swaps the skybox/sun intensity at scene start.
 
-**Editor**: source a night skybox (Kenney Skyboxes pack, alongside the
-existing day one), wire `NightModeVisuals` to the scene's Directional
-Light. Author `bedSpot` markers per house.
+**Beyond the original plan**: rounds 1/2/3 are now a real named
+`GameFlowManager.TimeOfDay { Morning, Day, Night }` enum (derived from
+`roundInBatch`, zero new state) instead of a plain day/night bool —
+Morning and Day are still fully gameplay-identical to each other (only
+`IsNightRound` ever gates behavior), but each gets its own distinct
+skybox. `NightModeVisuals` also lives in `Lobby.unity` now, not just
+`SampleScene` — since `roundInBatch`/time-of-day updates at the
+*previous* round's end, before the scene change into Lobby, the Lobby's
+own skybox already previews whatever round is coming up during the
+pre-round shop/ready-up phase, night included.
+
+**Editor**: a night *and* a morning skybox (alongside the existing day
+one) wired into `NightModeVisuals` in both `SampleScene` and `Lobby`,
+each with its own Directional Light. `bedSpot` markers authored per
+house.
 
 ### 🔴 Rest Point E
-Play a full 3-round batch. Rounds 1-2 normal. Round 3: every Homeowner
-inert and posed at its bed; Police visibly faster, spot from farther,
-chase longer after losing line-of-sight; more simultaneous officers
-dispatchable than a day round; skybox/lighting visibly different,
-reverts for the next batch's round 1.
+Play a full 3-round batch. Round 1 (Morning) and round 2 (Day) look
+visually distinct from each other but behave identically. Between
+round 2 ending and round 3 starting, the Lobby itself already shows the
+Night skybox as a heads-up. Round 3: every Homeowner inert and posed at
+its bed; Police visibly faster, spot from farther, chase longer after
+losing line-of-sight; more simultaneous officers dispatchable than a
+day round; reverts to Morning for the next batch's round 1.
 
 ---
 

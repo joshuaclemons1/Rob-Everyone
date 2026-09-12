@@ -29,6 +29,14 @@ namespace RobEveryone.World
         [SerializeField] private Vector2 scaleRangeXZ = new(0.7f, 1.8f);
         [SerializeField] private Vector2 scaleRangeY = new(0.6f, 1.4f);
 
+        // Same overlap-avoidance as ForestRingSpawner -- see its own
+        // comment. Radius defaults much larger here since hills are
+        // much bigger objects than a tree trunk.
+        [Header("Overlap Avoidance")]
+        [SerializeField] private LayerMask avoidLayers;
+        [SerializeField] private float avoidCheckRadius = 8f;
+        [SerializeField] private int maxOverlapRetries = 5;
+
         private void Start()
         {
             if (hillPrefabs.Count == 0) return;
@@ -50,10 +58,7 @@ namespace RobEveryone.World
 
             for (int i = 0; i < hillsPerRing; i++)
             {
-                float s = i * step + Random.Range(-perimeterJitter, perimeterJitter);
-                RoundedRectPerimeter.PointOnPerimeter(halfWidth, halfHeight, radius, s, perimeter, out Vector3 localPos, out Vector3 outwardNormal);
-
-                Vector3 position = transform.position + localPos + outwardNormal * Random.Range(-normalJitter, normalJitter);
+                if (!TryFindClearPosition(halfWidth, halfHeight, radius, perimeter, i * step, out Vector3 position)) continue;
 
                 GameObject prefab = hillPrefabs[Random.Range(0, hillPrefabs.Count)];
                 GameObject hill = Instantiate(prefab, position, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f), transform);
@@ -63,6 +68,27 @@ namespace RobEveryone.World
                 Vector3 baseScale = prefab.transform.localScale;
                 hill.transform.localScale = new Vector3(baseScale.x * scaleXZ, baseScale.y * scaleY, baseScale.z * scaleXZ);
             }
+        }
+
+        // Retries a few times with fresh jitter before giving up on this
+        // one ring slot entirely -- see ForestRingSpawner's own comment.
+        private bool TryFindClearPosition(float halfWidth, float halfHeight, float radius, float perimeter, float baseArcLength, out Vector3 position)
+        {
+            for (int attempt = 0; attempt < maxOverlapRetries; attempt++)
+            {
+                float s = baseArcLength + Random.Range(-perimeterJitter, perimeterJitter);
+                RoundedRectPerimeter.PointOnPerimeter(halfWidth, halfHeight, radius, s, perimeter, out Vector3 localPos, out Vector3 outwardNormal);
+                Vector3 candidate = transform.position + localPos + outwardNormal * Random.Range(-normalJitter, normalJitter);
+
+                if (avoidLayers == 0 || !Physics.CheckSphere(candidate, avoidCheckRadius, avoidLayers, QueryTriggerInteraction.Ignore))
+                {
+                    position = candidate;
+                    return true;
+                }
+            }
+
+            position = default;
+            return false;
         }
 
         private void OnDrawGizmos()

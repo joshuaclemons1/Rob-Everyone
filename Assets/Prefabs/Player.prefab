@@ -104,7 +104,7 @@ Camera:
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 311
+    m_Bits: 319
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
@@ -241,7 +241,7 @@ Camera:
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 311
+    m_Bits: 319
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
@@ -335,6 +335,7 @@ GameObject:
   - component: {fileID: 7664136054049044517}
   - component: {fileID: 2221067064028397895}
   - component: {fileID: 7344029612143130520}
+  - component: {fileID: 7783781509503645987}
   m_Layer: 8
   m_Name: Player
   m_TagString: Untagged
@@ -768,3 +769,18 @@ MonoBehaviour:
   spectatorListener: {fileID: 7181969180327955204}
   chaseOffset: {x: 0, y: 2.5, z: -4.5}
   followLerp: 6
+--- !u!114 &7783781509503645987
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4564336539568727325}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 96c0af3b64198f845b36e712ab256aaa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Round.ExitCarState
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0

@@ -36,6 +36,7 @@ namespace RobEveryone.UI
         private Interactor interactor;
         private JailState localJail;
         private SpectatorController localSpectator;
+        private ExitCarState localExitCar;
 
         private void Update()
         {
@@ -45,16 +46,19 @@ namespace RobEveryone.UI
                 interactor = NetworkClient.localPlayer.GetComponent<Interactor>();
                 localJail = NetworkClient.localPlayer.GetComponent<JailState>();
                 localSpectator = NetworkClient.localPlayer.GetComponent<SpectatorController>();
+                localExitCar = NetworkClient.localPlayer.GetComponent<ExitCarState>();
                 if (interactor == null) return;
             }
 
             bool jailed = localJail != null && localJail.IsJailed;
             bool spectating = localSpectator != null && localSpectator.IsSpectating;
-            // While jailed, FirstPersonController's entire look/move loop
-            // is frozen and there's nothing meaningful left to aim at --
-            // this line shows the spectate hint instead of the normal
+            bool waitingInCar = localExitCar != null && localExitCar.IsWaiting;
+            // While jailed or seated waiting at the exit,
+            // FirstPersonController's entire look/move loop is frozen and
+            // there's nothing meaningful left to aim at -- these lines
+            // show their own standing hint instead of the normal
             // per-target prompt.
-            bool hasTarget = !jailed && interactor.CurrentTarget != null;
+            bool hasTarget = !jailed && !waitingInCar && interactor.CurrentTarget != null;
 
             if (interactHint != null) interactHint.SetActive(hasTarget);
 
@@ -64,8 +68,10 @@ namespace RobEveryone.UI
                     ? "[T] Stop spectating   Click to switch"
                     : jailed
                         ? "Press T to spectate"
-                        : hasTarget ? $"[E] {interactor.CurrentTarget.InteractionPrompt}" : "";
-                promptText.enabled = jailed || hasTarget;
+                        : waitingInCar
+                            ? "Press E to exit the car"
+                            : hasTarget ? $"[E] {interactor.CurrentTarget.InteractionPrompt}" : "";
+                promptText.enabled = jailed || waitingInCar || hasTarget;
             }
 
             if (warningText != null)

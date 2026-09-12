@@ -32,6 +32,20 @@ namespace RobEveryone.World
         [SerializeField] private float uniformScaleMin = 0.85f;
         [SerializeField] private float uniformScaleMax = 1.3f;
 
+        // Confirmed bug: trees spawned directly on top of other placed
+        // background props (houses, roads, other decoration) since
+        // nothing ever checked. Leave avoidLayers at Nothing (the
+        // default) to skip the check entirely -- assign it to whatever
+        // layer your other placed objects use (e.g. a new "Environment"
+        // layer) to actually avoid them. avoidCheckRadius only needs to
+        // cover the trunk footprint, not the whole canopy -- canopies
+        // overlapping is normal for a forest, spawning inside a house
+        // isn't.
+        [Header("Overlap Avoidance")]
+        [SerializeField] private LayerMask avoidLayers;
+        [SerializeField] private float avoidCheckRadius = 2f;
+        [SerializeField] private int maxOverlapRetries = 5;
+
         [Header("World Boundary")]
         [SerializeField] private bool generateBoundaryWall = true;
         [SerializeField] private float boundaryWallHeight = 25f;
@@ -64,10 +78,7 @@ namespace RobEveryone.World
 
             for (int i = 0; i < treesPerRing; i++)
             {
-                float s = i * step + Random.Range(-perimeterJitter, perimeterJitter);
-                RoundedRectPerimeter.PointOnPerimeter(halfWidth, halfHeight, radius, s, perimeter, out Vector3 localPos, out Vector3 outwardNormal);
-
-                Vector3 position = transform.position + localPos + outwardNormal * Random.Range(-normalJitter, normalJitter);
+                if (!TryFindClearPosition(halfWidth, halfHeight, radius, perimeter, i * step, out Vector3 position)) continue;
 
                 GameObject prefab = treePrefabs[Random.Range(0, treePrefabs.Count)];
                 GameObject tree = Instantiate(prefab, position, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f), transform);
@@ -75,6 +86,30 @@ namespace RobEveryone.World
                 float scale = Random.Range(uniformScaleMin, uniformScaleMax);
                 tree.transform.localScale = prefab.transform.localScale * scale;
             }
+        }
+
+        // Retries a few times with fresh jitter before giving up on this
+        // one ring slot entirely -- skipping one tree out of dozens per
+        // ring is invisible; forcing it to overlap an existing prop
+        // wouldn't be. avoidLayers left at Nothing (the default) makes
+        // this always succeed on the first try, i.e. a no-op.
+        private bool TryFindClearPosition(float halfWidth, float halfHeight, float radius, float perimeter, float baseArcLength, out Vector3 position)
+        {
+            for (int attempt = 0; attempt < maxOverlapRetries; attempt++)
+            {
+                float s = baseArcLength + Random.Range(-perimeterJitter, perimeterJitter);
+                RoundedRectPerimeter.PointOnPerimeter(halfWidth, halfHeight, radius, s, perimeter, out Vector3 localPos, out Vector3 outwardNormal);
+                Vector3 candidate = transform.position + localPos + outwardNormal * Random.Range(-normalJitter, normalJitter);
+
+                if (avoidLayers == 0 || !Physics.CheckSphere(candidate, avoidCheckRadius, avoidLayers, QueryTriggerInteraction.Ignore))
+                {
+                    position = candidate;
+                    return true;
+                }
+            }
+
+            position = default;
+            return false;
         }
 
         // A plain rectangle (sharp corners, ignoring cornerRadius entirely)
