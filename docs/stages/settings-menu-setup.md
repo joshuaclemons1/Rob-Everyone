@@ -813,10 +813,9 @@ once:
   template-and-instantiate way as `RebindActionRow`, driving
   `VoiceMuteList.SetMuted`.
 - Controls tab: the `RebindActionRow` list from Milestone B, plus a
-  mouse-sensitivity slider (finally makes `FirstPersonController.
-  mouseSensitivity` a live `PlayerPrefs`-backed setting instead of an
-  Inspector constant — same static-class-with-`OnChanged` shape as
-  everything else in this doc).
+  mouse-sensitivity slider bound to `ControlSettings.MouseSensitivity`
+  (already live since Milestone E — this tab just needs a slider wired
+  to it, the plumbing itself is done).
 - Graphics tab: resolution dropdown (populated from `Screen.
   resolutions`), screen-mode dropdown, quality dropdown (`Low`/`High`
   labels, indices 0/1), FOV slider, VSync toggle — all bound to
@@ -828,19 +827,131 @@ once:
   G gives it a second context (closing the pause overlay instead)
   without duplicating the panel.
 
-**Editor work:** the bulk of this milestone is Inspector work inside
-`SettingsPanel` — build the 4 tab containers, drop in slider/dropdown/
-toggle prefabs from the existing pixel UI kit (`ui-design.md`'s
-established source), wire every control's `OnValueChanged` to the
-matching static property setter. No new design system needed — reuse
-whatever slider/toggle/dropdown pieces the kit already has, same
-"adapt before building new" instruction `main-menu-visual-design.md`
-gives for every other menu asset.
+**Paced as 5 passes, simplest first** (per the user's own choice —
+one tab at a time, verified before the next): shell (tab switching) +
+Accessibility → Controls → Graphics → Audio + mute list. Each pass
+gets its own from-scratch detailed Editor walkthrough rather than one
+combined wall of steps.
 
-**Verify:** every control in every tab visibly changes behavior
-immediately (no "Apply" button needed, matches every other setting in
-this doc being live-applied). Close and reopen the game — every
-setting persisted. `Back` still returns to Main Menu correctly.
+**Pivoted mid-milestone, per the user's explicit request: the "mosaic
+pixelated" look (`Assets/Art/UI/Shaders/HotbarSlotBlur_Mat`), not the
+pixel-art sprite kit.** Confirmed by reading the shader graph and its
+existing usage (`Assets/Prefabs/UI/MenuButton.prefab`,
+`Hotbar.prefab`) — it's a plain `Image` component with **no sprite**,
+material applied directly; the shader procedurally pixelates whatever's
+behind that Image's rect (Scene Color sampled at a quantized/floored
+UV, i.e. a screen-space mosaic distortion), not a texture-based
+graphic. That turns out to need *less* custom code than the sprite-kit
+plan, not more:
+- **Toggle "fills with it when selected"**: Unity's stock `Toggle`
+  component already shows/hides its `Checkmark` child based on `isOn`
+  natively — put the `HotbarSlotBlur_Mat` Image there and it just
+  works, no custom show/hide script needed at all (this superseded and
+  removed the earlier `ToggleTint.cs`).
+- **Slider "pixelated texture fills the rectangle"**: Unity's stock
+  `Slider` component already resizes its `Fill Area > Fill` rect via
+  anchors as the value changes — same material on that Fill Image, same
+  free result, no `fillAmount` scripting needed (planned for the
+  Controls/Graphics/Audio passes, not this one).
+- **Outline "to indicate the box"**: Unity's built-in `Outline`
+  component (`Effects > Outline`) on the Background/track Image — zero
+  new assets.
+- **Text field next to sliders**: new `Assets/Scripts/UI/
+  SliderInputFieldSync.cs` (written when the Controls-tab pass actually
+  needs it) keeps a `Slider` and a `TMP_InputField` showing/editing the
+  same value in both directions, so mouse sensitivity (and later FOV)
+  can be dragged *or* typed exactly.
+
+**New file `Assets/Scripts/UI/SettingsPanelController.cs`** — see code
+above (tab index show/hide), unaffected by the visual pivot.
+
+**New file `Assets/Scripts/UI/AccessibilityTabUI.cs`** — the Inspector
+can't wire a `Toggle.onValueChanged` directly to a static property
+setter (`ControlSettings.InvertY`), so this is the small instance-
+method bridge for that (same reason every other per-tab/per-row
+controller in this doc exists) — also reads the current values back in
+`OnEnable` so reopening Settings shows what's actually set, not each
+`Toggle`'s own serialized-default appearance. Unaffected by the visual
+pivot either — it only ever touched the setting values, never the
+toggle's look.
+
+**Editor work (this pass — shell + Accessibility only):** full
+step-by-step walkthrough given directly to the user, covering:
+replacing the "Settings coming soon" stub with the 4-tab shell (3 tabs
+empty placeholders for now), and building the 2 real toggles inside the
+Accessibility tab using `HotbarSlotBlur_Mat` + `Outline`, no sprite
+slicing needed this time.
+
+**Verify (this pass):** ✅ done — the 4 tab buttons show/hide their
+containers correctly, the 2 Accessibility toggles work, settings
+persist, `Back` returns to Main Menu.
+
+**Also fixed mid-pass, unrelated to Settings itself:** removing
+`MenuButton.prefab`'s `CapLeft`/`CapRight` decorative caps (per the
+user's own request, replacing them with a plain black `Outline` on
+`BlurBackdrop`, which already had one sitting there disabled) initially
+also had the Content Size Fitter + Horizontal Layout Group removed and
+the root hardcoded to 325×150 — broken, since every *other* button in
+the game (Host/Join/Customization/Back, Save, the color swatches) relies
+on that fitter to size itself independently based on its own Label,
+with `BlurBackdrop` always excluded from that calculation (`Ignore
+Layout`) and sized per-instance. Restored the fitter + layout group
+(without the hardcoded size) — confirmed working. Every button in the
+project now shows the bordered-mosaic look instead of the old rounded
+caps, sizing itself independently exactly as before.
+
+---
+
+## Milestone F, Pass 2 — Controls tab (rebind list + sensitivity)
+
+**Goal:** the `RebindActionRow` list from Milestone B, actually
+populated, plus a mouse-sensitivity control that's *both* a slider and
+a typeable text field (per the user's explicit request — applies to any
+future numeric slider in this menu, e.g. Graphics' FOV).
+
+**New file `Assets/Scripts/UI/SliderInputFieldSync.cs`** — keeps a
+`Slider` and a `TMP_InputField` showing/editing the same value in sync
+both ways. Owns only the sync/parsing/clamping; the actual setting
+write happens through its `OnValueChanged` C# event (not a `UnityEvent`
+— can't be wired from the Inspector, the owning tab controller
+subscribes in code). Generic/reusable — Graphics' FOV slider will reuse
+this exact component later, not a one-off for sensitivity.
+
+**New file `Assets/Scripts/UI/ControlsTabUI.cs`** — on first enable,
+instantiates one `RebindActionRow` per rebindable action (`Interact`,
+`SetDown`, `DropItem`, `ToggleInventory`, `PushToTalk`, `Sprint`,
+`Crouch`, `Jump` — not `Move`/`Look`, axis composites; not
+`PrimaryAction`/`SecondaryAction`, shared mouse buttons across several
+mutually-exclusive systems; not `Hotbar1`-`5` or `DebugSpectate`, see
+the code comment), and subscribes to the sensitivity
+`SliderInputFieldSync`'s `OnValueChanged` to write
+`ControlSettings.MouseSensitivity`. Also exposes `ResetAllKeybinds()`
+for an optional button, per Milestone B's own plan.
+
+**Mosaic slider construction** (the pattern Graphics/Audio's sliders
+will reuse): Unity's stock `Slider` already resizes its `Fill Area >
+Fill` rect via anchors as the value changes — put `HotbarSlotBlur_Mat`
+on that `Fill` Image (no sprite, matching every other mosaic use in
+this project) and it fills with the pixelated effect proportionally,
+zero custom fill-amount code. `Background` gets the same plain-Image +
+`Outline` treatment as the Accessibility toggles. The `Handle` is left
+as Unity's plain default (not reskinned) — removing it risks breaking
+click-drag positioning (`Slider` needs a `Handle Rect` assigned to
+correctly compute value from pointer position in every Unity version),
+and it's small/unobtrusive enough not to fight the mosaic look.
+
+**Editor work:** full step-by-step walkthrough given directly to the
+user — building one reusable mosaic-slider layout, the
+`RebindActionRow` template prefab (using `MenuButton.prefab` copies for
+its Rebind/Reset buttons, consistent with the rest of the project post-
+pivot), and wiring `ControlsTabUI`.
+
+**Verify:** opening the Controls tab shows one row per listed action
+with its current binding; rebinding Interact from `E` to another key
+persists across a restart. The sensitivity slider and text field stay
+in sync in both directions (drag the slider, the field updates; type in
+the field and press Enter/tab away, the slider jumps to match) and
+actually changes mouse-look sensitivity live in a test round.
 
 ---
 
