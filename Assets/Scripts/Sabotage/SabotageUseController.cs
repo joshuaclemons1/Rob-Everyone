@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using Mirror;
 using RobEveryone.Core;
+using RobEveryone.Input;
 using RobEveryone.Inventory;
 using RobEveryone.Items;
 using RobEveryone.Player;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace RobEveryone.Sabotage
 {
@@ -96,12 +96,11 @@ namespace RobEveryone.Sabotage
         {
             if (!isOwned || RobEveryone.UI.InventoryScreenUI.MenuOpen) return;
             if (carry != null && carry.IsCarrying) return; // LMB is the throw while carrying a body
-            if (Mouse.current == null) return;
 
             ItemDefinition item = ResolveSelectedItem();
             if (item == null) return;
 
-            if (Mouse.current.leftButton.wasPressedThisFrame)
+            if (InputManager.Gameplay.PrimaryAction.WasPressedThisFrame())
             {
                 // Still cooling down (Taser) -- skip the whole attempt,
                 // animation included, rather than swinging/firing for
@@ -121,7 +120,7 @@ namespace RobEveryone.Sabotage
                 else if (item.SabotageType.HasFlag(SabotageType.Ranged)) TryUseRanged(item);
                 else if (item.SabotageType.HasFlag(SabotageType.Thrown)) TryUseThrown();
             }
-            else if (Mouse.current.rightButton.wasPressedThisFrame)
+            else if (InputManager.Gameplay.SecondaryAction.WasPressedThisFrame())
             {
                 // The explicit "throw" action, only meaningful for a
                 // dual-mode item (Hammer today) -- a Thrown-only item

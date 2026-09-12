@@ -1,10 +1,10 @@
 using Mirror;
+using RobEveryone.Input;
 using RobEveryone.Items;
 using RobEveryone.Player;
 using RobEveryone.Round;
 using RobEveryone.Shop;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace RobEveryone.Interaction
 {
@@ -71,9 +71,8 @@ namespace RobEveryone.Interaction
 
             currentTarget = FindTarget();
 
-            if (Keyboard.current == null) return;
-            bool pressedThisFrame = Keyboard.current.eKey.wasPressedThisFrame;
-            bool releasedThisFrame = Keyboard.current.eKey.wasReleasedThisFrame;
+            bool pressedThisFrame = InputManager.Gameplay.Interact.WasPressedThisFrame();
+            bool releasedThisFrame = InputManager.Gameplay.Interact.WasReleasedThisFrame();
 
             Carryable carryable = carry != null ? (currentTarget as Component)?.GetComponentInParent<Carryable>() : null;
             bool ambiguous = currentTarget != null && carryable != null && carryable.CanBeGrabbed;
@@ -91,7 +90,7 @@ namespace RobEveryone.Interaction
                 grabbedThisHold = false;
             }
 
-            if (Keyboard.current.eKey.isPressed && !grabbedThisHold && eHoldStart >= 0f
+            if (InputManager.Gameplay.Interact.IsPressed() && !grabbedThisHold && eHoldStart >= 0f
                 && Time.time - eHoldStart >= carryHoldDuration)
             {
                 grabbedThisHold = true;

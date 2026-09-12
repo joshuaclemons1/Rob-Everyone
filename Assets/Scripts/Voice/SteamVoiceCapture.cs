@@ -1,21 +1,19 @@
 #if !DISABLESTEAMWORKS
+using RobEveryone.Input;
 using Steamworks;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace RobEveryone.Voice
 {
     // Local player only. Steam owns the mic (device selection + encode +
     // its own noise suppression); this just toggles recording on the
-    // push-to-talk key and hands whatever compressed bytes Steam has
-    // ready to `OnFrame` each poll. Mirrors the project's Keyboard.current
-    // polling style used elsewhere (ExitCarState, etc.).
+    // push-to-talk action and hands whatever compressed bytes Steam has
+    // ready to `OnFrame` each poll.
     public class SteamVoiceCapture : MonoBehaviour
     {
         public enum Mode { PushToTalk, OpenMic }
 
         [SerializeField] private Mode mode = Mode.PushToTalk;
-        [SerializeField] private Key pushToTalkKey = Key.V;
         // Steam recommends ~4x GetAvailableVoice's max; 8 KB is plenty
         // for one poll at our cadence.
         private readonly byte[] buffer = new byte[8192];
@@ -29,8 +27,7 @@ namespace RobEveryone.Voice
         {
             if (!SteamManager.Initialized) return;
 
-            bool want = mode == Mode.OpenMic ||
-                        (Keyboard.current != null && Keyboard.current[pushToTalkKey].isPressed);
+            bool want = mode == Mode.OpenMic || InputManager.Gameplay.PushToTalk.IsPressed();
 
             if (want && !recording) { SteamUser.StartVoiceRecording(); recording = true; }
             else if (!want && recording) { SteamUser.StopVoiceRecording(); recording = false; }

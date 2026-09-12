@@ -1,9 +1,9 @@
 using Mirror;
 using RobEveryone.Core;
+using RobEveryone.Input;
 using RobEveryone.Inventory;
 using RobEveryone.Player;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace RobEveryone.Round
 {
@@ -39,7 +39,7 @@ namespace RobEveryone.Round
 
         private void Update()
         {
-            if (isOwned && isWaiting && Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
+            if (isOwned && isWaiting && InputManager.Gameplay.Interact.WasPressedThisFrame())
             {
                 CmdExitCar();
             }

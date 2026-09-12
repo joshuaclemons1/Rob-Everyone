@@ -1,15 +1,13 @@
+using RobEveryone.Input;
 using RobEveryone.Player;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace RobEveryone.Inventory
 {
-    // Reads scroll wheel + number keys 1-5 and selects the matching
-    // hotbar slot. Pure input, no visuals -- HotbarUI reacts to whatever
-    // PlayerInventory.SelectedSlot ends up being. Mirrors
-    // FirstPersonController's existing pattern of reading
-    // Keyboard.current/Mouse.current directly (no Input Actions asset in
-    // this project yet).
+    // Reads scroll wheel + number keys 1-5 (via InputManager.Gameplay)
+    // and selects the matching hotbar slot. Pure input, no visuals --
+    // HotbarUI reacts to whatever PlayerInventory.SelectedSlot ends up
+    // being.
     //
     // Networking (Stage 4): selection is server-authoritative (Selected
     // Slot is a SyncVar on PlayerInventory), so this sends Commands
@@ -36,23 +34,17 @@ namespace RobEveryone.Inventory
             // SelectedSlot to -1 for the duration).
             if (carry != null && carry.IsCarrying) return;
 
-            if (Keyboard.current != null)
+            for (int i = 0; i < PlayerInventory.SlotCount; i++)
             {
-                for (int i = 0; i < PlayerInventory.SlotCount; i++)
+                if (InputManager.Gameplay.Hotbar(i).WasPressedThisFrame())
                 {
-                    if (Keyboard.current[Key.Digit1 + i].wasPressedThisFrame)
-                    {
-                        inventory.CmdSelectSlot(i);
-                    }
+                    inventory.CmdSelectSlot(i);
                 }
             }
 
-            if (Mouse.current != null)
-            {
-                float scroll = Mouse.current.scroll.ReadValue().y;
-                if (scroll > 0f) inventory.CmdSelectRelative(-1);
-                else if (scroll < 0f) inventory.CmdSelectRelative(1);
-            }
+            float scroll = InputManager.Gameplay.Scroll.ReadValue<Vector2>().y;
+            if (scroll > 0f) inventory.CmdSelectRelative(-1);
+            else if (scroll < 0f) inventory.CmdSelectRelative(1);
         }
     }
 }

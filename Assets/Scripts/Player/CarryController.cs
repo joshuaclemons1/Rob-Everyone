@@ -1,8 +1,8 @@
 using Mirror;
+using RobEveryone.Input;
 using RobEveryone.Interaction;
 using RobEveryone.Inventory;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace RobEveryone.Player
 {
@@ -27,8 +27,6 @@ namespace RobEveryone.Player
         [SerializeField] private float minThrowForce = 8f;
         [SerializeField] private float maxThrowForce = 45f;
         [SerializeField] private float throwChargeTime = 1.2f;
-        [SerializeField] private Key grabKey = Key.E;
-        [SerializeField] private Key setDownKey = Key.G;
         // See Interactor.ragdollAssistMaxAngle's own comment -- collider-
         // free on purpose, not a raycast/SphereCast radius.
         [SerializeField] private float grabAssistMaxAngle = 30f;
@@ -74,7 +72,7 @@ namespace RobEveryone.Player
 
             if (carried == null)
             {
-                if (Keyboard.current != null && Keyboard.current[grabKey].wasPressedThisFrame
+                if (InputManager.Gameplay.Interact.WasPressedThisFrame()
                     && interactor.CurrentTarget == null
                     && TryFindCarryable(out NetworkIdentity target))
                 {
@@ -85,19 +83,18 @@ namespace RobEveryone.Player
             }
 
             // Carrying.
-            if (Keyboard.current != null && Keyboard.current[setDownKey].wasPressedThisFrame)
+            if (InputManager.Gameplay.SetDown.WasPressedThisFrame())
             {
                 chargeStart = -1f;
                 CmdDrop(false, Vector3.zero, 0f);
                 return;
             }
 
-            if (Mouse.current == null) return;
-            if (Mouse.current.leftButton.wasPressedThisFrame)
+            if (InputManager.Gameplay.PrimaryAction.WasPressedThisFrame())
             {
                 chargeStart = Time.time;
             }
-            else if (Mouse.current.leftButton.wasReleasedThisFrame && chargeStart >= 0f)
+            else if (InputManager.Gameplay.PrimaryAction.WasReleasedThisFrame() && chargeStart >= 0f)
             {
                 float t = Mathf.Clamp01((Time.time - chargeStart) / Mathf.Max(0.01f, throwChargeTime));
                 float force = Mathf.Lerp(minThrowForce, maxThrowForce, t);

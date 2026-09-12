@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using Mirror;
+using RobEveryone.Input;
 using RobEveryone.Inventory;
 using RobEveryone.Items;
 using RobEveryone.Player;
 using RobEveryone.Sabotage;
 using TMPro;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace RobEveryone.UI
@@ -404,7 +404,11 @@ namespace RobEveryone.UI
             hotbarContainer.localScale = new Vector3(s, s, 1f);
         }
 
-        private static bool TabPressed() => Keyboard.current != null && Keyboard.current.tabKey.wasPressedThisFrame;
-        private static bool EscapePressed() => Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame;
+        private static bool TabPressed() => InputManager.Gameplay.ToggleInventory.WasPressedThisFrame();
+        // Shared with the in-game pause overlay (settings-menu-setup.md
+        // Milestone G) via the stock UI map's Cancel action, not a
+        // Gameplay one -- this screen still gets first refusal on every
+        // Escape press while it's open (see MenuOpen's other consumer).
+        private static bool EscapePressed() => InputManager.UI.Cancel.WasPressedThisFrame();
     }
 }

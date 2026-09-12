@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using Mirror;
+using RobEveryone.Input;
 using RobEveryone.Inventory;
 using RobEveryone.Player;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace RobEveryone.Round
 {
@@ -59,7 +59,7 @@ namespace RobEveryone.Round
                 return;
             }
 
-            if (Keyboard.current != null && Keyboard.current.tKey.wasPressedThisFrame)
+            if (InputManager.Gameplay.DebugSpectate.WasPressedThisFrame())
             {
                 if (isSpectating) StopSpectating();
                 else StartSpectating();
@@ -67,7 +67,7 @@ namespace RobEveryone.Round
 
             if (!isSpectating) return;
 
-            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+            if (InputManager.Gameplay.PrimaryAction.WasPressedThisFrame())
             {
                 CycleTarget();
             }

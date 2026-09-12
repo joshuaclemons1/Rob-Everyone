@@ -12,13 +12,16 @@ happen soon" to "later stage."
    account is available; not blocking anything else.
 2. **Stage 7 — full meta-game** (medium) — sabotage purchases, real
    Jail & Bail, sabotage-spending quota, night time mode.
-3. **VoIP / proximity voice chat** (medium-low) — Steam's own voice API.
-   Build guide: [voip-setup.md](stages/voip-setup.md).
-4. **Stage 8 — friend-group playtest** — depends on 1–2.
-5. **Art & audio** — more house variants (unblocks loot variety), all
+3. ~~VoIP / proximity voice chat~~ — **done, playtested working on first
+   try.** Build guide: [voip-setup.md](stages/voip-setup.md).
+4. **Settings menu** (medium-high) — audio mixer, full Input System
+   rebind migration, graphics/display, accessibility, in-game pause
+   overlay. Build guide: [settings-menu-setup.md](stages/settings-menu-setup.md).
+5. **Stage 8 — friend-group playtest** — depends on 1–2, 4.
+6. **Art & audio** — more house variants (unblocks loot variety), all
    SFX, ambient music, "Good House" tell, skin unlock-gating, HUD
    result banner, environmental detail. Mostly Zach / asset work.
-6. **Housekeeping + code-review nits** — as they come up.
+7. **Housekeeping + code-review nits** — as they come up.
 
 Detail for each below.
 
@@ -96,16 +99,26 @@ Detail for each below.
   See `gameplay-design.md` for the full design.
 - **Stage 8 — playtest with the friend group** — not started, depends on
   Stage 4-6 existing.
-- **VoIP / in-game proximity voice chat (medium-low priority)** — not
-  started. Full build plan now written up:
-  [voip-setup.md](stages/voip-setup.md) — Steam's own voice API
-  (`SteamUser.*Voice*`, already available via the Stage 5 Steamworks.NET
-  install) captured locally, relayed as ordinary Mirror Rpcs over the
-  FizzySteamworks connection, played back through a 3D `AudioSource` on
-  each speaker's player object so distance attenuation is automatic. The
-  doc settles the design calls (proximity not team-wide, push-to-talk,
-  unreliable channel, never hear yourself); the "team channel" toggle
-  stays a Stage 8 question.
+- **VoIP / in-game proximity voice chat** — **done, playtested working
+  on first try.** [voip-setup.md](stages/voip-setup.md) — Steam's own
+  voice API (`SteamUser.*Voice*`) captured locally, relayed as ordinary
+  Mirror Rpcs over the FizzySteamworks connection, played back through a
+  3D `AudioSource` on each speaker's player object so distance
+  attenuation is automatic (proximity not team-wide, push-to-talk,
+  unreliable channel, never hear yourself). Also shipped beyond the
+  original plan: `PlayerHeadTalkScale` pulses a speaker's head bone in
+  proportion to decoded volume, a visual "who's talking" cue. The "team
+  channel" toggle stays a Stage 8 question.
+- **Settings menu (medium-high priority)** — not started. Full build
+  plan now written up: [settings-menu-setup.md](stages/settings-menu-setup.md)
+  — audio mixer (Master/Music/SFX/Voice + per-player mute, finally
+  building the mute system `voip-setup.md` Part 5 only sketched),  a
+  full migration off direct `Keyboard.current`/`Mouse.current` polling
+  onto Unity's new Input System (its own isolated, playtested-first
+  milestone before the rebind UI or anything else builds on top),
+  graphics/display (resolution, quality preset, FOV, VSync),
+  accessibility (invert-Y, voice captions HUD), and an in-game pause
+  overlay that's local-only (doesn't pause the round for other players).
 
 ## Housekeeping
 

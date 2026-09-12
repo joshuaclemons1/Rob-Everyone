@@ -1,14 +1,14 @@
 using Mirror;
+using RobEveryone.Input;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace RobEveryone.Player
 {
     // Walk/sprint/crouch/jump + mouse-look controller, plus bhop-style air
-    // control (see HandleMove). Reads the New Input System's devices
-    // directly (Keyboard.current / Mouse.current) so there's no Input
-    // Actions asset to configure yet -- good enough until movement needs
-    // to be swappable (e.g. jail state freezing the player).
+    // control (see HandleMove). Reads through InputManager.Gameplay
+    // (RobEveryoneControls.inputactions) rather than polling Keyboard.
+    // current/Mouse.current directly -- see settings-menu-setup.md
+    // Milestone A.
     //
     // NetworkBehaviour + isOwned guard (Stage 4): every connected client
     // has a full copy of every player's GameObject, but only *one* of
@@ -225,9 +225,9 @@ namespace RobEveryone.Player
 
         private void HandleLook()
         {
-            if (Mouse.current == null || cameraTransform == null) return;
+            if (cameraTransform == null) return;
 
-            Vector2 delta = Mouse.current.delta.ReadValue() * (mouseSensitivity * 0.02f);
+            Vector2 delta = InputManager.Gameplay.Look.ReadValue<Vector2>() * (mouseSensitivity * 0.02f);
 
             transform.Rotate(Vector3.up, delta.x);
 
@@ -237,9 +237,7 @@ namespace RobEveryone.Player
 
         private void HandleCrouch()
         {
-            if (Keyboard.current == null) return;
-
-            IsCrouching = Keyboard.current.leftCtrlKey.isPressed;
+            IsCrouching = InputManager.Gameplay.Crouch.IsPressed();
 
             float targetHeight = IsCrouching ? standHeight * crouchHeightRatio : standHeight;
             float heightDelta = standHeight - targetHeight;
@@ -263,19 +261,12 @@ namespace RobEveryone.Player
 
         private void HandleMove()
         {
-            if (Keyboard.current == null) return;
-
-            Vector2 input = Vector2.zero;
-            if (Keyboard.current.wKey.isPressed) input.y += 1f;
-            if (Keyboard.current.sKey.isPressed) input.y -= 1f;
-            if (Keyboard.current.dKey.isPressed) input.x += 1f;
-            if (Keyboard.current.aKey.isPressed) input.x -= 1f;
-            input = Vector2.ClampMagnitude(input, 1f);
+            Vector2 input = Vector2.ClampMagnitude(InputManager.Gameplay.Move.ReadValue<Vector2>(), 1f);
 
             Vector3 wishDir = (transform.right * input.x + transform.forward * input.y).normalized;
             bool grounded = controller.isGrounded;
 
-            IsSprinting = grounded && !IsCrouching && input.y > 0f && Keyboard.current.leftShiftKey.isPressed;
+            IsSprinting = grounded && !IsCrouching && input.y > 0f && InputManager.Gameplay.Sprint.IsPressed();
 
             // jumpPending only exists to bridge the frame or two before
             // isGrounded catches up to the launch -- clear it the moment
@@ -286,7 +277,7 @@ namespace RobEveryone.Player
             // deliberate jump is fine, chaining hops isn't.
             bool autoHop = holdToAutoHop && !CarryingSomething;
             bool wantJump = grounded && !jumpPending &&
-                (autoHop ? Keyboard.current.spaceKey.isPressed : Keyboard.current.spaceKey.wasPressedThisFrame);
+                (autoHop ? InputManager.Gameplay.Jump.IsPressed() : InputManager.Gameplay.Jump.WasPressedThisFrame());
 
             if (wantJump)
             {

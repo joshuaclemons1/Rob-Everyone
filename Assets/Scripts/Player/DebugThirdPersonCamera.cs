@@ -1,5 +1,5 @@
+using RobEveryone.Input;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace RobEveryone.Player
 {
@@ -30,7 +30,7 @@ namespace RobEveryone.Player
 
         private void Update()
         {
-            if (Keyboard.current != null && Keyboard.current.tKey.wasPressedThisFrame)
+            if (InputManager.Gameplay.DebugSpectate.WasPressedThisFrame())
             {
                 Toggle();
             }

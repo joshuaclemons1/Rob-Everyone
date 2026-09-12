@@ -1,7 +1,7 @@
+using RobEveryone.Input;
 using RobEveryone.Player;
 using RobEveryone.UI;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace RobEveryone.Inventory
 {
@@ -9,7 +9,7 @@ namespace RobEveryone.Inventory
     // into the world just in front of you, floating at pickup height
     // (PlayerInventory.SelectedSlot is server-authoritative and already
     // resolved to a head, so a multi-slot item drops whole). Mirrors
-    // HotbarController's "owner polls Keyboard.current, mutation goes
+    // HotbarController's "owner reads InputManager, mutation goes
     // through a Command on PlayerInventory" shape -- a plain MonoBehaviour
     // can't declare a [Command] itself.
     //
@@ -22,7 +22,6 @@ namespace RobEveryone.Inventory
     {
         [SerializeField] private float dropForward = 1.0f;  // metres ahead of the player
         [SerializeField] private float dropHeight = -0.4f;  // metres from the player transform origin (negative = toward the feet)
-        [SerializeField] private Key dropKey = Key.Q;
 
         private PlayerInventory inventory;
         private CarryController carry;
@@ -37,7 +36,7 @@ namespace RobEveryone.Inventory
         {
             if (!inventory.isOwned || InventoryScreenUI.MenuOpen) return;
             if (carry != null && carry.IsCarrying) return; // hands full
-            if (Keyboard.current == null || !Keyboard.current[dropKey].wasPressedThisFrame) return;
+            if (!InputManager.Gameplay.DropItem.WasPressedThisFrame()) return;
 
             Vector3 flatForward = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
             Vector3 pos = transform.position + flatForward * dropForward + Vector3.up * dropHeight;
