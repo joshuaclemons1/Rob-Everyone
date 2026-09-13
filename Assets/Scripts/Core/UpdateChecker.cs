@@ -35,14 +35,39 @@ namespace RobEveryone.Core
             public string html_url;
         }
 
+        // Held at class level (not just local to the coroutine) so
+        // OnDestroy can reach and dispose it if this object gets torn
+        // down mid-request -- confirmed real hazard: accepting a Steam
+        // invite mid-check changes scenes (MainMenu -> Lobby), which
+        // would otherwise abandon the coroutine without ever letting its
+        // `using` block run, leaking the request's native handle while
+        // still in flight.
+        private UnityWebRequest request;
+
+        private void Awake()
+        {
+            // Never torn down by the MainMenu -> Lobby scene change a
+            // Steam invite accept triggers -- this object only exists to
+            // run one check, so DontDestroyOnLoad plus self-destruction
+            // once that check finishes (success, failure, or popup
+            // shown) is simpler than teaching the check itself to
+            // survive an interrupted scene unload.
+            DontDestroyOnLoad(gameObject);
+        }
+
         private void Start()
         {
             StartCoroutine(CheckForUpdate());
         }
 
+        private void OnDestroy()
+        {
+            request?.Dispose();
+        }
+
         private IEnumerator CheckForUpdate()
         {
-            using UnityWebRequest request = UnityWebRequest.Get(LatestReleaseUrl);
+            request = UnityWebRequest.Get(LatestReleaseUrl);
             // Mandatory -- GitHub's API outright rejects any request with
             // no User-Agent header (403), authenticated or not.
             request.SetRequestHeader("User-Agent", "RobEveryone-UpdateChecker");
@@ -51,16 +76,22 @@ namespace RobEveryone.Core
             // Fails open on any network hiccup/rate-limit/malformed
             // response -- a broken update check should never block
             // someone from playing, just silently skip the popup.
-            if (request.result != UnityWebRequest.Result.Success) yield break;
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                ReleaseInfo release;
+                try { release = JsonUtility.FromJson<ReleaseInfo>(request.downloadHandler.text); }
+                catch { release = null; }
 
-            ReleaseInfo release;
-            try { release = JsonUtility.FromJson<ReleaseInfo>(request.downloadHandler.text); }
-            catch { yield break; }
+                if (release != null && !string.IsNullOrEmpty(release.tag_name) && release.tag_name != Application.version)
+                {
+                    if (popup != null) popup.Show(release.tag_name, release.html_url);
+                }
+            }
 
-            if (release == null || string.IsNullOrEmpty(release.tag_name)) yield break;
-            if (release.tag_name == Application.version) yield break; // already current
-
-            if (popup != null) popup.Show(release.tag_name, release.html_url);
+            // OnDestroy disposes `request` -- this object only ever runs
+            // one check, so it's done its whole job the moment this
+            // coroutine reaches here either way.
+            Destroy(gameObject);
         }
     }
 }
