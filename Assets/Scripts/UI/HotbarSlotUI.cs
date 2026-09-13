@@ -87,18 +87,32 @@ namespace RobEveryone.UI
 
         private void Awake()
         {
+            EnsureRectTransform();
+
             currentSpinSpeed = normalSpinSpeed;
             if (modelImage != null) BuildPreviewStage();
             else Debug.LogWarning($"HotbarSlotUI on '{name}' has no Model Image assigned -- it can't show the spinning item preview. If this is a duplicated slot (e.g. the wallet box), re-point its Model Image / Item Text / Uses Text at its own children.", this);
-
-            rectTransform = GetComponent<RectTransform>();
-            baseAnchoredX = rectTransform.anchoredPosition.x;
-            baseWidth = rectTransform.sizeDelta.x;
 
             // Clear whatever placeholder name/uses text the prefab (or a
             // duplicated slot, e.g. the wallet box) shipped with, so a
             // box shows nothing until something binds an item to it.
             SetItem(null);
+        }
+
+        // The victim hotbar row (steal screen) starts inactive and is
+        // only ever SetActive(true)'d for an actual steal -- Unity never
+        // runs Awake() on a component under a GameObject that's inactive
+        // from scene load, so a plain Tab-open/close that was never a
+        // steal could still reach SetSpan below with rectTransform still
+        // unset. Called from both Awake and SetSpan (idempotent) so
+        // either order works correctly instead of assuming Awake always
+        // ran first.
+        private void EnsureRectTransform()
+        {
+            if (rectTransform != null) return;
+            rectTransform = GetComponent<RectTransform>();
+            baseAnchoredX = rectTransform.anchoredPosition.x;
+            baseWidth = rectTransform.sizeDelta.x;
         }
 
         // Resizes and repositions this box to cover a span of physical
@@ -110,6 +124,8 @@ namespace RobEveryone.UI
         // single slot.
         public void SetSpan(float centerAnchoredX, float width)
         {
+            EnsureRectTransform();
+
             Vector2 pos = rectTransform.anchoredPosition;
             pos.x = centerAnchoredX;
             rectTransform.anchoredPosition = pos;

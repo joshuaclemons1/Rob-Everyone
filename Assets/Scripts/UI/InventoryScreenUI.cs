@@ -177,7 +177,17 @@ namespace RobEveryone.UI
 
             stealVictim = null;
             stealVictimIdentity = null;
-            if (victimHotbarUI != null) victimHotbarUI.Bind(null);
+            // Steal-only cleanup -- victimRow (and everything under it,
+            // including victimHotbarUI's own slots) starts inactive and
+            // is only ever SetActive(true)'d for an actual steal, so its
+            // HotbarSlotUI children never ran Awake() (and never
+            // resolved their own RectTransform) on a plain Tab-open/close
+            // that was never a steal. Confirmed bug: calling Bind(null)
+            // unconditionally here NullReferenceException'd inside
+            // HotbarSlotUI.SetSpan on every single close, which meant
+            // Update() never reached FinishClose -- Tab/Escape looked
+            // like they did nothing at all.
+            if (mode == Mode.Steal && victimHotbarUI != null) victimHotbarUI.Bind(null);
 
             EndGhost();
             foreach (var s in EnumerateSlots()) { s.DragEnabled = false; s.DropEnabled = false; }
