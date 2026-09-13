@@ -711,11 +711,16 @@ namespace RobEveryone.Core
             if (screen != null) screen.Show(message);
         }
 
-        // Called by RobEveryoneNetworkManager.OnClientSceneChanged, which
-        // fires on every client once their own local copy of a server-
-        // requested scene change has finished loading -- the right moment
-        // to hide whichever loading screen variant (Target or broadcast
-        // Rpc above) was showing for that transition.
+        // Only called from this class's own OnStartServer now (the
+        // host's own "Loading..." screen -- see that call site's
+        // comment). RobEveryoneNetworkManager.OnClientSceneChanged used
+        // to route a genuine remote client's own hide through here too,
+        // but this is a scene-placed NetworkIdentity that starts
+        // disabled until spawned, and Instance was reliably still null
+        // at the exact moment a client's OnClientSceneChanged fires --
+        // confirmed bug: the loading screen never hid for a joining
+        // player even though the game was fully running underneath. That
+        // call site now hides it directly instead.
         public void HandleClientSceneChanged()
         {
             LoadingScreenUI screen = FindFirstObjectByType<LoadingScreenUI>();

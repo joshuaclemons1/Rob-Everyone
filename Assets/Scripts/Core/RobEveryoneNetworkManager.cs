@@ -119,14 +119,27 @@ namespace RobEveryone.Core
         }
 
         // Fires on every client once their own local copy of a server-
-        // requested scene change has finished loading -- see
-        // GameFlowManager.HandleClientSceneChanged for why this is the
-        // right moment to hide the loading screen.
+        // requested scene change has finished loading -- the right
+        // moment to hide the loading screen. Deliberately does NOT go
+        // through GameFlowManager.Instance (as it used to) -- that's
+        // itself a scene-placed NetworkIdentity which starts disabled
+        // until the server's separate spawn-message batch reaches this
+        // client, and that batch arrives *after* the client's own local
+        // scene load finishes (confirmed in Mirror's own
+        // FinishLoadSceneClientOnly). Instance was reliably still null
+        // at exactly this moment for a genuine remote client, silently
+        // no-oping through the old `?.` and leaving the loading screen
+        // stuck forever -- confirmed bug: a joining player could move
+        // and hear the game running underneath, but only ever saw the
+        // loading screen. Hiding it here directly has no real dependency
+        // on GameFlowManager's own state, so there was nothing to lose
+        // by not routing through it.
         public override void OnClientSceneChanged()
         {
             base.OnClientSceneChanged();
 
-            if (GameFlowManager.Instance != null) GameFlowManager.Instance.HandleClientSceneChanged();
+            LoadingScreenUI screen = FindFirstObjectByType<LoadingScreenUI>();
+            if (screen != null) screen.Hide();
         }
 
         // Hosting's own "Loading..." is shown here instead of
