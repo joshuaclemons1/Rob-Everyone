@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.lachee.discordrpc": "https://github.com/Lachee/discord-rpc-unity.git",
     "com.mirror.steamworks.net": "https://github.com/Chykary/FizzySteamworks.git?path=/com.mirror.steamworks.net",
     "com.unity.2d.sprite": "1.0.0",
     "com.unity.ai.navigation": "2.0.14",
