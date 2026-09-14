@@ -96,9 +96,12 @@ will misbehave — always open `MainMenu` first.
 - **Never commit someone else's in-progress Editor work.** If a scene or
   prefab shows as locally modified and you didn't intentionally change
   it, leave it alone and ask rather than committing or discarding it.
-- Found something broken? File it in [Known Bugs.md](Known%20Bugs.md)
-  using the template at the top — especially useful during local
+- Found something broken? File it as a
+  [GitHub Issue](https://github.com/joshuaclemons1/Rob-Everyone/issues/new/choose)
+  using the **Bug report** template — especially useful during local
   playtests when the person hitting the bug isn't the one who'll fix it.
+  If you're telling Chayton about it directly instead, he can file it
+  for you from the conversation.
 
 ## Where things live
 
@@ -107,4 +110,5 @@ will misbehave — always open `MainMenu` first.
 - [docs/plan.md](docs/plan.md) — the dev plan and build order.
 - [docs/completed.md](docs/completed.md) / [docs/todo.md](docs/todo.md) —
   current status: what's built and confirmed vs. what's genuinely open.
-- [Known Bugs.md](Known%20Bugs.md) — bug report template + log.
+- [Issues](https://github.com/joshuaclemons1/Rob-Everyone/issues) — bug
+  reports (use the **Bug report** template).

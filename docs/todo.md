@@ -126,10 +126,13 @@ Detail for each below.
   (`15`, matching `Kenney-CityKitSuburban`) before assuming a freshly
   imported pack (e.g. Industrial, Car Kit) "looks tiny" for some other
   reason.
-- **`Known Bugs.md`** — a template doc now exists at
-  [Known Bugs.md](../Known%20Bugs.md) for anyone (including Brian/Goodson
-  during local playtests) to file a real bug report. Check it
-  periodically — it's not otherwise wired into this workflow.
+- **Bug reports live in GitHub Issues now** — `.github/ISSUE_TEMPLATE/
+  bug_report.md` (on `main`, so it shows up for everyone's "New Issue")
+  covers anyone, including Brian/Goodson during local playtests, filing
+  a real bug report. Check the
+  [Issues tab](https://github.com/joshuaclemons1/Rob-Everyone/issues)
+  periodically — it's not otherwise wired into this workflow. Replaces
+  the short-lived `Known Bugs.md` file.
 
 ## Code-review nits (Stage 6 sabotage read-through)
 

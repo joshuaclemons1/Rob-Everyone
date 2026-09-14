@@ -75,4 +75,5 @@ are kept current; an individual doc's own header sometimes isn't.
   spec.
 - **[docs/art-info.md](docs/art-info.md)** — art style/palette/sourced-asset
   reference.
-- **[Known Bugs.md](Known%20Bugs.md)** — bug report template and log.
+- **[Issues](https://github.com/joshuaclemons1/Rob-Everyone/issues)** —
+  bug reports (use the **Bug report** template).
