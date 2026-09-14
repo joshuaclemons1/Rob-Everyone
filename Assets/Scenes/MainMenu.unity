@@ -6422,6 +6422,7 @@ GameObject:
   - component: {fileID: 1019379346}
   - component: {fileID: 1019379345}
   - component: {fileID: 1019379348}
+  - component: {fileID: 1019379349}
   m_Layer: 0
   m_Name: NetworkManager
   m_TagString: Untagged
@@ -6624,6 +6625,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Voice.SteamVoiceCapture
   mode: 0
+--- !u!114 &1019379349
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1019379339}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6068ea202040afb47b8ea8a80e5300f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Core.DiscordRichPresence
+  applicationId: 1549201375668469841
+  checkInterval: 0.5
 --- !u!1001 &1032765620
 PrefabInstance:
   m_ObjectHideFlags: 0

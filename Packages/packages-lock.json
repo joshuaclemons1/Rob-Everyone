@@ -1,5 +1,14 @@
 {
   "dependencies": {
+    "com.lachee.discordrpc": {
+      "version": "https://github.com/Lachee/discord-rpc-unity.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {
+        "com.unity.nuget.newtonsoft-json": "3.0.3"
+      },
+      "hash": "791aa95d2aecac9de423aa260f1f569755308a93"
+    },
     "com.mirror.steamworks.net": {
       "version": "https://github.com/Chykary/FizzySteamworks.git?path=/com.mirror.steamworks.net",
       "depth": 0,
