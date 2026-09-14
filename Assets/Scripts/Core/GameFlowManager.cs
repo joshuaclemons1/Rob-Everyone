@@ -564,7 +564,7 @@ namespace RobEveryone.Core
         // Raw position/rotation overload -- added for ExitCarState's
         // multi-occupant seating (issue #45): a claimed seat slot isn't
         // always an authored scene Transform (extra occupants beyond the
-        // first get a computed offset, see ExitPoint.ClaimSeatPosition),
+        // first get a computed offset, see ExitPoint.ClaimSeat),
         // so there's no Transform to hand in for those.
         [Server]
         public void TeleportPlayerTo(Transform player, Vector3 position, Quaternion rotation)

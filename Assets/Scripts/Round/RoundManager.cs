@@ -47,6 +47,14 @@ namespace RobEveryone.Round
         // once the round ends with them still in here -- CheckForEarlyEnd
         // or the timeout branch below.
         private readonly HashSet<PlayerInventory> jailedPlayers = new();
+        // Issue #48/#49: a player who's ridden out their own exit-car
+        // carWaitDuration -- safe now, but NOT yet permanently resolved.
+        // They can still press E to climb back out and keep playing
+        // (ExitCarState.CmdExitCar -> NotifyPlayerUnready) right up until
+        // the whole group is accounted for. Kept separate from
+        // resolvedPlayers for exactly that reason -- only folded in once
+        // CheckForEarlyEnd's group-wide condition actually passes.
+        private readonly HashSet<PlayerInventory> readyAtExit = new();
 
         public int Quota => quota;
         public float RoundDuration => roundDuration;
@@ -89,9 +97,15 @@ namespace RobEveryone.Round
             {
                 // Still-jailed players time out as Caught, not as a normal
                 // RoundComplete -- finalize them first so the timeout loop
-                // below doesn't also resolve them the other way.
+                // below doesn't also resolve them the other way. A
+                // still-ready-at-exit player gets swept into
+                // ResolveRemainingPlayersOnTimeout below as a normal
+                // RoundComplete same as anyone else not yet resolved --
+                // readyAtExit itself just needs clearing after, since
+                // nothing above removes individual entries from it.
                 FinalizeJailedPlayersAsCaught();
                 ResolveRemainingPlayersOnTimeout();
+                readyAtExit.Clear();
                 EndRound();
             }
         }
@@ -101,6 +115,7 @@ namespace RobEveryone.Round
         {
             resolvedPlayers.Clear();
             jailedPlayers.Clear();
+            readyAtExit.Clear();
 
             // Discards whatever carried *loot* (not Cash, not sabotage
             // items) survived from the previous round -- unsold loot at
@@ -125,6 +140,28 @@ namespace RobEveryone.Round
         {
             ResolvePlayer(player, RoundResult.RoundComplete);
         }
+
+        // Called by ExitCarState once a seated player's own carWaitDuration
+        // elapses -- they're safe now, but only counted as "accounted for"
+        // toward CheckForEarlyEnd, not permanently resolved yet. A player
+        // who later changes their mind and climbs back out
+        // (NotifyPlayerUnready) removes themselves from this again and
+        // keeps playing.
+        [Server]
+        public void NotifyPlayerReady(PlayerInventory player)
+        {
+            if (!roundActive) return;
+            if (resolvedPlayers.Contains(player) || jailedPlayers.Contains(player) || readyAtExit.Contains(player)) return;
+
+            readyAtExit.Add(player);
+            CheckForEarlyEnd();
+        }
+
+        // Called by ExitCarState.CmdExitCar when a player who'd already
+        // ridden out their own carWaitDuration chooses to climb back out
+        // anyway, before the group as a whole ever resolved.
+        [Server]
+        public void NotifyPlayerUnready(PlayerInventory player) => readyAtExit.Remove(player);
 
         // Jail & Bail: no longer resolves the round for this player
         // immediately. Loot loss (below) is instant and irreversible, but
@@ -173,16 +210,38 @@ namespace RobEveryone.Round
         }
 
         // The round ends early the instant every connected player is
-        // *either* resolved *or* currently jailed -- a jailed player no
-        // longer blocks this the way an old permanent-freeze catch
-        // effectively did, since they can still be rescued and keep
-        // playing right up until this check (or the timeout) fires.
+        // resolved, currently jailed, *or* ready-at-exit -- a jailed
+        // player no longer blocks this the way an old permanent-freeze
+        // catch effectively did, since they can still be rescued and
+        // keep playing right up until this check (or the timeout) fires;
+        // a ready-at-exit player can similarly still climb back out
+        // (NotifyPlayerUnready) any time before this actually passes.
         private void CheckForEarlyEnd()
         {
-            if (resolvedPlayers.Count + jailedPlayers.Count < PlayerInventory.AllPlayers.Count) return;
+            if (resolvedPlayers.Count + jailedPlayers.Count + readyAtExit.Count < PlayerInventory.AllPlayers.Count) return;
 
+            // Everyone's accounted for -- the whole group gets away
+            // together now. Finalize ready players first (folds them
+            // into resolvedPlayers) so FinalizeJailedPlayersAsCaught's
+            // own resolvedPlayers.Add below can't somehow race an
+            // already-in-progress finalize for the same player.
+            FinalizeReadyPlayersAsExtracted();
             FinalizeJailedPlayersAsCaught();
             EndRound();
+        }
+
+        // Everyone still in readyAtExit the instant the whole group is
+        // accounted for gets permanently resolved now -- same
+        // RoundResult.RoundComplete path NotifyPlayerReachedExit already
+        // uses, just deferred until this moment instead of the instant
+        // their own carWaitDuration elapsed.
+        private void FinalizeReadyPlayersAsExtracted()
+        {
+            foreach (PlayerInventory player in new List<PlayerInventory>(readyAtExit))
+            {
+                readyAtExit.Remove(player);
+                if (resolvedPlayers.Add(player)) OnPlayerResolved?.Invoke(player, RoundResult.RoundComplete);
+            }
         }
 
         // Whoever's still jailed the instant the round actually ends
@@ -215,13 +274,14 @@ namespace RobEveryone.Round
             if (!roundActive) return;
             roundActive = false;
 
-            // Issue #48 fix: a player who rode out their own exit-car
-            // carWaitDuration is resolved (NotifyPlayerReachedExit,
-            // already counted toward CheckForEarlyEnd/the timeout above)
-            // but deliberately stays physically seated/frozen in the car
-            // until the round is actually over for the whole group --
-            // ForceRelease here is what finally lets them go. Harmless
-            // no-op for anyone who was never seated.
+            // Issue #48/#49: a player who rode out their own exit-car
+            // carWaitDuration deliberately stays physically seated/frozen
+            // (readyAtExit already got finalized into resolvedPlayers by
+            // now, via CheckForEarlyEnd or the timeout above) until the
+            // round is actually over for the whole group -- ForceRelease
+            // here is what finally lets them go, whether they were ready
+            // or still mid-vulnerable-window when the round ended.
+            // Harmless no-op for anyone who was never seated.
             foreach (PlayerInventory player in PlayerInventory.AllPlayers)
             {
                 player.GetComponent<ExitCarState>()?.ForceRelease();

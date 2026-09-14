@@ -9,11 +9,12 @@ namespace RobEveryone.Round
     // trigger -- press E ("Press E to get away!") to seat yourself in
     // the car (ExitCarState.EnterCar), which doesn't resolve the round
     // immediately. Instead you sit there, frozen and robbable, for
-    // CarWaitDuration -- a rival gets one last chance at you, and you
-    // can still climb back out yourself (ExitCarState's own "Press E to
-    // exit the car" prompt) if you need to react to something. Only
-    // actually finishes the round for you if you ride it out
-    // (ExitCarState.FinalizeExit -> NotifyPlayerExtracted below).
+    // CarWaitDuration -- a rival gets one last chance at you. Riding that
+    // out just makes you *safe*, not resolved -- the actual group-wide
+    // getaway only happens once everyone is ready-at-exit or jailed, or
+    // the round times out (RoundManager.CheckForEarlyEnd), and you can
+    // still climb back out yourself (ExitCarState's own "Press E to exit
+    // the car" prompt) any time before that, safe or not.
     [RequireComponent(typeof(Collider))]
     public class ExitPoint : MonoBehaviour, IInteractable, IInteractableWarning
     {
@@ -119,14 +120,25 @@ namespace RobEveryone.Round
             carState.EnterCar(this);
         }
 
-        // Called by ExitCarState once a seated player's wait window runs
-        // out without them climbing back out -- the actual moment their
-        // round resolves, same RoundResult.RoundComplete path the old
-        // walk-in trigger used.
-        public void NotifyPlayerExtracted(PlayerInventory player)
+        // Called by ExitCarState once a seated player's own vulnerable
+        // window runs out without them climbing back out -- they're safe
+        // now, but only provisionally: RoundManager only actually
+        // resolves the whole group once everyone is ready-at-exit or
+        // jailed (or the round times out).
+        public void NotifyPlayerReady(PlayerInventory player)
         {
             if (roundManager == null || player == null) return;
-            roundManager.NotifyPlayerReachedExit(player);
+            roundManager.NotifyPlayerReady(player);
+        }
+
+        // Called by ExitCarState when an already-ready player changes
+        // their mind and climbs back out before the group as a whole
+        // ever resolved, or when the round ends and every still-seated
+        // player gets released regardless of which phase they were in.
+        public void NotifyPlayerUnready(PlayerInventory player)
+        {
+            if (roundManager == null || player == null) return;
+            roundManager.NotifyPlayerUnready(player);
         }
     }
 }
