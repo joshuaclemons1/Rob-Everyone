@@ -1,0 +1,62 @@
+name: Regenerate landing page data
+
+# Keeps docs/site-data.js (consumed by the public landing page artifact
+# via jsdelivr's GitHub-file script host) in sync with the repo, with
+# no human ever needing to touch the page itself:
+#  - version/release date/link come straight from the GitHub Releases
+#    API, always current the moment a new build ships.
+#  - the "Already in the build" / "Coming next" lists come from
+#    docs/site-status.md, a plain bullet-list file anyone on the team
+#    can edit directly in GitHub's web UI.
+# See docs/site-status.md's own header comment for the editing side of
+# this.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/site-status.md"
+      - ".github/scripts/build_site_data.py"
+  release:
+    types: [published]
+  schedule:
+    # Safety net -- catches anything that should have re-run but didn't
+    # (a release published from a UI path that doesn't fire the event
+    # cleanly, etc.) without anyone needing to notice and re-trigger it.
+    - cron: "17 8 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Generate docs/site-data.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 .github/scripts/build_site_data.py
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- docs/site-data.js; then
+            echo "No change, nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/site-data.js
+          git commit -m "Regenerate docs/site-data.js [skip ci]"
+          git push
+
+      - name: Purge jsdelivr cache
+        # The landing page loads this file via
+        # cdn.jsdelivr.net/gh/<repo>@main/docs/site-data.js -- jsdelivr
+        # caches branch-ref content for up to ~12-24h otherwise, which
+        # would make a fresh commit here take that long to actually
+        # reach the page. This forces an immediate refresh.
+        run: curl -fsS "https://purge.jsdelivr.net/gh/${{ github.repository }}@main/docs/site-data.js" || true
