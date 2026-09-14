@@ -3,10 +3,8 @@
 Code-only pass through the Tier 1 (bug + urgent) and Tier 2 (bug +
 non-urgent) items from [issue-tracking.md](../issue-tracking.md)'s
 priority list — everything here was written and reasoned through
-without Unity Editor access, so **none of it has been compiled or
-run yet**. This doc is the checklist for going through it
-systematically once back at a PC: open the Editor, let it recompile,
-then work top to bottom.
+without Unity Editor access, so most of it went unverified by a
+compiler until the Editor testing pass noted below.
 
 Also picked up **#45** partway through this pass — a multiplayer-only
 exit car bug reported directly, not originally on the Tier 1/2 list —
@@ -16,14 +14,35 @@ of this doc. See its own section near the end.
 All seven fixes are committed on `jclem's-branch` (`4244623` for
 #4/#8/#11, `5e066b9` for #1/#15, `47ebf19` for #45 — see each issue's
 own GitHub comment for the exact commit hash) and have progress
-comments on their issues. **None of the issues are closed** — every one
-of them needs a real playtest confirming the fix actually works before
-it gets closed, per `issue-tracking.md`'s own rule (closed = done *and
-confirmed*, not just "code's been pushed").
+comments on their issues.
 
-## Fixed — code done, needs a playtest to confirm
+**Status as of 2026-09-14 (Editor testing pass):** #1, #4, and #15 have
+been tested in the Editor and confirmed fixed — **closed**. The
+remaining four (#8, #11, #45, and everything in the "Investigated, not
+fixed" section) still need testing and remain open; #8/#11 need real
+Editor play but not multiplayer, #45 needs 2+ players (ParrelSync or
+same-machine is enough), and the rest need a real Steam multiplayer
+session with actual network latency.
 
-### #4 — Caught by Police while no officer is visible
+## Confirmed fixed — closed
+
+### #1 — Sabotage cooldowns don't reset between rounds ✅ closed
+
+**What was wrong:** both cooldown clocks in `SabotageUseController`
+(`nextReadyTime`, the server-authoritative one, and `localNextReadyTime`,
+its client-side cosmetic mirror for the HUD) are tracked purely against
+`Time.time` — a session-wide clock that's never reset on its own.
+Nothing previously cleared either dictionary between rounds, so a
+cooldown (e.g. Taser) started late in one round could still be counting
+down into the next.
+
+**What changed:** added `SabotageUseController.ServerResetCooldowns()`
+(clears the server dictionary, and `TargetRpc`s the owning client to
+clear its local mirror too) and call it for every player at the top of
+`GameFlowManager.HandleRoundStarted` — the same "runs at the start of
+every fresh round" hook the #12/#16 fixes already use.
+
+### #4 — Caught by Police while no officer is visible ✅ closed
 
 **What was wrong:** `PoliceAI`'s point-blank catch check
 (`UpdateChase`) was pure straight-line `Vector3.Distance`, with nothing
@@ -37,15 +56,24 @@ the same `obstructionMask` the vision cone (`CanSee`) already checks
 against. The point-blank catch now also requires a clear line to the
 target, not just proximity.
 
-**Editor steps needed:** none — `obstructionMask` and `eye` were already
-serialized fields with values already set on the Police prefab; nothing
-new to wire up.
+### #15 — End-of-round screen text too long, renders off screen ✅ closed
 
-**Test:** get chased by Police, and specifically try to break line of
-sight around a thin wall/corner while staying within ~2m of the officer
-(catchDistance). Confirm you're no longer caught through the wall, but
-still caught normally in the open. Also sanity-check normal catches
-still work at all (regression check on the geometry raycast itself).
+**What was wrong:** `LoadingScreenUI`'s message text mostly shows short
+static strings ("Starting next round...") but also
+`GameFlowManager`'s dynamically-built batch-progress summary
+(`"Batch progress: $X cash + $Y inventory / $Z"`), whose length depends
+entirely on how much cash/inventory a player is carrying. A font size
+tuned for the short messages can run past the edge of the panel once
+those numbers get large.
+
+**What changed:** `LoadingScreenUI.Show` now turns on TMP's built-in
+shrink-to-fit (`enableAutoSizing`) the first time it's called, capping
+`fontSizeMax` at whatever size was already authored (so short messages
+still render exactly as before) and `fontSizeMin` at 60% of that. Only
+does this once — if auto-sizing is already configured in the Editor, it
+leaves it alone entirely.
+
+## Fixed — code done, needs a playtest to confirm
 
 ### #8 — Jailed players can walk straight out of their cell
 
@@ -116,60 +144,6 @@ different resolution from the dropdown — confirm the UI stays usable
 and doesn't desync. Separately, as a deliberate worst-case check: try
 to get the UI into a bad state on purpose (rapid resolution/mode
 switching) and confirm **F9** recovers it.
-
-## Fixed — code done, needs a playtest to confirm (Tier 2)
-
-### #1 — Sabotage cooldowns don't reset between rounds
-
-**What was wrong:** both cooldown clocks in `SabotageUseController`
-(`nextReadyTime`, the server-authoritative one, and `localNextReadyTime`,
-its client-side cosmetic mirror for the HUD) are tracked purely against
-`Time.time` — a session-wide clock that's never reset on its own.
-Nothing previously cleared either dictionary between rounds, so a
-cooldown (e.g. Taser) started late in one round could still be counting
-down into the next.
-
-**What changed:** added `SabotageUseController.ServerResetCooldowns()`
-(clears the server dictionary, and `TargetRpc`s the owning client to
-clear its local mirror too) and call it for every player at the top of
-`GameFlowManager.HandleRoundStarted` — the same "runs at the start of
-every fresh round" hook the #12/#16 fixes already use.
-
-**Editor steps needed:** none.
-
-**Test:** use a cooldown item (Taser) right near the end of a round,
-then confirm it's immediately usable again at the start of the next
-round rather than still showing a countdown.
-
-### #15 — End-of-round screen text too long, renders off screen
-
-**What was wrong:** `LoadingScreenUI`'s message text mostly shows short
-static strings ("Starting next round...") but also
-`GameFlowManager`'s dynamically-built batch-progress summary
-(`"Batch progress: $X cash + $Y inventory / $Z"`), whose length depends
-entirely on how much cash/inventory a player is carrying. A font size
-tuned for the short messages can run past the edge of the panel once
-those numbers get large.
-
-**What changed:** `LoadingScreenUI.Show` now turns on TMP's built-in
-shrink-to-fit (`enableAutoSizing`) the first time it's called, capping
-`fontSizeMax` at whatever size was already authored (so short messages
-still render exactly as before) and `fontSizeMin` at 60% of that. Only
-does this once — if auto-sizing is already configured in the Editor, it
-leaves it alone entirely.
-
-**Editor steps needed:** none required, but worth eyeballing in the
-Editor once: open the panel with a deliberately long fake message (a
-huge cash/inventory number) and confirm the shrink still looks readable
-at the 60%-of-original floor. If it looks too small before it looks
-unreadable, that floor (currently hardcoded at `* 0.6f` in
-`LoadingScreenUI.ShrinkToFitIfNeeded`) is the one knob to adjust.
-
-**Test:** finish a round carrying a large cash/inventory total (big
-enough that the old fixed-size text would've overflowed) and confirm
-the end-of-round summary text stays fully on screen and readable.
-
-## Fixed — code done, needs a playtest to confirm (#45, reported separately)
 
 ### #45 — Exit car only seated the first player; others got bounced out
 
@@ -309,20 +283,19 @@ once.
 
 ## Suggested order once back at the PC
 
-1. Let the Editor recompile everything in this doc — check the Console
-   for any errors before doing anything else (none of this was compiler-
-   verified, only manually brace-balance-checked).
-2. Work the "Fixed" sections above in any order — each is independently
+1. ~~Let the Editor recompile everything in this doc — check the Console
+   for any errors before doing anything else.~~ Done — #1/#4/#15
+   confirmed working.
+2. Work the remaining "Fixed" items (#8, #11) — each is independently
    testable in a single-player or same-machine session, no real network
-   latency needed.
-3. Tune `JailState.confinementRadius` (#8) against the real cell
-   geometry while you're in there anyway.
-4. Then move to #10 (Settings background) — Editor-only investigation,
+   latency needed. Tune `JailState.confinementRadius` (#8) against the
+   real cell geometry while you're in there anyway.
+3. Then move to #10 (Settings background) — Editor-only investigation,
    no multiplayer needed.
-5. #45 (exit car) needs at least 2 players, but not real network
+4. #45 (exit car) needs at least 2 players, but not real network
    latency — same-machine/ParrelSync testing should reproduce it fine,
    so it doesn't need to wait for a real Steam session like the group
    below does.
-6. Save #2/#3/#5/#9/#7/#13 for a real multiplayer session with a genuine
+5. Save #2/#3/#5/#9/#7/#13 for a real multiplayer session with a genuine
    non-host player over Steam — these all need actual network latency
    to reproduce and can't be meaningfully tested solo.
