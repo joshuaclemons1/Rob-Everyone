@@ -32,6 +32,22 @@ namespace RobEveryone.Round
         [SerializeField, Range(0f, 1f)] private float jailedVolume = 0.8f;
         [SerializeField, Range(0f, 1f)] private float rescuedVolume = 0.7f;
 
+        // Issue #8 fix -- server-authoritative leash on top of the cell's
+        // own level geometry. horizontal-only distance from the exact
+        // JailPoint slot GameFlowManager.TeleportToJail assigned this
+        // player; still free to walk/look anywhere inside this radius,
+        // but stepping past it snaps straight back instead of trusting
+        // walls/gaps in the scene to physically stop them (which is all
+        // that was holding a jailed player in before -- see EnterJail's
+        // own long-standing comment below).
+        [SerializeField] private float confinementRadius = 4f;
+
+        // Server-only. Set in EnterJail, cleared on release. Not a
+        // SyncVar -- only Update()'s own [Server]-gated check ever reads
+        // it, same "server owns this, don't bother syncing it" reasoning
+        // occupiedJailPoints uses in GameFlowManager.
+        private Transform jailAnchor;
+
         public bool IsJailed => isJailed;
         public bool IsEndOfBatchJail => isEndOfBatchJail;
         public int JailedAtRoundOrdinal => jailedAtRoundOrdinal;
@@ -53,9 +69,10 @@ namespace RobEveryone.Round
             jailedAtRoundOrdinal = GameFlowManager.Instance != null ? GameFlowManager.Instance.RoundOrdinal : 0;
             // Deliberately doesn't freeze movement -- a jailed player can
             // still walk/look around, just physically confined by the
-            // cell's own geometry. SpectatorController separately pauses
-            // input while actively spectating (T key).
-            GameFlowManager.Instance?.TeleportToJail(transform);
+            // cell's own geometry (backed up by confinementRadius below,
+            // issue #8). SpectatorController separately pauses input
+            // while actively spectating (T key).
+            jailAnchor = GameFlowManager.Instance?.TeleportToJail(transform);
 
             // Own-client-only full message covering the teleport itself;
             // a separate broadcast (below) tells everyone *else* there's
@@ -109,6 +126,24 @@ namespace RobEveryone.Round
         public void ForceRelease()
         {
             isJailed = false;
+            jailAnchor = null;
+        }
+
+        // Issue #8 fix. Horizontal-only (Y excluded) so a jailed player
+        // can still jump in place without tripping this -- only actually
+        // putting distance between themselves and their assigned cell
+        // slot counts. Checked every frame rather than relying on a
+        // trigger volume, since no such volume exists in the scene today
+        // and this needs to work without any Editor/scene changes.
+        private void Update()
+        {
+            if (!isServer || !isJailed || jailAnchor == null) return;
+
+            Vector3 offset = transform.position - jailAnchor.position;
+            offset.y = 0f;
+            if (offset.sqrMagnitude <= confinementRadius * confinementRadius) return;
+
+            GameFlowManager.Instance?.TeleportPlayerTo(transform, jailAnchor);
         }
 
         public void Interact(GameObject interactor)

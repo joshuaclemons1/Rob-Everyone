@@ -243,12 +243,15 @@ namespace RobEveryone.Core
 
         // Jail & Bail: teleports the just-caught (or end-of-batch-jailed)
         // player to a free JailPoint slot in the gameplay scene's real
-        // jail cells.
+        // jail cells. Returns the claimed slot's Transform (or null if
+        // the scene has none) so JailState can hold onto it as a
+        // confinement anchor -- issue #8, see its own comment.
         [Server]
-        public void TeleportToJail(Transform player)
+        public Transform TeleportToJail(Transform player)
         {
             JailPoint slot = ClaimJailPoint(player.GetComponent<PlayerInventory>());
             if (slot != null) TeleportPlayerTo(player, slot.transform);
+            return slot != null ? slot.transform : null;
         }
 
         // Hands out a free JailPoint slot and records who's standing in

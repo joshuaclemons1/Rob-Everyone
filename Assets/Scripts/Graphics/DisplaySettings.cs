@@ -47,5 +47,17 @@ namespace RobEveryone.Graphics
             PlayerPrefs.Save();
             OnChanged?.Invoke();
         }
+
+        // Issue #11 failsafe -- see DisplaySettingsResetHotkey. Only
+        // touches the two settings actually implicated in the
+        // resolution/screen-mode softlock (DisplaySettingsApplier's own
+        // comment on FullScreenWindow silently ignoring a requested
+        // size); leaves quality/VSync/FOV alone since a stuck display
+        // isn't caused by those.
+        public static void ResetToSafeDefaults()
+        {
+            ResolutionIndex = -1;
+            ScreenMode = FullScreenMode.FullScreenWindow;
+        }
     }
 }
