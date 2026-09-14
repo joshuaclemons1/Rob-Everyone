@@ -55,7 +55,7 @@ namespace RobEveryone.Core
             // this pins down exactly which link in the chain is wrong
             // instead of guessing a third time.
             Debug.Log($"[LocalTestingActions] Start: kcpTransport={(kcpTransport == null ? "NULL" : kcpTransport.ToString())}, " +
-                $"NetworkManager instance={RobEveryoneNetworkManager.singleton.GetInstanceID()}, " +
+                $"NetworkManager instance={RobEveryoneNetworkManager.singleton.GetEntityId()}, " +
                 $"current transport={RobEveryoneNetworkManager.singleton.transport}");
 
             if (kcpTransport == null)
