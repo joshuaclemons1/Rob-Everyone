@@ -1,5 +1,6 @@
 bin/
 obj/
+publish/
 
 # Runtime artifacts -- created next to the launcher when it actually runs,
 # never part of the source. Game/ is the installed build; Game.staging/ and
