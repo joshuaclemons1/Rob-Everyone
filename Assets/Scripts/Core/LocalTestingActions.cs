@@ -1,4 +1,5 @@
 using kcp2k;
+using Mirror;
 using UnityEngine;
 
 namespace RobEveryone.Core
@@ -22,20 +23,10 @@ namespace RobEveryone.Core
         // it to an actual player.
         [SerializeField] private GameObject localTestPanel;
 
-        // Resolved via GetComponent in Awake, not Inspector-wired --
-        // confirmed bug: a Transport's own `.enabled` flag has zero
-        // bearing on whether Mirror actually uses it (NetworkServer/
-        // NetworkClient drive Transport.active's Update methods
-        // directly, never through Unity's normal MonoBehaviour
-        // dispatch), and NetworkManager.StartHost/StartClient falls
-        // back to GetComponent<Transport>() -- which finds a component
-        // regardless of enabled state -- the instant `transport` is
-        // null. A slightly-off Inspector drag silently produced exactly
-        // that null, and the fallback happened to grab FizzySteamworks
-        // instead of Kcp, so "Host/Join Local" was still using Steam
-        // sockets the whole time. Both transports already live on the
-        // same GameObject as NetworkManager, so there's nothing to get
-        // wrong by finding them in code instead.
+        // Resolved via GetComponent in Start, not Inspector-wired -- both
+        // transports already live on the same GameObject as
+        // NetworkManager, so there's nothing to get wrong by finding
+        // them in code instead of a manual drag.
         private KcpTransport kcpTransport;
 
         // Start, not Awake -- NetworkManager.singleton is itself only set
@@ -49,29 +40,28 @@ namespace RobEveryone.Core
 
             kcpTransport = RobEveryoneNetworkManager.singleton.GetComponent<KcpTransport>();
 
-            // Temporary hop-by-hop logging -- two fix attempts have
-            // failed the exact same way (Host/Join Local still using
-            // Steam sockets) despite this all checking out on paper, so
-            // this pins down exactly which link in the chain is wrong
-            // instead of guessing a third time.
-            Debug.Log($"[LocalTestingActions] Start: kcpTransport={(kcpTransport == null ? "NULL" : kcpTransport.ToString())}, " +
-                $"NetworkManager instance={RobEveryoneNetworkManager.singleton.GetEntityId()}, " +
-                $"current transport={RobEveryoneNetworkManager.singleton.transport}");
-
             if (kcpTransport == null)
                 Debug.LogError("LocalTestingActions: no KcpTransport found on the NetworkManager GameObject -- Host/Join Local can't work.");
         }
 
+        // Confirmed root cause (via hop-by-hop logging): setting
+        // NetworkManager.transport alone isn't enough. Mirror actually
+        // dispatches everything through the separate static
+        // Transport.active, which NetworkManager.InitializeSingleton
+        // only ever copies .transport into ONCE -- it short-circuits
+        // with an early `if (singleton == this) return true;` on every
+        // call after the very first (i.e. every StartHost/StartClient
+        // after the one at scene load), never reaching the line that
+        // would refresh Transport.active. So .transport correctly
+        // becomes Kcp here, but Transport.active silently stayed
+        // FizzySteamworks (whatever it was at the very first scene
+        // load) for the rest of the session regardless. Setting
+        // Transport.active directly is the actual fix.
         private void UseKcp()
         {
-            Debug.Log($"[LocalTestingActions] UseKcp: kcpTransport={(kcpTransport == null ? "NULL" : kcpTransport.ToString())}, " +
-                $"transport BEFORE={RobEveryoneNetworkManager.singleton.transport}");
-
             if (kcpTransport == null) return;
             RobEveryoneNetworkManager.singleton.transport = kcpTransport;
-
-            Debug.Log($"[LocalTestingActions] UseKcp: transport AFTER={RobEveryoneNetworkManager.singleton.transport}, " +
-                $"Transport.active={Mirror.Transport.active}");
+            Transport.active = kcpTransport;
         }
 
         // Wire the "Host Local" button's OnClick to this.
