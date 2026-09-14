@@ -79,8 +79,14 @@ namespace RobEveryone.Round
             // a stun while seated recovers exactly like a normal stun.
             fpc.ExitCarFrozen = true;
 
+            // Issue #45 fix: ClaimSeatPosition hands back the real seat
+            // for the first occupant, a computed non-overlapping offset
+            // for every occupant after that -- see its own comment on
+            // ExitPoint for why that used to just silently shove a
+            // second rider out instead.
             Transform seat = exit.SeatPoint != null ? exit.SeatPoint : exit.transform;
-            GameFlowManager.Instance?.TeleportPlayerTo(transform, seat);
+            Vector3 seatPosition = exit.ClaimSeatPosition(this);
+            GameFlowManager.Instance?.TeleportPlayerTo(transform, seatPosition, seat.rotation);
         }
 
         [Command]
@@ -95,6 +101,7 @@ namespace RobEveryone.Round
             {
                 GameFlowManager.Instance?.TeleportPlayerTo(transform, currentExit.StandPoint);
             }
+            currentExit?.ReleaseSeat(this);
             currentExit = null;
         }
 
@@ -108,6 +115,7 @@ namespace RobEveryone.Round
 
             ExitPoint exit = currentExit;
             currentExit = null;
+            exit?.ReleaseSeat(this);
             exit?.NotifyPlayerExtracted(GetComponent<PlayerInventory>());
         }
 
@@ -118,6 +126,7 @@ namespace RobEveryone.Round
         public void ForceRelease()
         {
             isWaiting = false;
+            currentExit?.ReleaseSeat(this);
             currentExit = null;
             fpc.ExitCarFrozen = false;
         }

@@ -558,14 +558,23 @@ namespace RobEveryone.Core
         // the Player prefab) can call it directly instead of duplicating
         // this.
         [Server]
-        public void TeleportPlayerTo(Transform player, Transform target)
+        public void TeleportPlayerTo(Transform player, Transform target) =>
+            TeleportPlayerTo(player, target.position, target.rotation);
+
+        // Raw position/rotation overload -- added for ExitCarState's
+        // multi-occupant seating (issue #45): a claimed seat slot isn't
+        // always an authored scene Transform (extra occupants beyond the
+        // first get a computed offset, see ExitPoint.ClaimSeatPosition),
+        // so there's no Transform to hand in for those.
+        [Server]
+        public void TeleportPlayerTo(Transform player, Vector3 position, Quaternion rotation)
         {
             NetworkIdentity identity = player.GetComponent<NetworkIdentity>();
             bool remote = identity != null && !identity.isLocalPlayer && identity.connectionToClient != null;
 
             if (remote)
             {
-                TargetPositionPlayer(identity.connectionToClient, target.position, target.rotation);
+                TargetPositionPlayer(identity.connectionToClient, position, rotation);
                 return;
             }
 
@@ -576,8 +585,8 @@ namespace RobEveryone.Core
             WithCharacterControllerDisabled(player, () =>
             {
                 NetworkTransformReliable netTransform = player.GetComponent<NetworkTransformReliable>();
-                if (netTransform != null) netTransform.ServerTeleport(target.position, target.rotation);
-                else player.SetPositionAndRotation(target.position, target.rotation);
+                if (netTransform != null) netTransform.ServerTeleport(position, rotation);
+                else player.SetPositionAndRotation(position, rotation);
             });
         }
 

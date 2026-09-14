@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using RobEveryone.Interaction;
 using RobEveryone.Inventory;
 using UnityEngine;
@@ -30,6 +31,47 @@ namespace RobEveryone.Round
         public Transform SeatPoint => seatPoint;
         public Transform StandPoint => standPoint;
         public float CarWaitDuration => carWaitDuration;
+
+        // Issue #45 fix. seatPoint is a single shared Transform -- with
+        // nothing tracking who's already sitting there, a second player
+        // entering while the first is still seated got teleported into
+        // the exact same position. ExitCarFrozen only gates
+        // FirstPersonController's own input-driven movement, not the
+        // CharacterController itself, so it stayed fully active and
+        // Unity's own automatic depenetration silently shoved the second
+        // player out to whatever nearby space was free -- not a
+        // deliberate teleport, which is exactly why the round still
+        // finished correctly for them 5 seconds later (isWaiting never
+        // actually got cleared; nothing was actually wrong server-side).
+        // Server-only, same "not worth syncing" reasoning
+        // GameFlowManager.occupiedJailPoints already uses.
+        private readonly List<ExitCarState> occupants = new();
+
+        // Hands back a claimed seat position for `occupant` -- the first
+        // caller gets the real, Editor-authored seatPoint; every caller
+        // after that gets a computed offset off of it (alternating
+        // left/right, one seatSpacing further out each pair) so nobody
+        // overlaps, since there's no second/third seatPoint physically
+        // placed in the car model yet. Worth revisiting with real seats
+        // authored in the Editor once there's a car model that actually
+        // shows more than one seat -- this is a functional stopgap, not
+        // a visual one.
+        [SerializeField] private float seatSpacing = 0.6f;
+
+        public Vector3 ClaimSeatPosition(ExitCarState occupant)
+        {
+            if (!occupants.Contains(occupant)) occupants.Add(occupant);
+            int slot = occupants.IndexOf(occupant);
+
+            Transform baseSeat = seatPoint != null ? seatPoint : transform;
+            if (slot <= 0) return baseSeat.position;
+
+            float side = (slot % 2 == 1) ? 1f : -1f;
+            float distance = seatSpacing * Mathf.CeilToInt(slot / 2f);
+            return baseSeat.position + baseSeat.right * side * distance;
+        }
+
+        public void ReleaseSeat(ExitCarState occupant) => occupants.Remove(occupant);
 
         public string InteractionPrompt => "Press E to get away!";
 

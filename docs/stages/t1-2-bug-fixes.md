@@ -8,13 +8,18 @@ run yet**. This doc is the checklist for going through it
 systematically once back at a PC: open the Editor, let it recompile,
 then work top to bottom.
 
-All six fixes are committed on `jclem's-branch` (`4244623` for #4/#8/#11,
-a later commit for #1/#15 — see each issue's own GitHub comment for the
-exact commit hash) and have progress comments on their issues. **None
-of the issues are closed** — every one of them needs a real playtest
-confirming the fix actually works before it gets closed, per
-`issue-tracking.md`'s own rule (closed = done *and confirmed*, not just
-"code's been pushed").
+Also picked up **#45** partway through this pass — a multiplayer-only
+exit car bug reported directly, not originally on the Tier 1/2 list —
+since it was diagnosable with the same level of confidence as the rest
+of this doc. See its own section near the end.
+
+All seven fixes are committed on `jclem's-branch` (`4244623` for
+#4/#8/#11, `5e066b9` for #1/#15, `47ebf19` for #45 — see each issue's
+own GitHub comment for the exact commit hash) and have progress
+comments on their issues. **None of the issues are closed** — every one
+of them needs a real playtest confirming the fix actually works before
+it gets closed, per `issue-tracking.md`'s own rule (closed = done *and
+confirmed*, not just "code's been pushed").
 
 ## Fixed — code done, needs a playtest to confirm
 
@@ -164,6 +169,76 @@ unreadable, that floor (currently hardcoded at `* 0.6f` in
 enough that the old fixed-size text would've overflowed) and confirm
 the end-of-round summary text stays fully on screen and readable.
 
+## Fixed — code done, needs a playtest to confirm (#45, reported separately)
+
+### #45 — Exit car only seated the first player; others got bounced out
+
+**Reported behavior:** in a real multiplayer test, only the first
+player to interact with the exit car actually got seated. Every player
+who tried after that was immediately teleported to roughly the "Get
+Out" stand position — but their round still ended correctly about 5
+seconds later anyway, even though they never visibly sat down.
+
+**What was wrong:** `ExitPoint` had exactly one shared `seatPoint`
+Transform, with nothing tracking who was already using it. A second
+player entering while the first was still seated got teleported into
+the *exact same* coordinates the first player already occupied.
+`ExitCarState.EnterCar` sets `FirstPersonController.ExitCarFrozen`,
+which only gates the controller's own input-driven movement — it does
+**not** disable the `CharacterController` component itself. The moment
+the second player's `CharacterController` found itself overlapping the
+first player's at the identical position, Unity's own automatic
+depenetration silently shoved it out to whatever nearby space was
+free, which happens to look like the "Get Out" stand point since
+that's the natural open space right next to the car. Nothing in code
+ever actually called `CmdExitCar` for the second player or cleared
+their `isWaiting` — which is exactly why the round still finished
+correctly for them regardless; the server-side state was fine the
+whole time, only the visual position was wrong. Same class of problem
+`GameFlowManager.ClaimJailPoint` already solves for jail cells
+(multiple slots, one claimed per occupant) — `ExitPoint` never got the
+equivalent, most likely because it was only ever tested solo before
+this multiplayer pass.
+
+**What changed:**
+- `ExitPoint` now tracks occupants (`ClaimSeatPosition`/`ReleaseSeat`)
+  and hands out a computed, non-overlapping offset position to every
+  occupant after the first — alternating left/right off the one real
+  `seatPoint`, `seatSpacing` (default 0.6m) further out each pair.
+- `GameFlowManager.TeleportPlayerTo` gained a `Vector3`/`Quaternion`
+  overload (the original `Transform`-taking one now just delegates to
+  it) since a computed offset position has no backing scene Transform.
+- `ExitCarState` releases its claimed seat in every exit path (climb
+  out, finalize, force-release).
+- `RobEveryoneNetworkManager.OnServerDisconnect` now also releases a
+  disconnecting player's claimed seat, alongside the existing
+  carried-body drop, so a mid-wait disconnect can't leave a phantom
+  occupant permanently holding a slot.
+
+**This is a functional fix, not a visual one** — extra riders won't
+visually look "inside" the car the way the first one does; they'll
+stand at a computed offset point beside/behind the real seat. Real
+multi-seat placement (actual seatPoint Transforms positioned inside the
+car model) is still worth doing in the Editor once there's a car model
+that visually supports more than one rider — `seatSpacing` is the one
+tuning knob available without that.
+
+**Editor steps needed:** none for the fix to function. Optional: place
+real second/third seatPoint Transforms in the car model and wire up a
+`seatPoints` array instead of the computed offset, if/when the car
+model actually gets built out to show multiple riders. Also worth
+eyeballing `seatSpacing` (0.6m) against the actual car's footprint —
+too small and riders could still clip each other; too large and they
+drift away from looking like they're using the same car at all.
+
+**Test:** with 3+ players, have all of them interact with the same
+exit car in quick succession while the first is still waiting. Confirm
+every player gets a distinct, non-overlapping position (not bounced
+out to the "Get Out" spot) and that all of their rounds correctly
+resolve after their own `carWaitDuration`. Also test a disconnect mid-
+wait (close the game on one client while seated) and confirm it doesn't
+permanently block that seat slot for later rounds.
+
 ## Investigated, not fixed — needs to be watched happen live
 
 These didn't get a code change. Each one was dug into with the same
@@ -244,6 +319,10 @@ once.
    geometry while you're in there anyway.
 4. Then move to #10 (Settings background) — Editor-only investigation,
    no multiplayer needed.
-5. Save #2/#3/#5/#9/#7/#13 for a real multiplayer session with a genuine
+5. #45 (exit car) needs at least 2 players, but not real network
+   latency — same-machine/ParrelSync testing should reproduce it fine,
+   so it doesn't need to wait for a real Steam session like the group
+   below does.
+6. Save #2/#3/#5/#9/#7/#13 for a real multiplayer session with a genuine
    non-host player over Steam — these all need actual network latency
    to reproduce and can't be meaningfully tested solo.

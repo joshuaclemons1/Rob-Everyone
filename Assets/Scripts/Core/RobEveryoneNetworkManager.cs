@@ -1,6 +1,7 @@
 using Mirror;
 using RobEveryone.Inventory;
 using RobEveryone.Player;
+using RobEveryone.Round;
 using RobEveryone.UI;
 using UnityEngine;
 #if !DISABLESTEAMWORKS
@@ -108,6 +109,11 @@ namespace RobEveryone.Core
                 // If they were hauling someone, drop the body before their
                 // object is torn down.
                 conn.identity.GetComponent<CarryController>()?.ServerReleaseOnDisconnect();
+
+                // Issue #45: release their claimed exit-car seat too, so a
+                // disconnect mid-wait doesn't leave a phantom occupant
+                // permanently holding a slot no one will ever sit in again.
+                conn.identity.GetComponent<ExitCarState>()?.ForceRelease();
 
                 if (GameFlowManager.Instance != null)
                 {
