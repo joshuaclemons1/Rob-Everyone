@@ -10,18 +10,27 @@ happen soon" to "later stage."
 
 1. **Stage 5 real Steam overlay test** — parked until a second Steam
    account is available; not blocking anything else.
-2. **Stage 7 — full meta-game** (medium) — sabotage purchases, real
-   Jail & Bail, sabotage-spending quota, night time mode.
-3. ~~VoIP / proximity voice chat~~ — **done, playtested working on first
-   try.** Build guide: [voip-setup.md](stages/voip-setup.md).
-4. ~~Settings menu~~ — **done, playtested working (Milestones A-G,
-   including the in-game pause overlay in both Lobby and SampleScene).**
-   Build guide: [settings-menu-setup.md](stages/settings-menu-setup.md).
-5. **Stage 8 — friend-group playtest** — depends on 1–2.
-6. **Art & audio** — more house variants (unblocks loot variety), all
-   SFX, ambient music, "Good House" tell, skin unlock-gating, HUD
-   result banner, environmental detail. Mostly Zach / asset work.
-7. **Housekeeping + code-review nits** — as they come up.
+2. **Stage 7c Milestone F — rival-status HUD ping** — the one piece of
+   the meta-game still not started; A–E (shop, Jail & Bail, Homeowner
+   patrol, police dispatch pooling, night mode) are all done and
+   playtested. See
+   [stage7c-meta-game-setup.md](stages/stage7c-meta-game-setup.md).
+3. **Stage 8 — friend-group playtest** — three alpha builds
+   (`alpha-v1` → `alpha-v1.0.3`) have already gone out; Brian and
+   Goodson just joined the team for house/level design and local
+   playtesting. Treat this as underway, not "not started."
+4. **Art & audio** — more house variants (Real_House_03 is in; loot
+   variety is partially addressed but the "Good House" visual tell,
+   ambient music, sabotage-item-specific SFX, skin unlock-gating, and
+   the HUD result banner are still open), environmental detail. Mostly
+   Zach/Brian/Goodson asset work.
+5. **Stage 7c Milestone G (optional, lowest priority)** — randomized
+   item value range per pickup.
+6. **Housekeeping + code-review nits** — as they come up.
+
+~~VoIP / proximity voice chat~~, ~~Settings menu~~, ~~held item in
+hand + carry/run animations~~, and ~~carry/throw ragdolled players~~
+are all done and playtested — see [completed.md](completed.md).
 
 Detail for each below.
 
@@ -41,35 +50,28 @@ Detail for each below.
 
 ## Art & audio (see art-info.md for full detail)
 
-- **Loot variety feels repetitive in play** — not an RNG bug (confirmed
-  by reading the actual house prefabs/tables): 33 `ItemDefinition`s
-  exist now, but only 2 house prefab variants
-  (`Real_House_01`/`Real_House_02`) fill all 15+2 house slots, **both**
-  wired to the same `LootTable_Medium` (13 items), and each house has
-  only 1 `LootSpawnPoint` — one roll per house. `LootTable_Small` (13
-  items) and `LootTable_Large` (7 items) aren't referenced by any house
-  at all right now. Fixing this for real needs more house variants
-  (blocked on Zach's house pool work below) — once those exist, revisit
-  which table each house tier uses and whether 1 spawn point per house
-  is enough, rather than just patching the 2 current houses in
-  isolation.
+- **Loot variety** — partially addressed: `Real_House_03` (Zach's
+  design) brought the pool to 3 houses and rolls `LootTable_Small`
+  instead of piling onto `01`/`02`'s `LootTable_Medium`. Still worth a
+  revisit once more house variants exist (now Brian/Goodson territory
+  too): `LootTable_Large` isn't referenced by any house yet, and every
+  house still has only 1 `LootSpawnPoint` (one roll per house).
 - **"Good House" visual tell** — should read as visually distinct at a
   glance (gold accent trim, lighting, signage) since it's deliberately
   higher-risk/higher-reward. Not confirmed done.
-- **SFX** — none implemented yet. Confirmed trigger list in
-  `art-info.md`: Homeowner state-transition stingers, police siren
-  (spatial), per-movement-state footsteps, item pickup/caught/jailed,
-  car horn + driver "yelling" line on traffic-hazard impact (fields
-  already exist on `CarDriver.cs`, just need clips).
+- ~~Footstep / pickup / shop / AI / jail / impact SFX~~ — **done**, see
+  [completed.md](completed.md)'s Audio section. Police siren (spatial)
+  still not built.
+- **Sabotage item use/impact SFX** — the generic PvP/car-impact hit
+  sound now plays on every impact, but no *item-specific* sound exists
+  yet (Taser zap, Bat/Hammer thwack, Tranq dart). Dynamite's
+  `explosionClips` field is wired but empty — no CC0 explosion pack
+  sourced yet.
 - **Ambient music** — calm exploration + tense "spotted" loop,
   crossfading off the existing Homeowner/Police alert state transitions.
   Not built.
 - **Skin unlock-gating** — every configured skin is currently pickable;
   the design calls for unlocks eventually (`ui-design.md`).
-- **Sabotage item SFX** — no use/impact SFX exist for any sabotage item
-  yet (Taser zap, Dynamite blast, Bat/Hammer thwack, Tranq dart, Alarm
-  Clock ring). Icons aren't needed — the hotbar uses the 3D model as its
-  preview, same as regular loot.
 - **HUD result banner** — `RoundUI.cs`'s `resultText` is still plain
   text. Lower priority now that round-end flows into a loading screen +
   Lobby scene rather than lingering on this screen — worth re-scoping
@@ -93,47 +95,41 @@ Detail for each below.
   phases — see [completed.md](completed.md) for the full bug list and
   design detail found/fixed along the way.
 - **Stage 7 — full meta-game (medium priority)** — the v1 shop/lobby
-  loop and batch economy above are a deliberately scoped-down slice.
-  Still missing: sabotage purchases, real Jail & Bail
-  (rescue/bond/self-bail), the personal sabotage-spending quota add-on.
-  See `gameplay-design.md` for the full design.
-- **Stage 8 — playtest with the friend group** — not started, depends on
-  Stage 4-6 existing.
-- **VoIP / in-game proximity voice chat** — **done, playtested working
-  on first try.** [voip-setup.md](stages/voip-setup.md) — Steam's own
-  voice API (`SteamUser.*Voice*`) captured locally, relayed as ordinary
-  Mirror Rpcs over the FizzySteamworks connection, played back through a
-  3D `AudioSource` on each speaker's player object so distance
-  attenuation is automatic (proximity not team-wide, push-to-talk,
-  unreliable channel, never hear yourself). Also shipped beyond the
-  original plan: `PlayerHeadTalkScale` pulses a speaker's head bone in
-  proportion to decoded volume, a visual "who's talking" cue. The "team
-  channel" toggle stays a Stage 8 question.
-- **Settings menu** — **done, playtested working.**
-  [settings-menu-setup.md](stages/settings-menu-setup.md) — full
-  migration off direct `Keyboard.current`/`Mouse.current` polling onto
-  Unity's new Input System, a real Settings panel (Audio mixer with
-  Master/Music/SFX/Voice + per-player mute — finally building the mute
-  system `voip-setup.md` Part 5 only sketched; Controls with a live
-  keybind-rebind list + mouse sensitivity; Graphics/Display with
-  resolution/quality/FOV/VSync; Accessibility with invert-Y + a voice
-  captions HUD with live head portraits), and an in-game pause overlay
-  (local-only, doesn't pause the round for other players) working in
-  both `Lobby.unity` and `SampleScene.unity`. Every button in the
-  project also picked up a visual pivot along the way — the pixel-art
-  end caps were replaced with the game's existing mosaic
-  (`HotbarSlotBlur_Mat`) look plus a black outline, applied once at the
-  shared `MenuButton.prefab` level.
+  loop and batch economy shipped first; Stage 7c's Milestones A–E then
+  built the rest — buy-side shop (which *is* the sabotage-spending
+  quota add-on, see below), real Jail & Bail with rescue/bond/self-bail,
+  Homeowner patrol, police dispatch pooling, and night mode. **All done
+  and playtested.** Only Milestone F (rival HUD ping) and optional G
+  (randomized item values) remain — see
+  [stage7c-meta-game-setup.md](stages/stage7c-meta-game-setup.md).
+- **Stage 8 — playtest with the friend group** — underway: three alpha
+  builds shipped (`alpha-v1` → `alpha-v1.0.3`), and Brian/Goodson joined
+  for house/level design and local playtesting.
+- ~~VoIP / in-game proximity voice chat~~ — **done, playtested working
+  on first try.** See [completed.md](completed.md)'s Voice & settings
+  section, [voip-setup.md](stages/voip-setup.md). The "team channel"
+  toggle stays a Stage 8 question.
+- ~~Settings menu~~ — **done, playtested working end to end**
+  (Milestones A–G, including the in-game pause overlay in both `Lobby`
+  and `SampleScene`). See [completed.md](completed.md)'s Voice & settings
+  section, [settings-menu-setup.md](stages/settings-menu-setup.md).
 
 ## Housekeeping
 
-- **Zach's house pool work** — still hasn't started building the
-  additional `Real_House_0X` variants; `HouseDesigner` scene exists to
-  make that faster whenever he picks it up.
+- **Team**: Brian and Goodson joined for house/level design and local
+  playtesting (`brian's-branch`/`goodson's-branch` exist on the remote).
+  Point them at [Setup.md](../Setup.md) to get set up.
+- **House pool** — `Real_House_03` (Zach's design) is in; more
+  `Real_House_0X` variants still welcome, `HouseDesigner` scene exists to
+  make that faster.
 - **New Kenney packs** — remember the FBX import Scale Factor fix
   (`15`, matching `Kenney-CityKitSuburban`) before assuming a freshly
   imported pack (e.g. Industrial, Car Kit) "looks tiny" for some other
   reason.
+- **`Known Bugs.md`** — a template doc now exists at
+  [Known Bugs.md](../Known%20Bugs.md) for anyone (including Brian/Goodson
+  during local playtests) to file a real bug report. Check it
+  periodically — it's not otherwise wired into this workflow.
 
 ## Code-review nits (Stage 6 sabotage read-through)
 

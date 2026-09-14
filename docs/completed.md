@@ -36,10 +36,14 @@ status line inside an individual stage doc.
   self-contained prefab. `DoorTeleporter.cs` (paired-trigger doorway
   workaround, no door-gap modeling needed). See
   [stage3e-house-prefabs.md](stages/stage3e-house-prefabs.md).
-- **House pool** — `Real_House_02` also exists now (2 real house prefabs
-  total; Zach's further variants still pending, not blocking anything).
-  Both prefabs solo-tested (door, loot, homeowner, walk back out). See
-  [stage3f-house-pool.md](stages/stage3f-house-pool.md).
+- **House pool** — `Real_House_02` also exists (2 real house prefabs
+  total at the time). Both prefabs solo-tested (door, loot, homeowner,
+  walk back out). See [stage3f-house-pool.md](stages/stage3f-house-pool.md).
+  **`Real_House_03`** (Zach's design, built in `HouseDesigner.unity` and
+  extracted into its own prefab) brings the pool to 3 — wired into both
+  `SampleScene` and `MainMenu`'s spawner registrations, and rolls off
+  `LootTable_Small` rather than `01`/`02`'s `Medium`, so the loot-variety
+  note below is partially addressed.
 - **Map slot layout + spawner** — `HousePoolSpawner.cs` randomly assigns
   a prefab per slot on `Start()`; `HomeownerAI`/`PoliceAI` auto-find the
   player if not hand-wired, so runtime-spawned houses need zero manual
@@ -292,8 +296,9 @@ status line inside an individual stage doc.
   system, so houses roll a random item at runtime instead of a specific
   item being hand-placed and baked in. 33 `ItemDefinition`s now exist
   (built via `ItemPrefabBatchTool.cs`), split across
-  `LootTable_Small`/`Medium`/`Large` — though only Medium is wired to a
-  house so far; see [todo.md](todo.md)'s "loot variety" note.
+  `LootTable_Small`/`Medium`/`Large` — `Real_House_01`/`02` roll `Medium`,
+  `Real_House_03` rolls `Small`; `Large` still isn't wired to any house.
+  See [todo.md](todo.md)'s "loot variety" note.
 
 ## Multiplayer (Stage 4/5)
 
@@ -396,14 +401,165 @@ status line inside an individual stage doc.
   [item-creation.md](stages/item-creation.md)'s Section 4b, and
   `gameplay-design.md`'s Sabotage items section for intended numbers.
 
-**Note on why 7/7b exist before Stage 4**: this jumped ahead of
+- **Stage 7c Milestones A–E — the rest of the meta-game** — built in 7
+  sequential milestones (see
+  [stage7c-meta-game-setup.md](stages/stage7c-meta-game-setup.md), which
+  is kept current with a status table and a full bug list per milestone
+  — this is a condensed pointer, not a replacement for it):
+  - **A — Buy-side shop + Lobby practice mode** — `ShopShelfItem.cs`:
+    walk up to a pawn-shop shelf, `E` buys straight into your hotbar, no
+    menu. Prices scale on the same ×1.5-per-batch curve as quota;
+    items unlock by batch number. Spending Cash *is* the entire
+    implementation of `gameplay-design.md`'s "sabotage-spending quota
+    add-on" — it's the same balance the batch-end quota check reads, so
+    no separate tracking was needed. Sabotage items don't consume
+    ammo/durability or leave your hand on a throw while in the Lobby, so
+    friends can test gear risk-free before a round starts.
+  - **B — Real Jail & Bail** — `JailState.cs`: a catch (mid-round or
+    end-of-batch quota failure) is now reversible — lose your 5 slots,
+    get teleported to a real cell, only finalized as `Caught` if nobody
+    frees you first. `E` on a jailed player pays **the rescuer** (not the
+    jailed player) a flat Cash bond/bounty (`CurrentQuota / 6` mid-round,
+    `/ 3` end-of-batch) and frees them both to a `JailExitPoint`.
+    End-of-batch jailing self-bails after one full round if unrescued. A
+    jailed player isn't fully frozen — they can walk their cell, and
+    press `T` for a third-person spectate cam (`SpectatorController.cs`)
+    to watch another player until freed.
+  - **C — Homeowner patrol** — `HomeownerAI` gained a real NavMesh patrol
+    loop (mirroring `PoliceAI`'s own pattern), a Suspicious state that
+    stops and stares/points at whoever triggered it (searching around
+    for a few seconds if it loses them before resuming patrol), and an
+    Alerted state that flees to its own spawn point and waits there
+    until the area's genuinely clear rather than just standing there.
+  - **D — Police dispatch pooling** — new `PoliceDispatcher.cs` is the
+    sole listener for a Homeowner's alert now: redirects only the
+    single closest `Patrol`-state officer, and separately may spawn a
+    brand-new one from a real prefab up to a player-count-scaled cap
+    (existing baseline officers count against that cap too). A
+    dispatched officer walks back to its spawn point and despawns once
+    it gives up, instead of patrolling forever. Patrol routes are
+    randomized, not a fixed cycle.
+  - **E — Night mode** — the last round of every 3-round batch is a
+    deterministic night round: Homeowners go inert and bed down, Police
+    get speed/vision/chase-persistence multipliers and a higher dispatch
+    cap, and `NightModeVisuals.cs` swaps skybox/lighting (the Lobby
+    previews the upcoming round's time-of-day during the pre-round shop
+    phase). Extended to a real `Morning`/`Day`/`Night` enum so rounds 1
+    and 2 get visually distinct skyboxes while staying
+    gameplay-identical to each other.
+  - Also folded into this pass: the exit now blocks for the first 2
+    minutes of a 5-minute round, then seats a reachable player in the
+    car for a short robbable window (`ExitCarState.cs`) instead of
+    instantly ending the round; Cash wipes to zero at the start of each
+    new batch's Morning round; background car patrol paths are
+    Catmull-Rom-smoothed instead of needing dense hand-placed waypoints.
+  - **Still open**: Milestone **F** (a HUD ping when a rival is spotted
+    or chased) and optional Milestone **G** (randomized item value
+    ranges per pickup) — see `stage7c-meta-game-setup.md` and
+    [todo.md](todo.md).
+
+**Note on why 7/7b/7c exist before Stage 4**: this jumped ahead of
 `plan.md`'s build order on purpose — the core loop (loot → quota → exit)
 was confirmed fun solo but had no restart path, a round ending just froze
-on a result banner with no way to play again. Still deliberately scoped
-down from the full `gameplay-design.md` system: no sabotage purchases, no
-real Jail & Bail rescue, no personal sabotage-spending quota add-on —
-those depend on multiplayer/sabotage items existing first (see
-[todo.md](todo.md)).
+on a result banner with no way to play again. With Milestones A–E above,
+the full `gameplay-design.md` meta-game (sabotage purchases, real Jail &
+Bail, the sabotage-spending quota add-on) is now built — only the HUD
+ping (F) and the optional per-pickup value range (G) remain, tracked in
+[todo.md](todo.md).
+
+## Voice & settings
+
+- **VoIP — Steam proximity voice** — done, playtested working on first
+  try. `SteamVoiceCapture`/`SteamVoicePlayback`/`PlayerVoice.cs`: push-to-
+  talk, captured locally via Steam's own voice API, relayed as an
+  unreliable Mirror Rpc over the FizzySteamworks connection, played back
+  through a 3D `AudioSource` on the speaker's own player object so
+  distance falloff is automatic (proximity, not team-wide; you never hear
+  yourself). `PlayerHeadTalkScale.cs` pulses a speaker's head bone in
+  proportion to decoded volume as a visual "who's talking" cue. See
+  [voip-setup.md](stages/voip-setup.md).
+- **Settings menu** — done, playtested working end to end (Milestones
+  A–G). Every `Keyboard.current`/`Mouse.current` poll site in the project
+  now reads through a new `InputManager` static class backed by
+  `RobEveryoneControls.inputactions`, the foundation the rest of this
+  sits on. Four tabs: **Audio** (a real `MainMixer` with Master/Music/
+  SFX/Voice groups + a live per-rival mute list, `VoiceMuteList.cs`);
+  **Controls** (a scrollable rebind list, `RebindActionRow.cs` +
+  `KeybindPersistence.cs`, plus mouse sensitivity); **Graphics**
+  (resolution/screen mode/quality/VSync/FOV, live-applied via
+  `DisplaySettings`/`DisplaySettingsApplier`); **Accessibility**
+  (invert-Y, and a voice captions HUD — `VoiceCaptionsHUD.cs` — that
+  renders a live head portrait per speaker via an offstage camera/
+  RenderTexture rig framed off each skin's real `Head` bone). Also a
+  local-only in-game pause overlay (`PauseMenuUI.cs`, Escape) reusing the
+  same Settings content, working in both `Lobby.unity` and
+  `SampleScene.unity` without pausing the round for anyone else. Every
+  button in the project picked up a shared visual pivot along the way —
+  the old pixel-art end caps replaced with the game's mosaic
+  (`HotbarSlotBlur_Mat`) look + a black outline, fixed once at the
+  `MenuButton.prefab` level. See
+  [settings-menu-setup.md](stages/settings-menu-setup.md).
+
+## Audio
+
+- **Footstep + pickup SFX** — `PlayerFootstepAudio.cs`: interval-timed
+  footsteps driven off `PlayerAnimationDriver`'s effective speed/grounded
+  state, gait picked from `FirstPersonController`'s own tuned speeds, an
+  absolute next-step timestamp (not a countdown) so rapid tap-stop-tap
+  movement can't spam-fire steps. `PickupSfxLibrary.cs`: a shared
+  Resources-loaded clip pool so all ~40 item prefabs get pickup sound
+  with zero per-prefab wiring.
+- **Shop / AI / jail stinger SFX** — `ShopSfxLibrary.cs` (purchase,
+  insufficient-funds, item-sold, only the buyer/seller hears it via a
+  `TargetRpc`); Homeowner suspicion/alerted stingers, Police chase-start,
+  jailed/rescued stingers; a generic PvP/car-impact hit sound played from
+  the already-networked impact Rpc so every client hears it. All routed
+  through a shared `SfxPlayer.PlayRandomAt` helper (Kenney CC0 packs).
+  **Still open**: no use/impact SFX specific to any individual sabotage
+  item yet (Dynamite's `explosionClips` field exists but is unwired — no
+  CC0 explosion pack sourced) — see [todo.md](todo.md).
+- **Intro video** — a new `Intro.unity` scene (Build Settings scene 0,
+  ahead of `MainMenu`) plays a video on load, `IntroSequence.cs` advances
+  to `MainMenu` on clip end or any key/click/gamepad press.
+
+## Build & release
+
+- **First real build** — swapped the transport from `KcpTransport`
+  (local testing) to `FizzySteamworks`; Host/Join now go through
+  `SteamLobby` directly (Join opens the Steam Friends overlay); joining
+  players get their real Steam persona name (`conn.address`) instead of
+  a "Player N" placeholder. Fixed a real bug found in the process: the
+  scene had the raw unnamespaced Steamworks.NET sample `SteamManager`
+  attached alongside the project's own namespaced one, so a
+  `SteamManager.Initialized` check silently spun up a second, independent
+  instance the first time anything read it — deleted the raw sample.
+  `steam_appid.txt` ships from `StreamingAssets` via a `PostProcessBuild`
+  step that copies it next to the built `.exe`, where Steam expects it.
+- **Update checker** — `UpdateChecker.cs` compares this build's
+  `Application.version` against GitHub's Releases API on Main Menu load
+  and shows a blocking popup if a newer tag exists; fails open on any
+  network issue. Hardened against a real hazard: the checker's
+  GameObject had no persistence, so a Steam invite accepted mid-request
+  (triggering the MainMenu → Lobby scene change) abandoned its coroutine
+  without disposing the in-flight `UnityWebRequest`'s native handle. Now
+  `DontDestroyOnLoad`'d and self-destroys with a proper `Dispose` once
+  its one-time check finishes. **A friend's join crash reported around
+  this time is confirmed fixed as of this change** — no recurrence since.
+- **Post-first-build bugfix chain** — three alpha releases went out
+  (`alpha-v1` → `alpha-v1.0.3`), each patching something only a real
+  Standalone build surfaced (none of these showed in Editor Play mode):
+  a `NullReferenceException` closing the Tab/inventory screen from a
+  plain self-open (`victimHotbarUI.Bind(null)` touching UI that had never
+  run `Awake`, since `victimRow` starts inactive) that made Tab/Escape
+  look completely broken; Static Batching enabled itself on the first
+  real build and threw "mesh is read-only" errors against the Kenney
+  tree meshes (disabled); and a loading screen that never hid for a
+  joining client — it was waiting on `GameFlowManager.Instance`, a
+  scene-placed `NetworkIdentity` that (confirmed against Mirror's own
+  `FinishLoadSceneClientOnly`) starts disabled until after the client's
+  local scene load already finishes, so `Instance` was reliably still
+  null at exactly the moment that needed it; hidden directly now instead
+  of routing through `GameFlowManager`.
 
 ## Design/reference docs
 

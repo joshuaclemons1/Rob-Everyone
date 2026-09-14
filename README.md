@@ -1,41 +1,78 @@
 # Rob Everyone
 
-Setup and dev plan for the game. Full plan: `docs/plan.md`.
+A first-person heist game where you're not on the same team as your
+friends — everyone has their own quota, everyone's stealing from the
+same houses, and everyone's a legitimate target. Steam multiplayer,
+4–8 players, no fixed round count — an endless score-attack you keep
+coming back to, not a match with a winner.
 
-## Getting set up (Chayton and Zach, separately)
+## The gameplay loop
 
-The Unity project already exists in this repo — you're cloning it, not
-creating a new one.
+Each round you spawn into a neighborhood of houses surrounding a fenced
+police compound with a single, deliberately contested exit. Break into
+houses and loot what you find into a 5-slot hotbar, while:
 
-1. **Install Unity Hub**, then install **Unity 6000.5.9f1** specifically
-   (matches `ProjectSettings/ProjectVersion.txt`) — pick that exact version
-   in Unity Hub's install screen, not just "the latest 6000.x."
-2. **Install Git LFS** (one-time, per machine): `git lfs install`
-3. **Clone the repo:**
-   ```
-   git clone https://github.com/joshuaclemons1/Rob-Everyone.git
-   ```
-4. **Check out your own branch:**
-   - Josh: `git checkout jclem's-branch`
-   - Zach: `git checkout zach's-branch`
-5. **Open the project in Unity Hub — use Add, not Import:**
-   - Projects tab → **Add** ▾ → **Add project from disk**
-   - Select the cloned `Rob-Everyone` folder itself (the one containing
-     `Assets/` and `ProjectSettings/`), not a subfolder — single-click to
-     highlight it, then **Add Project**
-   - "Import Project" won't recognize this folder as a Unity project; **Add**
-     is the one that works for a folder that already has a project in it
-6. First open takes several minutes — `Library/` isn't tracked in Git, so
-   Unity has to reimport every asset and resolve packages from scratch on a
-   fresh clone. A long "Importing" bar is normal, not a hang.
+- **Homeowners** patrol, get suspicious if they see you, and call the
+  **police** if you linger.
+- **Police** patrol, respond, chase, and catch — getting caught strips
+  your loot and jails you, but you're not out of the round: another
+  player can rescue you for a Cash bond, or you self-bail if nobody
+  does.
+- **Rivals** are fair game — sabotage items (Taser, Baseball Bat,
+  Hammer, Tranquilizer Gun, Dynamite, Alarm Clock) let you stun and
+  steal from another player directly, or even pick up their downed body
+  and carry it somewhere inconvenient.
+- **Traffic** on the road loop will flatten you if you're not careful,
+  ragdoll and all.
 
-## Day to day
+Reach the exit (or survive to the timer) before you're caught, then sell
+your loot and buy gear back at the Lobby's pawn shop between rounds.
+Quota and prices grow every 3-round batch, Cash above quota gets wiped
+at the batch boundary, and the last round of each batch is a harder
+night round. Full design detail:
+[docs/stages/gameplay-design.md](docs/stages/gameplay-design.md).
 
-- Follow `docs/plan.md` stage by stage — don't skip ahead to networking or
-  the shop before Stage 3's offline loop works.
-- Scripts live under `Assets/Scripts/<System>/`.
-- Commit and push to your own branch as you work. Merge into `main` in
-  small, frequent pieces rather than letting two branches drift apart —
-  Unity scene files don't merge well in Git, so the longer two people
-  diverge on the same scene, the worse a conflict gets. See `docs/plan.md`'s
-  "Team workflow" section for how work is split between systems.
+## Team
+
+- **Chayton** (`jclem's-branch`) — lead, most of the scripting
+- **Zach** (`zach's-branch`) — house/level design, art
+- **Brian** (`brian's-branch`) — house/level design, local playtesting
+- **Goodson** (`goodson's-branch`) — house/level design, local playtesting
+
+New here? Start with **[Setup.md](Setup.md)**.
+
+## Tech stack
+
+| Layer | Pick |
+|---|---|
+| Engine | Unity 6 (`6000.5.9f1`), URP |
+| Language | C# |
+| Networking | [Mirror](https://mirror-networking.com/) + FizzySteamworks transport |
+| Steam layer | Steamworks.NET (test AppID `480`/Spacewar until closer to release) |
+| Input | Unity's Input System package, fully rebindable |
+| Version control | Git + GitHub, Git LFS for art/audio/video |
+
+## Status
+
+Alpha — three builds shipped so far (`alpha-v1` → `alpha-v1.0.3`), the
+core loop plus the full meta-game (shop, Jail & Bail, AI, night mode,
+VoIP, a real Settings menu) are built and playtested. See
+**[docs/completed.md](docs/completed.md)** for what's actually done and
+**[docs/todo.md](docs/todo.md)** for what's genuinely still open — both
+are kept current; an individual doc's own header sometimes isn't.
+
+## Docs
+
+- **[Setup.md](Setup.md)** — get the project running and start
+  contributing.
+- **[docs/plan.md](docs/plan.md)** — the dev plan, build order, and an
+  index of every stage's build-it-yourself walkthrough doc.
+- **[docs/completed.md](docs/completed.md)** / **[docs/todo.md](docs/todo.md)**
+  — current status.
+- **[docs/stages/gameplay-design.md](docs/stages/gameplay-design.md)** —
+  full economy/capacity/jail-bail/sabotage/movement design.
+- **[docs/stages/ui-design.md](docs/stages/ui-design.md)** — UI element
+  spec.
+- **[docs/art-info.md](docs/art-info.md)** — art style/palette/sourced-asset
+  reference.
+- **[Known Bugs.md](Known%20Bugs.md)** — bug report template and log.
