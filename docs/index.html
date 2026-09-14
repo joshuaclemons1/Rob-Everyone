@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rob Everyone</title>
+<meta name="description" content="A first-person heist game where you're not on the same team as your friends. Everyone spawns into the same neighborhood, everyone has their own quota, everyone's a legitimate target.">
+<meta property="og:title" content="Rob Everyone">
+<meta property="og:description" content="A heist game where you're not on the same team as your friends. Grab the alpha build.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#F6C97A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Figtree:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
+<style>
+  /* ---------- Tokens ---------- */
+  :root {
+    --sky-top: #6EC6E8;
+    --sky-bottom: #F6C97A;
+    --ink: #1E2A3A;
+    --ink-soft: #48566B;
+    --paper: #FBF7EE;
+    --paper-line: #E4D9BE;
+    --roof: #E76F51;
+    --sun: #FFD166;
+    --grass: #4EAE7C;
+    --danger: #E0264C;
+    --precinct: #0F7EA3;
+    --house-wall: #F5EFE0;
+    --window-glow: #FFD166;
+    --shadow: rgba(30, 42, 58, 0.14);
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --sky-top: #0E141D;
+      --sky-bottom: #1B2430;
+      --ink: #F2ECDC;
+      --ink-soft: #B9C2CE;
+      --paper: #212C3D;
+      --paper-line: #38455E;
+      --roof: #F0805F;
+      --sun: #FFD166;
+      --grass: #63C990;
+      --danger: #FF4568;
+      --precinct: #35A9D6;
+      --house-wall: #2B3850;
+      --window-glow: #FFD166;
+      --shadow: rgba(0, 0, 0, 0.45);
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --sky-top: #0E141D;
+    --sky-bottom: #1B2430;
+    --ink: #F2ECDC;
+    --ink-soft: #B9C2CE;
+    --paper: #212C3D;
+    --paper-line: #38455E;
+    --roof: #F0805F;
+    --sun: #FFD166;
+    --grass: #63C990;
+    --danger: #FF4568;
+    --precinct: #35A9D6;
+    --house-wall: #2B3850;
+    --window-glow: #FFD166;
+    --shadow: rgba(0, 0, 0, 0.45);
+    color-scheme: dark;
+  }
+
+  /* ---------- Base ---------- */
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--sky-bottom);
+    color: var(--ink);
+    font-family: "Figtree", ui-sans-serif, system-ui, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { font-family: "Fredoka", ui-rounded, "Segoe UI", sans-serif; margin: 0; text-wrap: balance; }
+  p { margin: 0; }
+  a { color: inherit; }
+  img { max-width: 100%; }
+
+  .eyebrow {
+    font-family: "Space Mono", ui-monospace, SFMono-Regular, monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  .wrap {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 0 clamp(20px, 5vw, 48px);
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    position: relative;
+    background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bottom) 78%);
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+
+  .hero-inner {
+    position: relative;
+    z-index: 2;
+    padding: clamp(48px, 9vw, 96px) clamp(20px, 5vw, 48px) 0;
+    max-width: 1040px;
+    margin: 0 auto;
+  }
+
+  .badge-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 22px; }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: "Space Mono", monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1.5px solid var(--paper-line);
+    background: color-mix(in srgb, var(--paper) 82%, transparent);
+    color: var(--ink-soft);
+  }
+  .chip.accent { border-color: var(--roof); color: var(--roof); }
+
+  .wordmark {
+    font-size: clamp(2.8rem, 9vw, 5.6rem);
+    font-weight: 700;
+    line-height: 0.98;
+    color: var(--ink);
+    text-shadow: 5px 5px 0 color-mix(in srgb, var(--roof) 55%, transparent);
+    margin: 0 0 18px;
+  }
+
+  .tagline {
+    font-size: clamp(1.05rem, 2.4vw, 1.3rem);
+    color: var(--ink-soft);
+    max-width: 46ch;
+    margin-bottom: 30px;
+  }
+  .tagline strong { color: var(--ink); font-weight: 700; }
+
+  .cta-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-bottom: 20px; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-family: "Space Mono", monospace;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    text-decoration: none;
+    padding: 14px 22px;
+    border-radius: 10px;
+    border: 2px solid transparent;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .btn:focus-visible { outline: 3px solid var(--precinct); outline-offset: 3px; }
+  .btn-primary {
+    background: var(--sun);
+    color: #24170A;
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .btn-primary:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--ink); }
+  .btn-primary svg { width: 16px; height: 16px; }
+
+  .fine-print { font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 8px; }
+
+  .stat-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+
+  /* Skyline */
+  .skyline {
+    position: relative;
+    z-index: 1;
+    height: clamp(120px, 20vw, 190px);
+    margin-top: clamp(28px, 6vw, 56px);
+    display: flex;
+    align-items: flex-end;
+    gap: clamp(4px, 1.4vw, 14px);
+    padding: 0 clamp(20px, 5vw, 48px);
+  }
+  .house { position: relative; flex: 1 1 auto; }
+  .house .body {
+    background: var(--house-wall);
+    border: 1.5px solid color-mix(in srgb, var(--ink) 18%, transparent);
+    border-bottom: none;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 6px;
+    padding-top: 14px;
+  }
+  .house .roof {
+    width: 0; height: 0;
+    border-left: var(--rw) solid transparent;
+    border-right: var(--rw) solid transparent;
+    border-bottom: var(--rh) solid var(--roof);
+    margin: 0 auto;
+    filter: drop-shadow(0 -1px 0 color-mix(in srgb, var(--ink) 20%, transparent));
+  }
+  .house .win { width: 11px; height: 11px; background: var(--window-glow); border-radius: 2px; box-shadow: 0 0 6px color-mix(in srgb, var(--window-glow) 70%, transparent); }
+  .compound {
+    flex: 0 0 auto;
+    width: clamp(70px, 9vw, 96px);
+    align-self: flex-end;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .compound .beacon { width: 9px; height: 9px; border-radius: 50%; background: var(--danger); animation: blink 1.6s steps(1) infinite; }
+  .compound .fence {
+    width: 100%; height: 46px;
+    background-image: repeating-linear-gradient(90deg, color-mix(in srgb, var(--ink) 55%, transparent) 0 2px, transparent 2px 12px);
+    border-top: 2px solid color-mix(in srgb, var(--ink) 55%, transparent);
+  }
+  @keyframes blink { 0%, 49% { background: var(--danger); } 50%, 100% { background: var(--precinct); } }
+  @media (prefers-reduced-motion: reduce) { .compound .beacon { animation: none; } }
+
+  .road {
+    height: 14px;
+    background: color-mix(in srgb, var(--ink) 82%, var(--sky-bottom));
+    border-top: 3px dashed var(--sun);
+    position: relative; z-index: 1;
+  }
+
+  /* ---------- Sections ---------- */
+  section { padding: clamp(48px, 8vw, 84px) 0; }
+  .section-head { max-width: 60ch; margin-bottom: clamp(28px, 5vw, 44px); }
+  .section-head h2 { font-size: clamp(1.7rem, 4vw, 2.3rem); margin: 6px 0 12px; }
+  .section-head p { color: var(--ink-soft); font-size: 1.02rem; }
+
+  /* Loop */
+  .loop-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 16px;
+  }
+  .step {
+    background: var(--paper);
+    border: 1.5px solid var(--paper-line);
+    border-radius: 12px;
+    padding: 20px 20px 22px;
+    position: relative;
+  }
+  .step .num {
+    font-family: "Space Mono", monospace;
+    font-weight: 700;
+    font-size: 0.75rem;
+    color: var(--roof);
+    letter-spacing: 0.06em;
+  }
+  .step h3 { font-size: 1.08rem; margin: 8px 0 8px; }
+  .step p { color: var(--ink-soft); font-size: 0.94rem; }
+
+  .stamp {
+    margin-top: 26px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: "Space Mono", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--danger);
+    border: 2.5px solid var(--danger);
+    border-radius: 8px;
+    padding: 10px 16px;
+    transform: rotate(-1.4deg);
+  }
+
+  /* Arsenal */
+  .arsenal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 14px;
+  }
+  .item {
+    background: var(--paper);
+    border: 1.5px solid var(--paper-line);
+    border-radius: 12px;
+    padding: 18px 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .item-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .item h3 { font-size: 1.04rem; }
+  .tag {
+    font-family: "Space Mono", monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 5px;
+    white-space: nowrap;
+    color: #fff;
+  }
+  .tag.melee { background: var(--roof); }
+  .tag.ranged { background: var(--precinct); }
+  .tag.thrown { background: var(--danger); }
+  .item p { color: var(--ink-soft); font-size: 0.92rem; }
+
+  /* Status */
+  .status-panel {
+    background: var(--paper);
+    border: 1.5px solid var(--paper-line);
+    border-radius: 16px;
+    padding: clamp(24px, 4vw, 36px);
+    box-shadow: 0 14px 30px var(--shadow);
+  }
+  .status-top { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-bottom: 18px; }
+  .alpha-stamp {
+    font-family: "Space Mono", monospace;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    color: var(--danger);
+    border: 2.5px solid var(--danger);
+    border-radius: 8px;
+    padding: 8px 14px;
+    transform: rotate(-3deg);
+  }
+  .status-top .version { color: var(--ink-soft); font-family: "Space Mono", monospace; font-size: 0.85rem; }
+  .status-copy { color: var(--ink-soft); max-width: 62ch; margin-bottom: 26px; }
+
+  .status-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 28px; }
+  .status-cols h4 {
+    font-family: "Space Mono", monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 12px;
+  }
+  .status-cols ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .status-cols li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.95rem; }
+  .mark { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 2px; }
+  .sync-note { margin-top: 24px; font-family: "Figtree", sans-serif; font-size: 0.78rem; color: var(--ink-soft); opacity: 0.85; }
+  .sync-note code { font-family: "Space Mono", monospace; font-size: 0.85em; background: color-mix(in srgb, var(--ink) 8%, transparent); padding: 1px 5px; border-radius: 4px; }
+
+  /* Footer / final CTA */
+  .final {
+    background: var(--paper);
+    color: var(--ink);
+    border-top: 1.5px solid var(--paper-line);
+  }
+  .final-inner { text-align: left; }
+  .final h2 { font-size: clamp(1.6rem, 4vw, 2.2rem); margin-bottom: 14px; }
+  .final p.tagline { margin-bottom: 26px; }
+
+  footer {
+    padding: 26px clamp(20px, 5vw, 48px) 40px;
+    max-width: 1040px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+  footer a { text-decoration: underline; text-underline-offset: 3px; }
+  .night-note { width: 100%; font-size: 0.78rem; opacity: 0.75; margin-top: 4px; }
+
+  @media (max-width: 640px) {
+    .skyline { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="badge-row">
+      <span class="chip accent">Co-op heist game. Zero co-operation.</span>
+    </div>
+    <h1 class="wordmark">ROB<br>EVERYONE</h1>
+    <p class="tagline">Everyone spawns into the same cul-de-sac. Everyone's stealing from the
+      same houses. And everyone — <strong>including your friends</strong> — is a legitimate
+      target the second you're both reaching for the same TV.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://github.com/joshuaclemons1/Rob-Everyone/releases" target="_blank" rel="noopener">
+        Grab the alpha build
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+      </a>
+    </div>
+    <p class="fine-print">Steam multiplayer · Windows / macOS · you'll need friends willing to betray you</p>
+    <div class="stat-row">
+      <span class="chip">4–8 players</span>
+      <span class="chip">No winner, just quota</span>
+      <span class="chip" id="version-chip">Alpha v1.0.3</span>
+    </div>
+  </div>
+
+  <div class="skyline" aria-hidden="true">
+    <div class="house" style="--rw:26px; --rh:20px;"><div class="roof"></div><div class="body" style="height:78px;"><span class="win"></span><span class="win"></span></div></div>
+    <div class="house" style="--rw:22px; --rh:17px;"><div class="roof"></div><div class="body" style="height:58px;"><span class="win"></span></div></div>
+    <div class="house" style="--rw:30px; --rh:23px;"><div class="roof"></div><div class="body" style="height:96px;"><span class="win"></span><span class="win"></span></div></div>
+    <div class="house" style="--rw:20px; --rh:16px;"><div class="roof"></div><div class="body" style="height:50px;"><span class="win"></span></div></div>
+    <div class="house" style="--rw:27px; --rh:21px;"><div class="roof"></div><div class="body" style="height:84px;"><span class="win"></span><span class="win"></span></div></div>
+    <div class="compound">
+      <span class="beacon"></span>
+      <div class="fence"></div>
+    </div>
+    <div class="house" style="--rw:24px; --rh:18px;"><div class="roof"></div><div class="body" style="height:66px;"><span class="win"></span></div></div>
+    <div class="house" style="--rw:29px; --rh:22px;"><div class="roof"></div><div class="body" style="height:92px;"><span class="win"></span><span class="win"></span></div></div>
+  </div>
+  <div class="road"></div>
+</div>
+
+<main class="wrap">
+  <section id="loop">
+    <div class="section-head">
+      <span class="eyebrow">The Loop</span>
+      <h2>There's no final round.</h2>
+      <p>No fixed round count, no results screen, no one "wins." You just keep going back in
+        until the quota beats you — and it keeps going up.</p>
+    </div>
+    <div class="loop-grid">
+      <div class="step">
+        <span class="num">01</span>
+        <h3>Break in</h3>
+        <p>Spawn into a neighborhood of houses ringing a fenced police compound. Loot whatever
+          you find into your 5-slot hotbar.</p>
+      </div>
+      <div class="step">
+        <span class="num">02</span>
+        <h3>Stay quiet</h3>
+        <p>Homeowners patrol and get suspicious if they see you. Linger too long and they call
+          it in.</p>
+      </div>
+      <div class="step">
+        <span class="num">03</span>
+        <h3>Don't get caught</h3>
+        <p>Police patrol, respond, and chase. Get caught and you lose your loot and go to jail —
+          a friend can bail you out for Cash, or you sit it out and self-bail.</p>
+      </div>
+      <div class="step">
+        <span class="num">04</span>
+        <h3>Or just rob your friends</h3>
+        <p>Every other player is fair game. Stun a rival and take what they're carrying, or drag
+          their unconscious body somewhere inconvenient.</p>
+      </div>
+      <div class="step">
+        <span class="num">05</span>
+        <h3>Get to the van</h3>
+        <p>There's one exit, and everyone's headed for it. Miss it and you're stuck until the
+          timer runs out — or the road traffic gets you first.</p>
+      </div>
+      <div class="step">
+        <span class="num">06</span>
+        <h3>Sell, restock, repeat</h3>
+        <p>Back at the lobby: sell loot, buy gear, and every third round is a harder night round
+          — same map, a lot less light.</p>
+      </div>
+    </div>
+    <div class="stamp">Quota goes up. Prices go up. Do it again.</div>
+  </section>
+
+  <section id="arsenal">
+    <div class="section-head">
+      <span class="eyebrow">The Arsenal</span>
+      <h2>Everything here works on a house.<br>All of it works better on a friend.</h2>
+      <p>Six sabotage items, three ways to use them. Every one of them has a real drawback —
+        this isn't a "best item wins" kind of arsenal.</p>
+    </div>
+    <div class="arsenal-grid">
+      <div class="item">
+        <div class="item-top"><h3>Taser</h3><span class="tag melee">Melee</span></div>
+        <p>Quick stun at close range. Recharges — so it's always eventually back in play.</p>
+      </div>
+      <div class="item">
+        <div class="item-top"><h3>Baseball Bat</h3><span class="tag melee">Melee</span></div>
+        <p>Drops someone fast and hard. Breaks after a handful of swings, no recharge.</p>
+      </div>
+      <div class="item">
+        <div class="item-top"><h3>Hammer</h3><span class="tag melee">Melee / Thrown</span></div>
+        <p>Swing it like the Bat or throw it like a projectile — your call, same limited
+          durability either way.</p>
+      </div>
+      <div class="item">
+        <div class="item-top"><h3>Tranquilizer Gun</h3><span class="tag ranged">Ranged</span></div>
+        <p>A stun that lasts way longer than the Taser's. You only get 1–2 shots and it never
+          recharges — make them count.</p>
+      </div>
+      <div class="item">
+        <div class="item-top"><h3>Dynamite</h3><span class="tag thrown">Thrown</span></div>
+        <p>Loud, area, effective. Also tells every homeowner and cop in the neighborhood exactly
+          where you are.</p>
+      </div>
+      <div class="item">
+        <div class="item-top"><h3>Alarm Clock</h3><span class="tag thrown">Thrown</span></div>
+        <p>Toss it near a rival and let a nearby Homeowner do your dirty work for you. They never
+          did anything wrong. The Homeowner disagrees.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="status">
+    <div class="section-head">
+      <span class="eyebrow">Status</span>
+      <h2>It's playable. It's buggy. It's getting less buggy.</h2>
+    </div>
+    <div class="status-panel">
+      <div class="status-top">
+        <span class="alpha-stamp">Alpha</span>
+        <span class="version" id="version-line">build alpha-v1.0.3</span>
+      </div>
+      <p class="status-copy">The core loop and the full meta-game are in and getting real
+        playtests. It's an alpha: expect the occasional bug, and expect it to keep changing
+        under you.</p>
+      <div class="status-cols">
+        <div>
+          <h4>Already in the build</h4>
+          <ul id="built-list">
+            <li><svg class="mark" viewBox="0 0 24 24" fill="none" stroke="var(--grass)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>Core heist loop &amp; Jail &amp; Bail</li>
+            <li><svg class="mark" viewBox="0 0 24 24" fill="none" stroke="var(--grass)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>Pawn shop &amp; batch economy</li>
+            <li><svg class="mark" viewBox="0 0 24 24" fill="none" stroke="var(--grass)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>Homeowner &amp; Police AI</li>
+            <li><svg class="mark" viewBox="0 0 24 24" fill="none" stroke="var(--grass)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>Day / Night rounds</li>
+            <li><svg class="mark" viewBox="0 0 24 24" fill="none" stroke="var(--grass)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>Steam proximity voice chat</li>
+            <li><svg class="mark" viewBox="0 0 24 24" fill="none" stroke="var(--grass)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>A real, rebindable Settings menu</li>
+          </ul>
+        </div>
+        <div>
+          <h4>Coming next</h4>
+          <ul id="coming-list">
+            <li><svg class="mark" viewBox="0 0 24 24" fill="none" stroke="var(--ink-soft)" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>A launcher that updates itself</li>
+            <li><svg class="mark" viewBox="0 0 24 24" fill="none" stroke="var(--ink-soft)" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>Windows, macOS &amp; Linux builds</li>
+            <li><svg class="mark" viewBox="0 0 24 24" fill="none" stroke="var(--ink-soft)" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>More houses to rob</li>
+            <li><svg class="mark" viewBox="0 0 24 24" fill="none" stroke="var(--ink-soft)" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>Music &amp; sound pass</li>
+            <li><svg class="mark" viewBox="0 0 24 24" fill="none" stroke="var(--ink-soft)" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>A cleaner first-person view</li>
+          </ul>
+        </div>
+      </div>
+      <p class="sync-note" id="sync-note">Pulled live from GitHub — edit
+        <code>docs/site-status.md</code> and this updates on its own.</p>
+    </div>
+  </section>
+</main>
+
+<div class="final">
+  <div class="wrap final-inner">
+    <h2>Same night. Same neighborhood.<br>No teammates.</h2>
+    <p class="tagline">Pull the build, hop on Steam, and find out which one of your friends
+      actually planned to split the take.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://github.com/joshuaclemons1/Rob-Everyone/releases" target="_blank" rel="noopener">
+        Grab the alpha build
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+      </a>
+    </div>
+  </div>
+  <footer>
+    <a href="https://github.com/joshuaclemons1/Rob-Everyone" target="_blank" rel="noopener">github.com/joshuaclemons1/Rob-Everyone</a>
+    <span class="night-note">(pulling this up after dark on a system in dark mode gets you the night-round palette — not an accident)</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  // Pulled directly from GitHub at view time -- this page is standalone
+  // (not the sandboxed Claude Artifact this started as, which blocks
+  // cross-origin fetches like these), so a plain fetch() to GitHub's own
+  // API works from any host that serves this file. Both endpoints send
+  // Access-Control-Allow-Origin: * for public reads, confirmed live
+  // before shipping this.
+  var RELEASES_URL = 'https://api.github.com/repos/joshuaclemons1/Rob-Everyone/releases?per_page=1';
+  var STATUS_MD_URL = 'https://raw.githubusercontent.com/joshuaclemons1/Rob-Everyone/main/docs/site-status.md';
+
+  function esc(s) {
+    var el = document.createElement('div');
+    el.textContent = s;
+    return el.innerHTML;
+  }
+
+  function renderList(id, items, iconSvg) {
+    if (!items || !items.length) return; // keep the static fallback list as-is
+    var ul = document.getElementById(id);
+    if (!ul) return;
+    ul.innerHTML = items.map(function (item) {
+      return '<li>' + iconSvg + esc(item) + '</li>';
+    }).join('');
+  }
+
+  var builtIcon = '<svg class="mark" viewBox="0 0 24 24" fill="none" stroke="var(--grass)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  var nextIcon = '<svg class="mark" viewBox="0 0 24 24" fill="none" stroke="var(--ink-soft)" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>';
+
+  // Version + release date -- the list endpoint, not /releases/latest:
+  // every tag in this repo is marked prerelease and that endpoint
+  // excludes those entirely (same gotcha the launcher's own
+  // UpdateService.cs ran into).
+  fetch(RELEASES_URL, { headers: { Accept: 'application/vnd.github+json' } })
+    .then(function (res) { return res.ok ? res.json() : null; })
+    .then(function (releases) {
+      if (!releases || !releases.length || !releases[0].tag_name) return;
+      var version = releases[0].tag_name;
+      var chip = document.getElementById('version-chip');
+      if (chip) chip.textContent = 'Alpha ' + version.replace(/^alpha-/i, '');
+      var line = document.getElementById('version-line');
+      if (line) line.textContent = 'build ' + version;
+    })
+    .catch(function () {}); // static fallback text stays put
+
+  // "Already in the build" / "Coming next" -- straight from the plain
+  // bullet-list markdown file the team edits directly on GitHub. Same
+  // '## Heading' + '- bullet' parsing .github/scripts used to do
+  // server-side, now done here instead since that's no longer needed.
+  fetch(STATUS_MD_URL)
+    .then(function (res) { return res.ok ? res.text() : null; })
+    .then(function (markdown) {
+      if (!markdown) return;
+      var sections = { 'already in the build': [], 'coming next': [] };
+      var current = null;
+      markdown.split('\n').forEach(function (line) {
+        var heading = line.match(/^##\s+(.*)/);
+        if (heading) {
+          var key = heading[1].trim().toLowerCase();
+          current = sections.hasOwnProperty(key) ? key : null;
+          return;
+        }
+        var bullet = line.match(/^-\s+(.*)/);
+        if (bullet && current) sections[current].push(bullet[1].trim());
+      });
+      renderList('built-list', sections['already in the build'], builtIcon);
+      renderList('coming-list', sections['coming next'], nextIcon);
+    })
+    .catch(function () {});
+})();
+</script>
+</body>
+</html>
