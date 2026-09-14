@@ -150,8 +150,7 @@ Minor, none blocking — surfaced reviewing the Phase 1/2 commits.
   in the setup doc's follow-ups).
 
 **Still open:**
-- **Sabotage cooldowns never reset between rounds** —
-  `SabotageUseController.nextReadyTime` keys off `Time.time`, continuous
-  across the Lobby round-trip, so a Taser fired near the end of a round
-  can still be on cooldown at the start of the next. Low impact; a
-  `ClearCooldowns()` from round start would be tidy.
+- **Sabotage cooldowns never reset between rounds** — tracked as
+  [Issue #1](https://github.com/joshuaclemons1/Rob-Everyone/issues/1)
+  now rather than described here. Low impact; a `ClearCooldowns()` from
+  round start would be tidy.
