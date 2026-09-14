@@ -56,9 +56,11 @@ shop, real Jail & Bail, Homeowner patrol, police dispatch pooling, night
 mode),
 [settings-menu-setup.md](stages/settings-menu-setup.md) (Input System
 migration, rebinding, audio mixer, graphics, accessibility, pause menu),
-[voip-setup.md](stages/voip-setup.md) (Steam proximity voice chat), and
+[voip-setup.md](stages/voip-setup.md) (Steam proximity voice chat),
 [ui-implementation-setup.md](stages/ui-implementation-setup.md) (crosshair,
-Cash/Quota/Timer HUD).
+Cash/Quota/Timer HUD), and
+[launcher-setup.md](stages/launcher-setup.md) (pre-launch auto-update
+launcher, replacing the old in-game update popup).
 Style/asset reference (palette, sourced packs, remaining art to-do) is in
 [art-info.md](art-info.md); UI/menu element spec is in
 [ui-design.md](stages/ui-design.md); main menu build docs are

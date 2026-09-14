@@ -1,0 +1,10 @@
+bin/
+obj/
+
+# Runtime artifacts -- created next to the launcher when it actually runs,
+# never part of the source. Game/ is the installed build; Game.staging/ and
+# Game.old/ are transient (see UpdateService.InstallFromZip).
+Game/
+Game.staging/
+Game.old/
+launcher-state.json
