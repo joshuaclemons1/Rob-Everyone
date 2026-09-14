@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rob Everyone</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #F6C97A; }
+  @media (prefers-color-scheme: dark) { html, body { background: #1B2430; } }
+  .loading, .error {
+    display: flex;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    color: #48566B;
+  }
+  @media (prefers-color-scheme: dark) { .loading, .error { color: #B9C2CE; } }
+  .error { display: none; flex-direction: column; gap: 14px; text-align: center; padding: 24px; }
+  .error a { color: #E76F51; font-weight: 700; text-decoration: none; }
+  @media (prefers-color-scheme: dark) { .error a { color: #F0805F; } }
+</style>
+</head>
+<body>
+<div class="loading" id="loading">Loading…</div>
+<div class="error" id="error">
+  <p>Couldn't reach GitHub to load the page right now.</p>
+  <p><a href="https://github.com/joshuaclemons1/Rob-Everyone" target="_blank" rel="noopener">View the game on GitHub instead →</a></p>
+</div>
+<script>
+(function () {
+  // Thin loader, meant to be uploaded once and never touched again.
+  // The real page lives at docs/index.html in the Rob-Everyone repo --
+  // this fetches it fresh on every visit and swaps it in wholesale, so
+  // updating that file on GitHub is all it takes to update whatever
+  // site actually hosts *this* file. No re-upload, ever, unless this
+  // loader itself needs to change.
+  //
+  // cache: 'no-store' bypasses the browser's own HTTP cache (GitHub's
+  // CDN still fronts the actual request, but this guarantees a given
+  // visitor never sees a stale copy from their last visit).
+  var SOURCE_URL = 'https://raw.githubusercontent.com/joshuaclemons1/Rob-Everyone/main/docs/index.html';
+
+  fetch(SOURCE_URL, { cache: 'no-store' })
+    .then(function (res) {
+      if (!res.ok) throw new Error('bad response: ' + res.status);
+      return res.text();
+    })
+    .then(function (html) {
+      // Full-document replacement, not innerHTML -- this runs the
+      // fetched page's own <title>/<style>/<script> exactly as if a
+      // visitor had navigated to it directly. innerHTML would insert
+      // the markup but silently skip every <script> tag in it, which
+      // is exactly the part that pulls the version stamp and the
+      // Already-in-the-build / Coming-next lists live.
+      document.open();
+      document.write(html);
+      document.close();
+    })
+    .catch(function () {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').style.display = 'flex';
+    });
+})();
+</script>
+</body>
+</html>
