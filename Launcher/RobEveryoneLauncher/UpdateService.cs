@@ -28,9 +28,19 @@ public class UpdateService
     // too, which means it silently never found an update the whole time
     // it existed (it fails open on any non-success response, so nobody
     // would have noticed). /releases (the list endpoint) returns every
-    // release including prereleases, newest first -- index 0 is what we
-    // actually want.
-    private const string ReleasesUrl = "https://api.github.com/repos/joshuaclemons1/Rob-Everyone/releases?per_page=1";
+    // release including prereleases, newest first. per_page=10, not 1 --
+    // GetLatestReleaseAsync below now has to skip past any release that
+    // isn't actually a game release (e.g. the launcher's own), so it
+    // needs more than just the single newest to search through.
+    private const string ReleasesUrl = "https://api.github.com/repos/joshuaclemons1/Rob-Everyone/releases?per_page=10";
+
+    // Every real game release is tagged alpha-vX.X.X. Confirmed real risk
+    // otherwise: this repo also carries the launcher's own separate,
+    // standalone release (see docs/stages/launcher-setup.md), and without
+    // this filter, publishing literally anything else on the repo newer
+    // than the last game release would make GetLatestReleaseAsync grab
+    // that instead and try to install it as if it were a game update.
+    private const string GameReleaseTagPrefix = "alpha-v";
 
     // Windows companion executables Unity's build drops alongside the real
     // game .exe -- never the thing we actually want to launch.
@@ -149,7 +159,7 @@ public class UpdateService
         if (!response.IsSuccessStatusCode) return null;
         await using Stream stream = await response.Content.ReadAsStreamAsync(ct);
         List<GitHubRelease>? releases = await JsonSerializer.DeserializeAsync<List<GitHubRelease>>(stream, cancellationToken: ct);
-        return releases is { Count: > 0 } ? releases[0] : null;
+        return releases?.FirstOrDefault(r => r.TagName.StartsWith(GameReleaseTagPrefix, StringComparison.OrdinalIgnoreCase));
     }
 
     // Prefers an asset carrying this platform's suffix (RobEveryone-<tag>-win.zip
