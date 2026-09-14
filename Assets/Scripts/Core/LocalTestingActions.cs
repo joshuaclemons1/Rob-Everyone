@@ -49,14 +49,29 @@ namespace RobEveryone.Core
 
             kcpTransport = RobEveryoneNetworkManager.singleton.GetComponent<KcpTransport>();
 
+            // Temporary hop-by-hop logging -- two fix attempts have
+            // failed the exact same way (Host/Join Local still using
+            // Steam sockets) despite this all checking out on paper, so
+            // this pins down exactly which link in the chain is wrong
+            // instead of guessing a third time.
+            Debug.Log($"[LocalTestingActions] Start: kcpTransport={(kcpTransport == null ? "NULL" : kcpTransport.ToString())}, " +
+                $"NetworkManager instance={RobEveryoneNetworkManager.singleton.GetInstanceID()}, " +
+                $"current transport={RobEveryoneNetworkManager.singleton.transport}");
+
             if (kcpTransport == null)
                 Debug.LogError("LocalTestingActions: no KcpTransport found on the NetworkManager GameObject -- Host/Join Local can't work.");
         }
 
         private void UseKcp()
         {
+            Debug.Log($"[LocalTestingActions] UseKcp: kcpTransport={(kcpTransport == null ? "NULL" : kcpTransport.ToString())}, " +
+                $"transport BEFORE={RobEveryoneNetworkManager.singleton.transport}");
+
             if (kcpTransport == null) return;
             RobEveryoneNetworkManager.singleton.transport = kcpTransport;
+
+            Debug.Log($"[LocalTestingActions] UseKcp: transport AFTER={RobEveryoneNetworkManager.singleton.transport}, " +
+                $"Transport.active={Mirror.Transport.active}");
         }
 
         // Wire the "Host Local" button's OnClick to this.
