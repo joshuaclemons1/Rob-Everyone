@@ -35,7 +35,14 @@ namespace RobEveryone.Round
         // E-press could otherwise re-trigger EnterCar and incorrectly
         // flip isWaiting back on (making an already-safely-resolved
         // player vulnerable to the stun-cancels-extraction check again).
-        private bool hasExtracted;
+        //
+        // SyncVar, not a plain field -- CrosshairUI reads this on the
+        // owning client to show the right prompt (see its own fix),
+        // which needs the server's own mutation actually replicated down
+        // rather than a remote client's local copy silently staying
+        // false forever.
+        [SyncVar] private bool hasExtracted;
+        public bool HasExtracted => hasExtracted;
 
         private FirstPersonController fpc;
         private PlayerImpactRelay relay;

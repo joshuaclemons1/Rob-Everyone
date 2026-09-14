@@ -53,12 +53,23 @@ namespace RobEveryone.UI
             bool jailed = localJail != null && localJail.IsJailed;
             bool spectating = localSpectator != null && localSpectator.IsSpectating;
             bool waitingInCar = localExitCar != null && localExitCar.IsWaiting;
-            // While jailed or seated waiting at the exit,
-            // FirstPersonController's entire look/move loop is frozen and
-            // there's nothing meaningful left to aim at -- these lines
-            // show their own standing hint instead of the normal
-            // per-target prompt.
-            bool hasTarget = !jailed && !waitingInCar && interactor.CurrentTarget != null;
+            // Resolved (rode out their own carWaitDuration) but still
+            // physically frozen/seated until the whole group is done --
+            // confirmed bug: without this, once IsWaiting clears the
+            // prompt fell through to the normal per-target branch below,
+            // and since ExitCarFrozen leaves them still looking straight
+            // at the exit point, it showed the exit point's own "Press E
+            // to get away!" prompt again -- misleading, since EnterCar
+            // now refuses to re-trigger (see ExitCarState.HasExtracted's
+            // own comment) and the player genuinely can't act at all
+            // right now.
+            bool extractedInCar = localExitCar != null && localExitCar.HasExtracted;
+            // While jailed or seated (waiting OR already extracted) at
+            // the exit, FirstPersonController's entire look/move loop is
+            // frozen and there's nothing meaningful left to aim at --
+            // these lines show their own standing hint instead of the
+            // normal per-target prompt.
+            bool hasTarget = !jailed && !waitingInCar && !extractedInCar && interactor.CurrentTarget != null;
 
             if (interactHint != null) interactHint.SetActive(hasTarget);
 
@@ -70,8 +81,10 @@ namespace RobEveryone.UI
                         ? "Press T to spectate"
                         : waitingInCar
                             ? "Press E to exit the car"
-                            : hasTarget ? $"[E] {interactor.CurrentTarget.InteractionPrompt}" : "";
-                promptText.enabled = jailed || waitingInCar || hasTarget;
+                            : extractedInCar
+                                ? "Waiting for the rest of your crew..."
+                                : hasTarget ? $"[E] {interactor.CurrentTarget.InteractionPrompt}" : "";
+                promptText.enabled = jailed || waitingInCar || extractedInCar || hasTarget;
             }
 
             if (warningText != null)
