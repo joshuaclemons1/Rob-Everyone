@@ -10827,8 +10827,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Core.LocalTestingActions
   localTestPanel: {fileID: 1491184282}
-  kcpTransport: {fileID: 1019379343}
-  fizzySteamworks: {fileID: 1019379345}
 --- !u!4 &2070244331
 Transform:
   m_ObjectHideFlags: 0

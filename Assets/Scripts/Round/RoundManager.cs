@@ -214,6 +214,19 @@ namespace RobEveryone.Round
         {
             if (!roundActive) return;
             roundActive = false;
+
+            // Issue #48 fix: a player who rode out their own exit-car
+            // carWaitDuration is resolved (NotifyPlayerReachedExit,
+            // already counted toward CheckForEarlyEnd/the timeout above)
+            // but deliberately stays physically seated/frozen in the car
+            // until the round is actually over for the whole group --
+            // ForceRelease here is what finally lets them go. Harmless
+            // no-op for anyone who was never seated.
+            foreach (PlayerInventory player in PlayerInventory.AllPlayers)
+            {
+                player.GetComponent<ExitCarState>()?.ForceRelease();
+            }
+
             OnRoundEnded?.Invoke();
         }
     }

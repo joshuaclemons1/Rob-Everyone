@@ -26,6 +26,17 @@ namespace RobEveryone.Round
         [SyncVar] private bool isWaiting;
         public bool IsWaiting => isWaiting;
 
+        // Set once FinalizeExit resolves this player and never cleared
+        // until ForceRelease (round end). Guards EnterCar below --
+        // staying frozen/seated (rather than immediately regaining look
+        // control) after extracting means this player is now much more
+        // likely to still be facing the exit point than before, and
+        // Interactor doesn't check ExitCarFrozen at all, so a stray
+        // E-press could otherwise re-trigger EnterCar and incorrectly
+        // flip isWaiting back on (making an already-safely-resolved
+        // player vulnerable to the stun-cancels-extraction check again).
+        private bool hasExtracted;
+
         private FirstPersonController fpc;
         private PlayerImpactRelay relay;
         private ExitPoint currentExit;
@@ -63,7 +74,7 @@ namespace RobEveryone.Round
         [Server]
         public void EnterCar(ExitPoint exit)
         {
-            if (isWaiting || exit == null) return;
+            if (isWaiting || hasExtracted || exit == null) return;
 
             isWaiting = true;
             currentExit = exit;
@@ -105,27 +116,51 @@ namespace RobEveryone.Round
             currentExit = null;
         }
 
-        // Nobody chose to climb back out within the wait window -- they
-        // actually get away now.
+        // Nobody chose to climb back out within the wait window -- they're
+        // safely committed now (isWaiting false means Update's E-press and
+        // stun-cancels-extraction checks above both stop applying to them).
+        //
+        // Deliberately does NOT unfreeze or release the seat here --
+        // issue #48 fix: this used to hand control straight back the
+        // instant *this player's own* carWaitDuration ran out, which
+        // visibly yanked them out of the car while other players were
+        // still mid-round, rather than the whole group getting away
+        // together. NotifyPlayerExtracted still resolves them with
+        // RoundManager immediately though, so RoundManager.
+        // CheckForEarlyEnd still correctly ends the round early the
+        // moment every other player is also resolved/jailed -- staying
+        // physically seated is a presentation-only change from here on.
+        // RoundManager.EndRound() releases every still-seated player
+        // (ForceRelease, below) once the round is actually over for
+        // everyone, whether that's via CheckForEarlyEnd or the round
+        // timing out.
         [Server]
         private void FinalizeExit()
         {
             isWaiting = false;
-            fpc.ExitCarFrozen = false;
-
-            ExitPoint exit = currentExit;
-            currentExit = null;
-            exit?.ReleaseSeat(this);
-            exit?.NotifyPlayerExtracted(GetComponent<PlayerInventory>());
+            hasExtracted = true;
+            currentExit?.NotifyPlayerExtracted(GetComponent<PlayerInventory>());
         }
 
-        // Safety net -- a round ending some other way (timeout, everyone
-        // else resolved) while this player is still mid-wait, or getting
-        // stunned while seated (Update above).
+        // Two callers: getting stunned while still mid-wait (Update above,
+        // cancels the extraction attempt outright), and RoundManager.
+        // EndRound calling this on every player once the round is
+        // actually over -- the normal way an already-extracted (isWaiting
+        // already false, FinalizeExit already ran) player still seated
+        // here gets their freeze/seat cleared up, now that staying seated
+        // until the whole group is done is the deliberate behavior. Safe
+        // to call on a player who was never seated at all (currentExit
+        // stays null the whole time, every line below is a no-op).
         [Server]
         public void ForceRelease()
         {
             isWaiting = false;
+            // Reset here, not just on stun-cancel -- this same Player
+            // GameObject persists (DontDestroyOnLoad) into next round's
+            // fresh RoundManager/ExitPoint, so leaving this true forever
+            // would permanently lock EnterCar out for every future round
+            // too, not just the one that just ended.
+            hasExtracted = false;
             currentExit?.ReleaseSeat(this);
             currentExit = null;
             fpc.ExitCarFrozen = false;
