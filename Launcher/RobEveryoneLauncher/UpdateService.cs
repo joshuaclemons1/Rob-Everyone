@@ -305,18 +305,32 @@ public class UpdateService
 
     public static void LaunchGame(string executablePath)
     {
-        var startInfo = new ProcessStartInfo { UseShellExecute = true };
+        var startInfo = new ProcessStartInfo();
 
         if (PlatformInfo.Current == GamePlatform.MacOS && executablePath.EndsWith(".app", StringComparison.OrdinalIgnoreCase))
         {
             // A .app is a bundle/directory, not directly executable -- `open`
             // is the standard way to launch one, same as double-clicking it
-            // in Finder.
+            // in Finder. Needs the shell (`open` is a separate helper
+            // process Steam has no reason to know about either way, so
+            // this path doesn't affect the overlay-handoff reasoning below).
+            startInfo.UseShellExecute = true;
             startInfo.FileName = "open";
             startInfo.ArgumentList.Add(executablePath);
         }
         else
         {
+            // UseShellExecute = false (the default) -- launches the game as
+            // a direct child process (CreateProcess) instead of routing
+            // through the OS shell. Matters for the Steam overlay: if a
+            // player adds this launcher (not the game .exe) as a Non-Steam
+            // Game so the auto-update check actually runs, Steam's overlay
+            // hook only has a chance of extending to the game window if it
+            // can recognize the game as this launcher's own child process --
+            // going through the shell adds a layer that risks obscuring
+            // that relationship. See issue tracking the overlay-handoff
+            // question for the full reasoning.
+            startInfo.UseShellExecute = false;
             startInfo.FileName = executablePath;
             startInfo.WorkingDirectory = Path.GetDirectoryName(executablePath) ?? LauncherPaths.GameDir;
         }
