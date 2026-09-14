@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Mirror;
@@ -56,10 +57,31 @@ namespace RobEveryone.Core
         // round.
         [SyncVar] private int currentQuota = 200;
         [SyncVar] private int batchNumber = 1;
-        [SyncVar] private int roundInBatch = 1; // 1, 2, or 3
+        // Hooked, not a plain SyncVar -- see OnRoundInBatchChanged below for
+        // why (issue #12: NightModeVisuals reading this once at Start()
+        // could race a joining/scene-loading client's own sync of this
+        // field and latch a stale value with nothing to ever correct it).
+        [SyncVar(hook = nameof(OnRoundInBatchChanged))]
+        private int roundInBatch = 1; // 1, 2, or 3
         public int CurrentQuota => currentQuota;
         public int BatchNumber => batchNumber;
         public int RoundInBatch => roundInBatch;
+
+        // Static, not instance-bound -- a subscriber (NightModeVisuals)
+        // needs to hook this up the instant its own scene loads, which can
+        // easily race GameFlowManager.Instance itself still being null on
+        // that client (it's a scene-placed NetworkIdentity, disabled until
+        // Mirror's spawn message batch reaches this connection -- the same
+        // timing hazard already hit once for the loading screen, see
+        // completed.md/issue #38). A static event is subscribable
+        // regardless of whether Instance exists yet; Mirror invokes a
+        // SyncVar hook on the initial sync too, not just later changes, so
+        // whichever GameFlowManager instance actually spawns for this
+        // client will fire this once with the real value shortly after,
+        // self-correcting any earlier guess.
+        public static event Action OnTimeOfDayChanged;
+
+        private void OnRoundInBatchChanged(int _, int __) => OnTimeOfDayChanged?.Invoke();
 
         // Named visual/time-of-day concept for round 1/2/3 within a
         // batch -- zero new state, roundInBatch (1/2/3) is already the
@@ -85,11 +107,21 @@ namespace RobEveryone.Core
         [SyncVar] private int roundOrdinal;
         public int RoundOrdinal => roundOrdinal;
 
-        // Players who failed the batch quota this round, queued here at
-        // HandleRoundEnded and actually jailed once the *next* round
-        // starts (HandleRoundStarted) -- jailing them immediately would
-        // put them in a cell in a round that's already over.
-        private readonly HashSet<PlayerInventory> pendingEndOfBatchJail = new();
+        // Issue #16 fix: every player who just finished a final round,
+        // queued here at HandleRoundEnded so the *actual* quota
+        // met/not-met verdict (and any resulting end-of-batch jailing) can
+        // be deferred to the *next* round's start (HandleRoundStarted) --
+        // checking immediately at round-end was wrong, since a player's
+        // just-earned loot is still sitting unsold in their hotbar at that
+        // point (the Lobby's sell phase hasn't happened yet), so a player
+        // who genuinely met quota after selling could still read as
+        // "not met" and get jailed for a batch they actually passed.
+        // pendingQuotaCheckTarget captures the quota *this* batch actually
+        // needed to hit, read before HandleRoundEnded grows currentQuota
+        // for the next one -- by the time HandleRoundStarted re-checks,
+        // currentQuota is already the new, higher batch's number.
+        private readonly List<PlayerInventory> pendingQuotaCheck = new();
+        private int pendingQuotaCheckTarget;
 
         // Which physical JailPoint slot each currently-jailed player is
         // occupying -- claimed in TeleportToJail (ClaimJailPoint below),
@@ -398,6 +430,44 @@ namespace RobEveryone.Core
         [Server]
         private void HandleRoundStarted()
         {
+            // Issue #16: the deferred quota verdict from the batch that
+            // just ended, re-checked now (against the quota that batch
+            // actually needed, captured before it grew) rather than the
+            // stale pre-sell snapshot HandleRoundEnded used to take
+            // immediately. Must run before the Cash wipe just below --
+            // that zeroes every player's Cash for the new batch, which
+            // would make every check here read as an automatic fail if it
+            // ran after.
+            if (pendingQuotaCheck.Count > 0)
+            {
+                foreach (PlayerInventory player in pendingQuotaCheck)
+                {
+                    if (player == null) continue; // disconnected between rounds
+
+                    bool metQuota = player.Cash >= pendingQuotaCheckTarget;
+
+                    NetworkIdentity resultIdentity = player.GetComponent<NetworkIdentity>();
+                    if (resultIdentity != null && resultIdentity.connectionToClient != null)
+                    {
+                        TargetShowQuotaResult(resultIdentity.connectionToClient, metQuota ? "Quota met!" : "Quota not met.");
+                    }
+
+                    if (!metQuota)
+                    {
+                        // This round is that jailed player's "round 1" of
+                        // being caught, so JailedAtRoundOrdinal (read by
+                        // the self-bail check further down, on some
+                        // *future* round) is set relative to the current
+                        // roundOrdinal -- already incremented for this
+                        // round by RegisterRoundManager before this whole
+                        // method ever ran.
+                        player.GetComponent<JailState>()?.EnterJail(endOfBatch: true);
+                        currentRoundManager?.NotifyPlayerJailed(player, true);
+                    }
+                }
+                pendingQuotaCheck.Clear();
+            }
+
             // A fresh batch's Morning round (roundInBatch is set to 1 at
             // the previous batch's own final-round-end, well before this
             // fires) wipes every player's Cash down to zero -- not just
@@ -433,18 +503,6 @@ namespace RobEveryone.Core
                 if (roundOrdinal > jail.JailedAtRoundOrdinal) jail.ForceRelease();
             }
 
-            // Apply any end-of-batch jailing queued by the batch boundary
-            // that just passed -- this round is that jailed player's
-            // "round 1" of being caught, so JailedAtRoundOrdinal (used by
-            // the self-bail check above on some *future* round) is set
-            // relative to the current roundOrdinal, already incremented
-            // for this round by RegisterRoundManager above.
-            foreach (PlayerInventory player in pendingEndOfBatchJail)
-            {
-                player.GetComponent<JailState>()?.EnterJail(endOfBatch: true);
-                currentRoundManager?.NotifyPlayerJailed(player, true);
-            }
-            pendingEndOfBatchJail.Clear();
         }
 
         // Called from ReadySpot's own OnStartServer -- same reasoning as
@@ -620,34 +678,44 @@ namespace RobEveryone.Core
             // fixed quota, per gameplay-design.md's Quota Batches section.
             bool isFinalRound = roundInBatch >= 3;
 
+            // Issue #16: the quota met/not-met verdict is deliberately NOT
+            // decided here anymore -- a player's round-3 loot is still
+            // sitting unsold in their hotbar at this exact moment (the
+            // Lobby's sell phase hasn't happened yet), so checking Cash
+            // right now could read a genuinely-passing player as failing.
+            // Capture the target and the participating players; the real
+            // check happens in HandleRoundStarted, after they've had a
+            // chance to sell.
+            if (isFinalRound)
+            {
+                pendingQuotaCheckTarget = currentQuota;
+                pendingQuotaCheck.Clear();
+                pendingQuotaCheck.AddRange(PlayerInventory.AllPlayers);
+            }
+
             foreach (PlayerInventory player in PlayerInventory.AllPlayers)
             {
                 lastResults.TryGetValue(player, out RoundResult result);
                 bool wasCaught = result == RoundResult.Caught;
-                bool metQuota = isFinalRound && player.Cash >= currentQuota;
 
-                if (isFinalRound)
-                {
-                    // Anti-hoarding: Cash above quota is deleted at the
-                    // batch boundary, not carried forward indefinitely.
-                    player.WipeCashSurplus(currentQuota);
-
-                    // Independent of wasCaught -- a player caught and
-                    // rescued earlier in this same final round who's also
-                    // under quota still gets end-of-batch jailed.
-                    if (!metQuota) pendingEndOfBatchJail.Add(player);
-                }
+                // Anti-hoarding: Cash above quota is deleted at the batch
+                // boundary, not carried forward indefinitely. Only trims
+                // surplus (never reduces anyone below what they had), so
+                // this can't cost an under-quota player their shot at
+                // reaching quota once they sell in the Lobby.
+                if (isFinalRound) player.WipeCashSurplus(currentQuota);
 
                 // Includes carried-but-unsold loot value alongside Cash --
-                // only Cash actually counts toward metQuota above (loot
+                // the deferred quota check above only counts Cash (loot
                 // has to be sold first), but showing just Cash here made
                 // it look like unsold loot didn't count for anything at
-                // all toward the quota.
+                // all toward the quota. Same progress format for every
+                // round including the final one now -- the actual
+                // met/not-met verdict shows at the start of next round
+                // instead, once it's actually true.
                 string message = wasCaught
                     ? "Caught by the police!"
-                    : isFinalRound
-                        ? (metQuota ? "Batch quota met!" : "Batch quota not met.")
-                        : $"Batch progress: ${player.Cash} cash + ${player.TotalValue} inventory / ${currentQuota}";
+                    : $"Batch progress: ${player.Cash} cash + ${player.TotalValue} inventory / ${currentQuota}";
 
                 NetworkIdentity identity = player.GetComponent<NetworkIdentity>();
                 if (identity != null && identity.connectionToClient != null)
@@ -702,6 +770,22 @@ namespace RobEveryone.Core
         {
             LoadingScreenUI screen = FindFirstObjectByType<LoadingScreenUI>();
             if (screen != null) screen.Show(message);
+        }
+
+        // Issue #16's deferred quota verdict, shown at the *start* of the
+        // new round (HandleRoundStarted) once it's actually known, rather
+        // than the old immediate-but-wrong check at round-end. Calls
+        // Hide() right after Show() rather than leaving the panel up
+        // indefinitely -- LoadingScreenUI.Hide() already knows to wait out
+        // its own minimumDisplayDuration before actually closing, so this
+        // reads as a normal brief message, not a flash or a stuck screen.
+        [TargetRpc]
+        private void TargetShowQuotaResult(NetworkConnectionToClient target, string message)
+        {
+            LoadingScreenUI screen = FindFirstObjectByType<LoadingScreenUI>();
+            if (screen == null) return;
+            screen.Show(message);
+            screen.Hide();
         }
 
         [ClientRpc]
