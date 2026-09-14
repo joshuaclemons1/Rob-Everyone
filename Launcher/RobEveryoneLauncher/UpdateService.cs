@@ -86,12 +86,14 @@ public class UpdateService
             return null;
         }
 
-        bool upToDate = state.InstalledVersion == release.TagName && FindGameExecutable() != null;
-        if (upToDate)
-        {
-            progress.Report(new UpdateProgress { Phase = UpdatePhase.UpToDate, Message = $"Up to date ({release.TagName}).", Fraction = 1.0 });
-        }
-        else
+        // "Already have this tag" is deliberately separate from "found
+        // something launchable" below -- on a platform with no build
+        // published yet, the tag we already downloaded will never produce
+        // a launchable executable, and re-downloading the same unusable
+        // zip every single run just to re-confirm that would be a waste.
+        // Only re-download when the tag itself has actually changed.
+        bool alreadyHaveThisTag = state.InstalledVersion == release.TagName;
+        if (!alreadyHaveThisTag)
         {
             GitHubAsset? asset = SelectAssetForCurrentPlatform(release);
             if (asset == null)
@@ -119,8 +121,26 @@ public class UpdateService
             state.Save();
         }
 
-        progress.Report(new UpdateProgress { Phase = UpdatePhase.Launching, Message = "Launching...", Fraction = 1.0 });
-        return FindGameExecutable();
+        string? exe = FindGameExecutable();
+        if (exe == null)
+        {
+            // We have the latest tag's assets on disk, but nothing
+            // launchable came out of them for this platform (its zip is
+            // for a different OS, or something extracted wrong). Report
+            // this as its own case rather than silently returning null --
+            // and crucially, state.InstalledVersion is already saved, so
+            // this doesn't re-download next run either.
+            progress.Report(new UpdateProgress
+            {
+                Phase = UpdatePhase.Error,
+                Message = $"{release.TagName} is downloaded, but has no {PlatformInfo.Current}-launchable build inside it.",
+            });
+            return null;
+        }
+
+        string message = alreadyHaveThisTag ? $"Up to date ({release.TagName}) -- launching..." : "Launching...";
+        progress.Report(new UpdateProgress { Phase = UpdatePhase.Launching, Message = message, Fraction = 1.0 });
+        return exe;
     }
 
     private static async Task<GitHubRelease?> GetLatestReleaseAsync(CancellationToken ct)
