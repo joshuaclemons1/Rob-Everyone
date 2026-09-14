@@ -52,6 +52,13 @@
 ExportedObj/
 .consulo/
 *.csproj
+# ...except the launcher's own hand-written project file -- *.csproj above
+# is meant to catch Unity's auto-generated per-assembly IDE project files
+# (Assembly-CSharp.csproj etc, littering the repo root), not the real
+# source file for Launcher/RobEveryoneLauncher, which isn't Unity-generated
+# at all. This blanket rule silently excluded it from every commit until
+# caught by a CI build failing with "no project file found".
+!Launcher/**/*.csproj
 *.unityproj
 *.sln
 *.slnx
