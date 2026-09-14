@@ -23,6 +23,31 @@ namespace RobEveryone.Core
         private void Awake()
         {
             player = GetComponent<VideoPlayer>();
+
+            // Issue #46 fix: on any aspect ratio wider than the clip's
+            // own (most commonly an ultrawide monitor), whatever scaling
+            // mode and camera clear settings happen to be saved on the
+            // scene decide what shows in the gap the video doesn't cover
+            // -- with the target camera's default Skybox clear, that gap
+            // rendered as visible empty scene on the sides (or top/
+            // bottom, on a narrower-than-16:9 display), making the video
+            // read like a floating frame inside a real 3D scene instead
+            // of the game's own loading sequence. Force both here rather
+            // than trust the Editor-authored values to stay correct
+            // forever: FitHorizontally always pins the video to the full
+            // width of the screen (matching height, letterboxed, on
+            // anything wider than the clip; cropped top/bottom on
+            // anything narrower), and a solid black clear means whatever
+            // letterbox gap remains is always pure black, never the
+            // scene behind it.
+            player.aspectRatio = VideoAspectRatio.FitHorizontally;
+
+            Camera targetCamera = player.targetCamera;
+            if (targetCamera != null)
+            {
+                targetCamera.clearFlags = CameraClearFlags.SolidColor;
+                targetCamera.backgroundColor = Color.black;
+            }
         }
 
         private void OnEnable() => player.loopPointReached += HandleFinished;
