@@ -6,21 +6,22 @@ priority list — everything here was written and reasoned through
 without Unity Editor access, so most of it went unverified by a
 compiler until the Editor testing pass noted below.
 
-Also picked up **#45** partway through this pass — a multiplayer-only
-exit car bug reported directly, not originally on the Tier 1/2 list —
-since it was diagnosable with the same level of confidence as the rest
-of this doc. See its own section near the end.
+Also picked up **#45** and **#46** partway through this pass — bugs
+reported directly, not originally on the Tier 1/2 list — since both
+were diagnosable with the same level of confidence as the rest of this
+doc. See their own sections near the end.
 
-All seven fixes are committed on `jclem's-branch` (`4244623` for
-#4/#8/#11, `5e066b9` for #1/#15, `47ebf19` for #45 — see each issue's
-own GitHub comment for the exact commit hash) and have progress
-comments on their issues.
+All eight fixes are committed on `jclem's-branch` (`4244623` for
+#4/#8/#11, `5e066b9` for #1/#15, `47ebf19` for #45, `b16d27c` for #46 —
+see each issue's own GitHub comment for the exact commit hash) and have
+progress comments on their issues.
 
 **Status as of 2026-09-14 (Editor testing pass):** #1, #4, and #15 have
 been tested in the Editor and confirmed fixed — **closed**. The
-remaining four (#8, #11, #45, and everything in the "Investigated, not
-fixed" section) still need testing and remain open; #8/#11 need real
-Editor play but not multiplayer, #45 needs 2+ players (ParrelSync or
+remaining five (#8, #11, #45, #46, and everything in the "Investigated,
+not fixed" section) still need testing and remain open; #8/#11/#46 need
+real Editor play but not multiplayer (#46 also needs an actual non-16:9
+display to see anything), #45 needs 2+ players (ParrelSync or
 same-machine is enough), and the rest need a real Steam multiplayer
 session with actual network latency.
 
@@ -213,6 +214,39 @@ resolve after their own `carWaitDuration`. Also test a disconnect mid-
 wait (close the game on one client while seated) and confirm it doesn't
 permanently block that seat slot for later rounds.
 
+### #46 — Intro video shows empty scene around it on non-16:9 displays
+
+**Reported behavior:** on non-16:9 displays (ultrawide most likely),
+the intro/logo video doesn't fill the screen — the empty Intro scene is
+visible below or on the sides of the video, making it look like a
+frame floating in a 3D scene rather than a real part of the game's
+loading sequence.
+
+**What was wrong:** confirmed by reading the scene file — the target
+camera's `m_ClearFlags` was set to Skybox, not a solid color, so
+anywhere `VideoPlayer` (rendering in `CameraNearPlane` mode) doesn't
+cover the screen, the camera's own regular render shows through instead
+of a blank background.
+
+**What changed:** `IntroSequence.Awake` now forces both relevant
+settings in code rather than trusting the Editor-authored scene values:
+`VideoPlayer.aspectRatio = VideoAspectRatio.FitHorizontally` (always
+pins the video to the full screen width — height scales to match, so
+any gap is strictly top/bottom on a wider-than-16:9 display, never left
+or right), and the target camera's clear flags forced to `SolidColor`
+black, so that gap always renders pure black instead of the scene
+behind it.
+
+**Editor steps needed:** none for the fix to function.
+
+**Test:** needs an actual non-16:9 display to verify — ultrawide is the
+most likely case to have on hand. Launch the game and watch the intro:
+confirm the video fills the full width with no scene visible in any
+gap (should be solid black top/bottom if the display's wider than the
+clip). If you don't have a non-16:9 display available, resizing/
+un-maximizing the Editor's own Game view to a non-16:9 window and
+entering Play mode should reproduce the same effect for a quick check.
+
 ## Investigated, not fixed — needs to be watched happen live
 
 These didn't get a code change. Each one was dug into with the same
@@ -290,12 +324,14 @@ once.
    testable in a single-player or same-machine session, no real network
    latency needed. Tune `JailState.confinementRadius` (#8) against the
    real cell geometry while you're in there anyway.
-3. Then move to #10 (Settings background) — Editor-only investigation,
+3. #46 (intro video) whenever a non-16:9 display (or a resized, non-16:9
+   Editor Game view) is handy — quick, solo, no multiplayer needed.
+4. Then move to #10 (Settings background) — Editor-only investigation,
    no multiplayer needed.
-4. #45 (exit car) needs at least 2 players, but not real network
+5. #45 (exit car) needs at least 2 players, but not real network
    latency — same-machine/ParrelSync testing should reproduce it fine,
    so it doesn't need to wait for a real Steam session like the group
    below does.
-5. Save #2/#3/#5/#9/#7/#13 for a real multiplayer session with a genuine
+6. Save #2/#3/#5/#9/#7/#13 for a real multiplayer session with a genuine
    non-host player over Steam — these all need actual network latency
    to reproduce and can't be meaningfully tested solo.
