@@ -82,10 +82,12 @@ will misbehave — always open `MainMenu` first.
 
 - Follow [docs/plan.md](docs/plan.md)'s build order — don't jump ahead
   to a later stage's system before the one before it actually works.
-  Check [docs/completed.md](docs/completed.md) (what's actually done)
-  and [docs/todo.md](docs/todo.md) (what's genuinely still open) before
-  assuming something isn't built yet — they're kept current; an
-  individual stage doc's own header sometimes isn't.
+  Check the [Issues tab](https://github.com/joshuaclemons1/Rob-Everyone/issues)
+  (closed = built and confirmed, open `enhancement`/`bug` = genuinely
+  still open) before assuming something isn't built yet — it's kept
+  current; an individual stage doc's own header sometimes isn't. See
+  [docs/issue-tracking.md](docs/issue-tracking.md) for how issues are
+  used on this project.
 - Scripts live under `Assets/Scripts/<System>/`, one system per folder.
 - Commit and push to your own branch as you work. Merge into `main` in
   small, frequent pieces rather than letting branches drift apart —
@@ -108,7 +110,8 @@ will misbehave — always open `MainMenu` first.
 - [README.md](README.md) — what the game is, the gameplay loop, tech
   stack, and links to every design/build doc.
 - [docs/plan.md](docs/plan.md) — the dev plan and build order.
-- [docs/completed.md](docs/completed.md) / [docs/todo.md](docs/todo.md) —
-  current status: what's built and confirmed vs. what's genuinely open.
-- [Issues](https://github.com/joshuaclemons1/Rob-Everyone/issues) — bug
-  reports (use the **Bug report** template).
+- [Issues](https://github.com/joshuaclemons1/Rob-Everyone/issues) —
+  current status (closed = done, open = still open), bug reports (use
+  the **Bug report** template), and feature/polish tracking (`enhancement`
+  label). See [docs/issue-tracking.md](docs/issue-tracking.md) for the
+  full process.

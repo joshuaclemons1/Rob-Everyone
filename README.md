@@ -56,10 +56,10 @@ New here? Start with **[Setup.md](Setup.md)**.
 
 Alpha — three builds shipped so far (`alpha-v1` → `alpha-v1.0.3`), the
 core loop plus the full meta-game (shop, Jail & Bail, AI, night mode,
-VoIP, a real Settings menu) are built and playtested. See
-**[docs/completed.md](docs/completed.md)** for what's actually done and
-**[docs/todo.md](docs/todo.md)** for what's genuinely still open — both
-are kept current; an individual doc's own header sometimes isn't.
+VoIP, a real Settings menu) are built and playtested. Status lives in
+**[GitHub Issues](https://github.com/joshuaclemons1/Rob-Everyone/issues)**
+now — closed issues are what's actually done, open ones (`enhancement`/
+`bug` labels) are what's genuinely still open.
 
 ## Docs
 
@@ -67,13 +67,13 @@ are kept current; an individual doc's own header sometimes isn't.
   contributing.
 - **[docs/plan.md](docs/plan.md)** — the dev plan, build order, and an
   index of every stage's build-it-yourself walkthrough doc.
-- **[docs/completed.md](docs/completed.md)** / **[docs/todo.md](docs/todo.md)**
-  — current status.
+- **[Issues](https://github.com/joshuaclemons1/Rob-Everyone/issues)** —
+  current status, bug reports, and feature/polish tracking. See
+  **[docs/issue-tracking.md](docs/issue-tracking.md)** for how this
+  project uses them.
 - **[docs/stages/gameplay-design.md](docs/stages/gameplay-design.md)** —
   full economy/capacity/jail-bail/sabotage/movement design.
 - **[docs/stages/ui-design.md](docs/stages/ui-design.md)** — UI element
   spec.
 - **[docs/art-info.md](docs/art-info.md)** — art style/palette/sourced-asset
   reference.
-- **[Issues](https://github.com/joshuaclemons1/Rob-Everyone/issues)** —
-  bug reports (use the **Bug report** template).

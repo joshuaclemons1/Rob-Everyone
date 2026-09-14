@@ -9,7 +9,7 @@ compound. Police station placed with an essential interior: 3 jail cells
 over-furnished since the Jail & Bail system itself isn't built until
 Stage 7. `Exit` already repositioned away from the compound (z: 110,
 opposite side from the compound's z: -78 to -110).
-**Done** (see [completed.md](../completed.md)): the 2 Good House slots
+**Done** (see [issue #30](https://github.com/joshuaclemons1/Rob-Everyone/issues/30)): the 2 Good House slots
 were repositioned to read as inside/adjacent to the compound, and the
 full-loop playtest in section 4 is confirmed working — Stage 3 is
 feature-complete on real art.

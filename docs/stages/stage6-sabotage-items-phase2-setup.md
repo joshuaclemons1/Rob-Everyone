@@ -142,7 +142,7 @@ behaves exactly as before.
 ## Editor note: test pickups
 
 Same as Phase 1 — there's no shop-buy flow yet and these items must
-never go in a `LootTable` (`item-creation.md` §4b). Hand-place a Bat,
+never go in a `LootTable` (`item-creation-setup.md` §4b). Hand-place a Bat,
 Tranquilizer Gun, Hammer, and Alarm Clock in `SampleScene` for testing,
 and remove them once every Rest Point above passes.
 

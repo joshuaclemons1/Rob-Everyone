@@ -14,7 +14,9 @@ code to write yourself.
 
 Phase 2 (Bat, Hammer, Tranquilizer Gun, the PvP steal-window, Alarm
 Clock's Homeowner-framing) is deliberately not covered here — see
-`docs/todo.md`'s Stage 6 entry for why those are scoped separately.
+`stage6-sabotage-items-phase2-setup.md`, or
+[issue #35](https://github.com/joshuaclemons1/Rob-Everyone/issues/35)
+for why those are scoped separately (both phases are done now).
 
 **Always press Play from `MainMenu`**, same as Stage 4/5 — `NetworkManager`
 only exists there, and the real test flow is Play → Host → `Lobby` →
@@ -127,7 +129,7 @@ throw a `NetworkServer.Spawn` error in the Console the moment it's used
 ## Part 6 — Place test pickups
 
 There's no shop-purchase flow yet (that's Stage 7) and sabotage items
-must never be added to a `LootTable` (`item-creation.md` §4b), so
+must never be added to a `LootTable` (`item-creation-setup.md` §4b), so
 testing needs a temporary hand-placed copy of each.
 
 1. Open `SampleScene`.

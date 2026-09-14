@@ -526,7 +526,8 @@ creating.
 2. Route every existing gameplay `AudioSource` into `SFX` (footsteps,
    car horn/yell, item pickup, etc. — whatever exists today) and any
    future music source into `Music`. **Nothing plays through `Music`
-   yet** (`todo.md` confirms ambient music isn't built) — the group and
+   yet** ([issue #24](https://github.com/joshuaclemons1/Rob-Everyone/issues/24)
+   — ambient music isn't built) — the group and
    slider exist now so that work slots in later without another mixer
    pass. `Voice` routes itself automatically once this asset exists —
    no manual step needed there.

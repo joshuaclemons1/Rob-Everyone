@@ -73,11 +73,15 @@ Two Editors, or one for the movement:
 - Get hit by a car → the ragdoll shows your full head (trim pauses
   during the stun), then trims again once you're up.
 
-## Still open (tracked in todo.md)
+## Still open
+
+Tracked as [issue #40](https://github.com/joshuaclemons1/Rob-Everyone/issues/40):
 
 - Arm/shoulder clipping in first person if it's bad — nudge the camera
   forward a touch, or add `Shoulder.L`/`Shoulder.R`/`UpperArm.*` to the
   hidden-bones list.
 - A real separate first-person viewmodel (own mesh, own FOV) is the
   "proper" version — deferred.
-- The ragdoll get-up-too-fast bug is a separate deeper dive.
+
+The ragdoll get-up-too-fast bug was a separate deeper dive — fixed, see
+[issue #31](https://github.com/joshuaclemons1/Rob-Everyone/issues/31).

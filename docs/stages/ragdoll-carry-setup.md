@@ -42,8 +42,9 @@ Open `Assets/Prefabs/Player.prefab` in prefab edit mode.
      standing straight up.
    You'll tune both in Rest Point 2 — the body is pinned at the hips and
    the limbs flop, so it won't look like a clean fireman's carry until
-   there's a carry animation (tracked separately in todo.md). For now
-   aim for "slung, not levitating."
+   there's a carry animation (tracked separately, see
+   [issue #31](https://github.com/joshuaclemons1/Rob-Everyone/issues/31)'s
+   deferred items). For now aim for "slung, not levitating."
 
 ### 1b. Components
 
@@ -113,7 +114,7 @@ movement) between the two Editors, and that B is helpless the whole
 time (can't act, can't stand, can't be robbed) until well after they
 land.
 
-Then tell me and it goes in `completed.md`.
+Then tell me and it gets filed as a closed, `enhancement`-labeled GitHub Issue.
 
 ---
 
@@ -121,7 +122,8 @@ Then tell me and it goes in `completed.md`.
 
 - **Carry animation** — a one-armed/over-the-shoulder carry pose for the
   carrier, and a "carried" limp pose blend for the victim. Animator +
-  clips. In todo.md's "held item + carry/run animations" item.
+  clips. Part of [issue #31](https://github.com/joshuaclemons1/Rob-Everyone/issues/31)'s
+  deferred items.
 - **Throw-charge HUD meter** — a small fill bar while LMB is held
   (`CarryController.ThrowCharge01`).
 - **Carried indicator** — something over a carried player so bystanders

@@ -4,10 +4,10 @@ Adds the carry walk/run, a pick-up gesture, and one-handed shoot / bat
 swing to the player Animator. Mostly a one-click controller rebuild plus
 a few Inspector values.
 
-This does **not** yet cover "the selected hotbar item shows in your
-hand" — that's still open in [todo.md](../todo.md) item 3, and needs a
-hand bone socket + the held model, separate from the animation work
-here.
+This did **not** originally cover "the selected hotbar item shows in
+your hand" — that was a separate pass, `HeldItemDisplay`, built shortly
+after this one and now done too (see
+[issue #31](https://github.com/joshuaclemons1/Rob-Everyone/issues/31)).
 
 ## What changed (code)
 
@@ -119,4 +119,4 @@ is **Action Blend Speed** on `Player Animation Driver` — leave it at 8.
 5. **Two Editors** — the observer sees every one of the above on the
    other player (carry gait, pickup, shoot, swing), not just the owner.
 
-Then tell me and it goes in `completed.md`.
+Then tell me and it gets filed as a closed, `enhancement`-labeled GitHub Issue.

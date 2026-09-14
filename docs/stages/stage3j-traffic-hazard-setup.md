@@ -234,8 +234,9 @@ explicit drag-in slot for the template instead.
    at all — the only genuinely new work was the 6 skins that weren't in
    the roster before (`Chef_Hat`, `Cowboy_Hair`, `Ninja_Male_Hair`,
    `VikingHelmet`, `Cow`, `Pug`). **All 52 are now in the roster** (see
-   [completed.md](../completed.md)) — this section is kept only as the
-   how-to for re-running the tool on a future skin.
+   [issue #30](https://github.com/joshuaclemons1/Rob-Everyone/issues/30))
+   — this section is kept only as the how-to for re-running the tool on
+   a future skin.
 5. Click **Copy Ragdoll To Targets**.
 6. Check the Console. For each one, it logs either the (re)wrapped prefab
    path, or a warning naming exactly which bone it couldn't match — it

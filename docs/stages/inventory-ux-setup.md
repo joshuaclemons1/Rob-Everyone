@@ -265,7 +265,7 @@ it survives, retrieve + sell it in the Lobby; stun the other player,
 steal one item. Confirm nothing desyncs position / camera / Cash /
 hotbar, and every close re-locks the cursor and restores movement.
 
-Then tell me and it goes in `completed.md`.
+Then tell me and it gets filed as a closed, `enhancement`-labeled GitHub Issue.
 
 ---
 

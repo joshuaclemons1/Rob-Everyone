@@ -3,7 +3,7 @@
 `Real_House_01` proved the pattern works end to end. This stage just
 repeats it 2–3 more times with different buildings, so Stage 3g (the random
 spawner) has an actual pool to pick from. Nothing new to learn here — same
-process as [stage3e-house-prefabs.md](stage3e-house-prefabs.md), condensed.
+process as [stage3e-house-prefabs-setup.md](stage3e-house-prefabs-setup.md), condensed.
 
 Aim for **3–4 total house prefabs** before moving to Stage 3g — enough that
 random placement doesn't feel repetitive, without over-investing before the

@@ -4,82 +4,74 @@ Full designed version with the map sketch and visual layout: https://claude.ai/c
 
 ## Where to pick up next
 
-Status tracking has moved out of this file — **[completed.md](completed.md)**
-is the flowing log of everything actually built, **[todo.md](todo.md)** is
-everything genuinely still open, both kept current instead of buried in
-this file's history. This section just orients you.
+Status tracking lives in **[GitHub Issues](https://github.com/joshuaclemons1/Rob-Everyone/issues)**
+now, not a doc in this repo — open issues (`enhancement`/`bug` labels)
+are everything genuinely still open, closed ones are the flowing record
+of what's actually built and confirmed. This section just orients you
+at a glance; check Issues for the current, authoritative state. See
+[issue-tracking.md](issue-tracking.md) for how this project uses them.
 
-**Current state**: Stage 3 (full offline loop, real art, road/compound/
-skybox/traffic hazard) is feature-complete and playtested. Also jumped
-ahead of the build order into a scoped-down Stage 7 (v1 Shop/Lobby loop,
-batch economy, hotbar inventory) since the core loop had no restart path
-— see completed.md for why that's fine and what's still deliberately
-missing from the full Stage 7 design.
+**Current state**: the core offline loop, full multiplayer (Mirror +
+Steam), sabotage items, and the full meta-game (shop, Jail & Bail,
+Homeowner/Police AI, night mode) are all built and playtested — see the
+closed issues for the detailed record (start from the `[Done]`-titled
+ones). Three alpha builds have shipped (`alpha-v1` → `alpha-v1.0.3`) and
+the team is now in the friend-group-playtest stage, filing real bugs as
+they turn up.
 
-**Stage 4 (multiplayer, localhost) is done -- all 9 Rest Points confirmed
-working.** Chose full system sync (not the minimal "just player
-presence + loot" slice) -- every system (player movement/animation/skin,
-loot/inventory, Homeowner/Police AI, traffic hazard cars, the round/
-batch economy) was converted to Mirror. This was the single biggest,
-riskiest change made to the codebase so far, and it showed: a long tail
-of real bugs (not just Editor wiring) surfaced and got fixed going
-through the doc's Rest Points one at a time -- see
-[stage4-multiplayer-mirror.md](stages/stage4-multiplayer-mirror.md) and
-[completed.md](completed.md) for the full list.
-
-**Stage 5 (Steam) is done through Editor setup Part 3** --
-Steamworks.NET/FizzySteamworks installed, `SteamLobby`/`SteamManager`
-wired, Steam initializes cleanly. The one thing still open: Rest Point
-4, the real two-Steam-account overlay invite test, since that needs a
-second account/friend to actually verify against -- see
-[stage5-steam-multiplayer.md](stages/stage5-steam-multiplayer.md) and
-[todo.md](todo.md).
-
-Full stage-by-stage how-to walkthroughs (procedural reference, not status
-— check completed.md/todo.md for what's actually done):
+Full stage-by-stage how-to walkthroughs (procedural reference, not
+status — check the Issues tab for what's actually done):
 [stage2-editor-setup.md](stages/stage2-editor-setup.md),
 [stage3-editor-setup.md](stages/stage3-editor-setup.md),
 [stage3b-homeowner-setup.md](stages/stage3b-homeowner-setup.md),
 [stage3c-police-setup.md](stages/stage3c-police-setup.md),
-[stage3d-character-art.md](stages/stage3d-character-art.md),
-[stage3e-house-prefabs.md](stages/stage3e-house-prefabs.md),
-[stage3f-house-pool.md](stages/stage3f-house-pool.md),
-[stage3g-map-layout.md](stages/stage3g-map-layout.md),
-[stage3h-map-dressing.md](stages/stage3h-map-dressing.md),
-[stage3i-skybox-skyline.md](stages/stage3i-skybox-skyline.md),
-[stage3j-traffic-hazard.md](stages/stage3j-traffic-hazard.md),
+[stage3d-character-art-setup.md](stages/stage3d-character-art-setup.md),
+[stage3e-house-prefabs-setup.md](stages/stage3e-house-prefabs-setup.md),
+[stage3f-house-pool-setup.md](stages/stage3f-house-pool-setup.md),
+[stage3g-map-layout-setup.md](stages/stage3g-map-layout-setup.md),
+[stage3h-map-dressing-setup.md](stages/stage3h-map-dressing-setup.md),
+[stage3i-skybox-skyline-setup.md](stages/stage3i-skybox-skyline-setup.md),
+[stage3j-traffic-hazard-setup.md](stages/stage3j-traffic-hazard-setup.md),
 [stage7-shop-lobby-setup.md](stages/stage7-shop-lobby-setup.md),
 [stage7b-batch-economy-hotbar-setup.md](stages/stage7b-batch-economy-hotbar-setup.md),
 [stage4-multiplayer-mirror.md](stages/stage4-multiplayer-mirror.md),
 [stage5-steam-multiplayer.md](stages/stage5-steam-multiplayer.md),
-[item-creation.md](stages/item-creation.md) (turning
+[item-creation-setup.md](stages/item-creation-setup.md) (turning
 `Assets/Art/Items/`'s 33 raw models into spawnable loot with
-size-tiered exclusion, done between Stage 4 Parts 3 and 4),
+size-tiered exclusion),
 [inventory-ux-setup.md](stages/inventory-ux-setup.md) (Tab inventory
-screen, drop-with-Q, Prison Wallet, steal-window rework — done),
+screen, drop-with-Q, Prison Wallet, steal-window rework),
 [player-feel-setup.md](stages/player-feel-setup.md) (instant jump,
-bhop/autohop, first-person visible body — done),
+bhop/autohop, first-person visible body),
 [ragdoll-carry-setup.md](stages/ragdoll-carry-setup.md) (pick up / carry
-/ charge-throw downed players — code + wiring done, playtest open),
+/ charge-throw downed players),
 [player-animations-setup.md](stages/player-animations-setup.md) (carry
-gait + pick-up / shoot / swing one-shots — code done, controller rebuild
-+ playtest open) and
-[voip-setup.md](stages/voip-setup.md) (Steam proximity voice chat —
-planned, not built).
+gait + pick-up / shoot / swing one-shots),
+[stage6-sabotage-items-setup.md](stages/stage6-sabotage-items-setup.md)
+and
+[stage6-sabotage-items-phase2-setup.md](stages/stage6-sabotage-items-phase2-setup.md)
+(Taser/Dynamite, then Bat/Hammer/Tranq Gun/Alarm Clock/steal-window),
+[stage7c-meta-game-setup.md](stages/stage7c-meta-game-setup.md) (buy-side
+shop, real Jail & Bail, Homeowner patrol, police dispatch pooling, night
+mode),
+[settings-menu-setup.md](stages/settings-menu-setup.md) (Input System
+migration, rebinding, audio mixer, graphics, accessibility, pause menu),
+[voip-setup.md](stages/voip-setup.md) (Steam proximity voice chat), and
+[ui-implementation-setup.md](stages/ui-implementation-setup.md) (crosshair,
+Cash/Quota/Timer HUD).
 Style/asset reference (palette, sourced packs, remaining art to-do) is in
 [art-info.md](art-info.md); UI/menu element spec is in
 [ui-design.md](stages/ui-design.md); main menu build docs are
 [main-menu-visual-design.md](stages/main-menu-visual-design.md) and
-[main-menu-customization-setup.md](stages/main-menu-customization-setup.md).
+[main-menu-customization-setup.md](stages/main-menu-customization-setup.md);
+[lawn-shader-setup.md](stages/lawn-shader-setup.md) covers the procedural
+lawn material.
 
-**Next steps**: Stage 5's Rest Point 4 (real Steam overlay test) is
-parked until a second account/friend is available -- move on to Stage 6
-(sabotage items, networked) in the meantime, per the build order. The
-older [todo.md](todo.md) "Verify / playtest" items (Stage 7b,
-`Real_House_02`, the ragdoll batch results) are all still open too and
-worth doing whenever there's a natural pause, but don't block Stage 6.
-Work happens on `jclem's-branch`; merge to `main` once tested and
-confirmed working.
+**Next steps**: check the [Issues tab](https://github.com/joshuaclemons1/Rob-Everyone/issues)
+for what's actually open — real playtest bugs from the friend group take
+priority over the remaining `enhancement`-labeled polish items. Work
+happens on `jclem's-branch`; merge to `main` once tested and confirmed
+working.
 
 ## Strategy
 

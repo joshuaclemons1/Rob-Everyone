@@ -373,11 +373,11 @@ Wire:
   `BaseCharacter` included (a few looked like accessory props or
   non-humanoid animals at a glance, but they share the same rig and
   ragdoll correctly, so there was no reason to exclude them — see
-  [stage3j-traffic-hazard.md](stage3j-traffic-hazard.md)).
+  [stage3j-traffic-hazard-setup.md](stage3j-traffic-hazard-setup.md)).
   Pulled out into its own shared asset (was a
   direct array on this component) so gameplay's `PlayerSkinSpawner` reads
   the exact same list instead of keeping a second copy in sync by hand —
-  see [stage3j-traffic-hazard.md](stage3j-traffic-hazard.md)'s ragdoll
+  see [stage3j-traffic-hazard-setup.md](stage3j-traffic-hazard-setup.md)'s ragdoll
   section for why.
 - `Palette` → your `PlayerColorPalette` asset (Project window → right-
   click → **Create → Rob Everyone → Player Color Palette** if you
@@ -477,7 +477,9 @@ code/Hierarchy to avoid confusion with the separate gameplay `Lobby`
 *scene* (Stage 7's post-round shop/ready-up area, an unrelated thing that
 happens to share a name). This is the minimal slice: the slide+dim
 transition works, Host/Join/Customize/Back buttons live on it. **Not**
-included in this pass (deliberately, see `todo.md`): the title's
+included in this pass (deliberately, tracked as
+[issue #39](https://github.com/joshuaclemons1/Rob-Everyone/issues/39)):
+the title's
 continuous pulse animation, and Settings' fall-through-frame/fall-from-
 sky character animation — Settings stays exactly the flat show/hide it
 already is. The character preview also doesn't yet appear on the Play

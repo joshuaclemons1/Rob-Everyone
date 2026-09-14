@@ -13,9 +13,10 @@ have a `NetworkIdentity`, which this doc is what actually builds.
 
 **Not covered here**: the Prison Wallet (a 6th, separate slot that holds
 1 item of any size/value, immune to whatever happens to the other 5 when
-caught) — tracked in `todo.md` as real, still-needed work, deliberately
-not built in this pass since it touches jail/catch behavior and selling
-logic well beyond loot spawning.
+caught) — deliberately not built in this pass since it touches
+jail/catch behavior and selling logic well beyond loot spawning. Built
+later as part of the Tab/steal screen work — see
+[issue #32](https://github.com/joshuaclemons1/Rob-Everyone/issues/32).
 
 ---
 
@@ -267,10 +268,9 @@ worked example before doing the rest by hand.
    item. Set:
    - **Item Name**: the display name (e.g. "Gold Ingots")
    - **Value**: from the table above
-   - **Icon**: leave empty for now (a real HUD icon is separate art work,
-     `todo.md` already tracks "loot item variety" needing icons — this
-     doc is about getting the *world models* spawnable, not the hotbar
-     icon art)
+   - **Icon**: leave empty — turned out not to be needed at all, the
+     hotbar renders each item's own 3D world model as its preview
+     instead of a separate icon sprite
    - **World Model Prefab**: the prefab you just made in step 5
    - **World Model Scale**: `(1,1,1)` to start, tune once you see it
      in-game
