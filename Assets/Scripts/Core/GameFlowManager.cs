@@ -5,6 +5,7 @@ using Mirror;
 using RobEveryone.Inventory;
 using RobEveryone.Player;
 using RobEveryone.Round;
+using RobEveryone.Sabotage;
 using RobEveryone.Shop;
 using RobEveryone.UI;
 using UnityEngine;
@@ -506,6 +507,13 @@ namespace RobEveryone.Core
                 if (roundOrdinal > jail.JailedAtRoundOrdinal) jail.ForceRelease();
             }
 
+            // Issue #1 fix: sabotage cooldowns (Taser, etc.) were tracked
+            // purely against Time.time with nothing ever clearing them
+            // between rounds -- a fresh round should mean a clean slate.
+            foreach (PlayerInventory player in PlayerInventory.AllPlayers)
+            {
+                player.GetComponent<SabotageUseController>()?.ServerResetCooldowns();
+            }
         }
 
         // Called from ReadySpot's own OnStartServer -- same reasoning as

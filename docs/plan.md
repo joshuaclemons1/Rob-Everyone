@@ -60,7 +60,10 @@ migration, rebinding, audio mixer, graphics, accessibility, pause menu),
 [ui-implementation-setup.md](stages/ui-implementation-setup.md) (crosshair,
 Cash/Quota/Timer HUD), and
 [launcher-setup.md](stages/launcher-setup.md) (pre-launch auto-update
-launcher, replacing the old in-game update popup).
+launcher, replacing the old in-game update popup), and
+[t1-2-bug-fixes.md](stages/t1-2-bug-fixes.md) (code-only fixes for the
+Tier 1/2 priority-list bugs, written without Editor access — the
+checklist for testing them once back at a PC).
 Style/asset reference (palette, sourced packs, remaining art to-do) is in
 [art-info.md](art-info.md); UI/menu element spec is in
 [ui-design.md](stages/ui-design.md); main menu build docs are
