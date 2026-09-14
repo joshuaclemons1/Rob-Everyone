@@ -1,0 +1,55 @@
+name: Launcher build
+
+# Build-verification only, not an interactive test -- confirms
+# Launcher/RobEveryoneLauncher actually compiles and self-contained
+# publishes on real Windows/macOS/Linux runners. Can't show you the GUI,
+# SmartScreen, or anything else that needs an actual screen -- see
+# docs/stages/launcher-setup.md for the real (manual) test steps. The
+# published build for each platform is attached to the run as a
+# downloadable artifact, so this doubles as a way to get a real win-x64
+# build onto your Windows PC without needing the .NET SDK installed
+# there at all.
+
+on:
+  push:
+    paths:
+      - "Launcher/**"
+      - ".github/workflows/launcher-build.yml"
+  pull_request:
+    paths:
+      - "Launcher/**"
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: macos-latest
+            rid: osx-arm64
+          - os: ubuntu-latest
+            rid: linux-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build
+        working-directory: Launcher/RobEveryoneLauncher
+        run: dotnet build --configuration Release
+
+      - name: Publish self-contained (${{ matrix.rid }})
+        working-directory: Launcher/RobEveryoneLauncher
+        run: dotnet publish --configuration Release --runtime ${{ matrix.rid }} --self-contained true --output publish
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RobEveryoneLauncher-${{ matrix.rid }}
+          path: Launcher/RobEveryoneLauncher/publish/
+          retention-days: 14
