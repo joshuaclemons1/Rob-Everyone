@@ -6,24 +6,33 @@ priority list — everything here was written and reasoned through
 without Unity Editor access, so most of it went unverified by a
 compiler until the Editor testing pass noted below.
 
-Also picked up **#45** and **#46** partway through this pass — bugs
-reported directly, not originally on the Tier 1/2 list — since both
-were diagnosable with the same level of confidence as the rest of this
-doc. See their own sections near the end.
+Also picked up **#45**, **#46**, and **#47** partway through this pass
+— bugs reported directly, not originally on the Tier 1/2 list — since
+all three were diagnosable with the same level of confidence as the
+rest of this doc. See their own sections near the end.
 
-All eight fixes are committed on `jclem's-branch` (`4244623` for
-#4/#8/#11, `5e066b9` for #1/#15, `47ebf19` for #45, `b16d27c` for #46 —
-see each issue's own GitHub comment for the exact commit hash) and have
-progress comments on their issues.
+All nine fixes are committed on `jclem's-branch` (`4244623` for
+#4/#8/#11, `5e066b9` for #1/#15, `47ebf19` for #45, `b16d27c` for #46,
+`33cf530` for #47 — see each issue's own GitHub comment for the exact
+commit hash) and have progress comments on their issues.
 
-**Status as of 2026-09-14 (Editor testing pass):** #1, #4, and #15 have
-been tested in the Editor and confirmed fixed — **closed**. The
-remaining five (#8, #11, #45, #46, and everything in the "Investigated,
-not fixed" section) still need testing and remain open; #8/#11/#46 need
-real Editor play but not multiplayer (#46 also needs an actual non-16:9
-display to see anything), #45 needs 2+ players (ParrelSync or
-same-machine is enough), and the rest need a real Steam multiplayer
+**Status as of 2026-09-14 (Editor testing pass):** #1, #4, #15, and #46
+have been tested in the Editor and confirmed fixed — **closed**. The
+remaining five (#8, #11, #45, #47, and everything in the "Investigated,
+not fixed" section) still need testing and remain open; #8/#11/#47 need
+real Editor play but not multiplayer, #45 needs 2+ players (ParrelSync
+or same-machine is enough), and the rest need a real Steam multiplayer
 session with actual network latency.
+
+**Note on #47:** the scene file (`Assets/Scenes/MainMenu.unity`) had
+some *other*, unrelated uncommitted changes already sitting in the
+working tree when this fix was made (three `MenuButton` prefab instance
+anchor overrides flipped, one `GameObject.m_IsActive` toggled, one
+`m_SizeDelta` changed) — not touched by this fix, not committed, and
+not otherwise investigated. They're still sitting in your local working
+tree uncommitted. Worth checking `git diff Assets/Scenes/MainMenu.unity`
+before your next commit to see if that's your own WIP you want to keep,
+or something to discard.
 
 ## Confirmed fixed — closed
 
@@ -73,6 +82,23 @@ shrink-to-fit (`enableAutoSizing`) the first time it's called, capping
 still render exactly as before) and `fontSizeMin` at 60% of that. Only
 does this once — if auto-sizing is already configured in the Editor, it
 leaves it alone entirely.
+
+### #46 — Intro video shows empty scene around it on non-16:9 displays ✅ closed
+
+**What was wrong:** confirmed by reading the scene file — the target
+camera's `m_ClearFlags` was set to Skybox, not a solid color, so
+anywhere `VideoPlayer` (rendering in `CameraNearPlane` mode) doesn't
+cover the screen, the camera's own regular render shows through instead
+of a blank background.
+
+**What changed:** `IntroSequence.Awake` now forces both relevant
+settings in code rather than trusting the Editor-authored scene values:
+`VideoPlayer.aspectRatio = VideoAspectRatio.FitHorizontally` (always
+pins the video to the full screen width — height scales to match, so
+any gap is strictly top/bottom on a wider-than-16:9 display, never left
+or right), and the target camera's clear flags forced to `SolidColor`
+black, so that gap always renders pure black instead of the scene
+behind it.
 
 ## Fixed — code done, needs a playtest to confirm
 
@@ -214,38 +240,48 @@ resolve after their own `carWaitDuration`. Also test a disconnect mid-
 wait (close the game on one client while seated) and confirm it doesn't
 permanently block that seat slot for later rounds.
 
-### #46 — Intro video shows empty scene around it on non-16:9 displays
+### #47 — MainMenu UI scales/positions wrong on any resolution besides 4K
 
-**Reported behavior:** on non-16:9 displays (ultrawide most likely),
-the intro/logo video doesn't fill the screen — the empty Intro scene is
-visible below or on the sides of the video, making it look like a
-frame floating in a 3D scene rather than a real part of the game's
-loading sequence.
+**Reported behavior:** in the Editor, changing the Game view resolution
+away from 4K breaks the Main Menu's UI. At 4K it looks fine; at the
+default 16:9 (no specific resolution) or 16:10, the UI zooms in so much
+that only the Play/Settings/Quit buttons are visible, filling almost
+the whole screen (16:10 cuts the edges off even more). SampleScene's UI
+scales correctly at every resolution, so this was specific to
+MainMenu's own Canvas.
 
-**What was wrong:** confirmed by reading the scene file — the target
-camera's `m_ClearFlags` was set to Skybox, not a solid color, so
-anywhere `VideoPlayer` (rendering in `CameraNearPlane` mode) doesn't
-cover the screen, the camera's own regular render shows through instead
-of a blank background.
+**What was wrong:** confirmed by reading the scene file — MainMenu's
+main Canvas (the one carrying the Play/Settings/Quit buttons) had its
+`CanvasScaler` set to **Constant Pixel Size**, with a stale, irrelevant
+800x600 reference resolution left over from it (that mode ignores
+reference resolution entirely — 1 UI unit is always exactly 1 screen
+pixel, no matter the actual resolution). Every other Canvas in the
+project — MainMenu's own `LoadingScreenCanvas`, SampleScene's HUD
+Canvas — uses **Scale With Screen Size** at a 3840x2160 reference, and
+`MenuNavigator.slideDistance`'s own comment says it assumes this exact
+Canvas uses that reference width. It never actually did. Under Constant
+Pixel Size, fixed-pixel UI sized roughly for 4K reads as correct right
+at 4K; at any smaller resolution the same absolute pixel sizes take up
+a much larger fraction of the now-smaller screen — exactly the reported
+symptom, worse the further below 4K you go.
 
-**What changed:** `IntroSequence.Awake` now forces both relevant
-settings in code rather than trusting the Editor-authored scene values:
-`VideoPlayer.aspectRatio = VideoAspectRatio.FitHorizontally` (always
-pins the video to the full screen width — height scales to match, so
-any gap is strictly top/bottom on a wider-than-16:9 display, never left
-or right), and the target camera's clear flags forced to `SolidColor`
-black, so that gap always renders pure black instead of the scene
-behind it.
+**What changed:** MainMenu's Canvas `CanvasScaler` now matches every
+other Canvas in the project — Scale With Screen Size, 3840x2160
+reference, 0.5 match. Scene-data change only, no script involved.
 
-**Editor steps needed:** none for the fix to function.
+**Editor steps needed:** none for the fix itself. **Heads up:** while
+making this fix, `Assets/Scenes/MainMenu.unity` was found to already
+have some *other*, unrelated uncommitted changes sitting in the working
+tree (three `MenuButton` prefab anchor overrides flipped, one
+`GameObject.m_IsActive` toggled, one `m_SizeDelta` changed) — not
+touched by this fix, not committed, still sitting locally. Worth a
+`git diff Assets/Scenes/MainMenu.unity` to see if that's WIP you want
+to keep or something to discard before your next commit.
 
-**Test:** needs an actual non-16:9 display to verify — ultrawide is the
-most likely case to have on hand. Launch the game and watch the intro:
-confirm the video fills the full width with no scene visible in any
-gap (should be solid black top/bottom if the display's wider than the
-clip). If you don't have a non-16:9 display available, resizing/
-un-maximizing the Editor's own Game view to a non-16:9 window and
-entering Play mode should reproduce the same effect for a quick check.
+**Test:** in the Editor, set the Game view to a few different
+resolutions/aspects (1920x1080, 4K, 16:10) and confirm the Main Menu UI
+scales and positions correctly at each, matching how SampleScene's UI
+already behaves.
 
 ## Investigated, not fixed — needs to be watched happen live
 
@@ -318,20 +354,19 @@ once.
 ## Suggested order once back at the PC
 
 1. ~~Let the Editor recompile everything in this doc — check the Console
-   for any errors before doing anything else.~~ Done — #1/#4/#15
+   for any errors before doing anything else.~~ Done — #1/#4/#15/#46
    confirmed working.
-2. Work the remaining "Fixed" items (#8, #11) — each is independently
-   testable in a single-player or same-machine session, no real network
-   latency needed. Tune `JailState.confinementRadius` (#8) against the
-   real cell geometry while you're in there anyway.
-3. #46 (intro video) whenever a non-16:9 display (or a resized, non-16:9
-   Editor Game view) is handy — quick, solo, no multiplayer needed.
-4. Then move to #10 (Settings background) — Editor-only investigation,
+2. Work the remaining "Fixed" items (#8, #11, #47) — each is
+   independently testable in a single-player or same-machine session,
+   no real network latency needed. Tune `JailState.confinementRadius`
+   (#8) against the real cell geometry while you're in there anyway,
+   and check different Game view resolutions/aspects for #47.
+3. Then move to #10 (Settings background) — Editor-only investigation,
    no multiplayer needed.
-5. #45 (exit car) needs at least 2 players, but not real network
+4. #45 (exit car) needs at least 2 players, but not real network
    latency — same-machine/ParrelSync testing should reproduce it fine,
    so it doesn't need to wait for a real Steam session like the group
    below does.
-6. Save #2/#3/#5/#9/#7/#13 for a real multiplayer session with a genuine
+5. Save #2/#3/#5/#9/#7/#13 for a real multiplayer session with a genuine
    non-host player over Steam — these all need actual network latency
    to reproduce and can't be meaningfully tested solo.
