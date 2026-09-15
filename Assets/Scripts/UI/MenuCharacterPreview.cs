@@ -47,7 +47,26 @@ namespace RobEveryone.UI
         [SerializeField] private RawImage previewImage;
         [SerializeField] private float previewPadding = 1.15f;
 
+        // Same shared controller every real in-game skin uses (see
+        // PlayerSkinSpawner's own field of this exact name/type) -- one
+        // asset reference, wired to the same GUID in the scene, rather
+        // than a second copy of the Animator Controller that could drift
+        // out of sync with the real one.
+        [SerializeField] private RuntimeAnimatorController playerAnimatorController;
+
+        private static readonly int SpeedParam = Animator.StringToHash("Speed");
+        private static readonly int GroundedParam = Animator.StringToHash("Grounded");
+        private static readonly int CarryingParam = Animator.StringToHash("Carrying");
+
         private Transform modelAnchor;
+        // Request 2 (menu preview follow-up to #39): a dedicated child of
+        // modelAnchor that only ever holds a drag rotation, so dragging
+        // never fights SpawnModel's own Euler(0,180,0) facing fix -- that
+        // stays authored on modelInstance itself and is reapplied every
+        // time the skin changes, untouched by whatever this pivot is
+        // doing. modelAnchor itself stays reserved for MenuActions' fall
+        // animation (position only).
+        private Transform spinPivot;
         private GameObject modelInstance;
         private PlayerColorizer modelColorizer;
         private Camera previewCamera;
@@ -102,6 +121,10 @@ namespace RobEveryone.UI
             modelAnchor.SetParent(stageRoot.transform, false);
             modelAnchor.gameObject.layer = layer;
 
+            spinPivot = new GameObject("SpinPivot").transform;
+            spinPivot.SetParent(modelAnchor, false);
+            spinPivot.gameObject.layer = layer;
+
             var cameraGO = new GameObject("PreviewCamera");
             cameraGO.transform.SetParent(stageRoot.transform, false);
             cameraGO.transform.localPosition = new Vector3(0f, 0f, -4f);
@@ -115,7 +138,19 @@ namespace RobEveryone.UI
 
             renderTexture = new RenderTexture(PreviewTextureSize, PreviewTextureSize, 16) { name = "MenuPreviewRT" };
             previewCamera.targetTexture = renderTexture;
-            if (previewImage != null) previewImage.texture = renderTexture;
+            if (previewImage != null)
+            {
+                previewImage.texture = renderTexture;
+
+                // Added here instead of requiring a manual Editor step --
+                // the RawImage already needs Raycast Target on (true by
+                // default) and a Canvas/GraphicRaycaster above it to
+                // receive pointer events at all, both of which it already
+                // has by virtue of actually displaying on screen.
+                var drag = previewImage.GetComponent<MenuCharacterPreviewDrag>();
+                if (drag == null) drag = previewImage.gameObject.AddComponent<MenuCharacterPreviewDrag>();
+                drag.Initialize(spinPivot);
+            }
         }
 
         private void Refresh()
@@ -126,14 +161,18 @@ namespace RobEveryone.UI
 
         private void SpawnModel()
         {
-            if (modelAnchor == null || skinRoster == null || skinRoster.Count == 0) return;
+            if (modelAnchor == null || spinPivot == null || skinRoster == null || skinRoster.Count == 0) return;
 
             GameObject prefab = skinRoster.GetSkin(PlayerCosmeticSelection.SkinIndex);
             if (prefab == null) return;
 
             if (modelInstance != null) Destroy(modelInstance);
 
-            modelInstance = Instantiate(prefab, modelAnchor);
+            // Parented to spinPivot, not modelAnchor directly -- see that
+            // field's own comment. Drag rotation lives entirely on
+            // spinPivot, so this facing fix stays correct regardless of
+            // whatever angle a drag last left the pivot at.
+            modelInstance = Instantiate(prefab, spinPivot);
             modelInstance.transform.localPosition = Vector3.zero;
             // The preview camera sits in front of the model looking down
             // +Z (it's parked at local Z -4 with an otherwise identity
@@ -148,7 +187,36 @@ namespace RobEveryone.UI
             modelColorizer = modelInstance.GetComponent<PlayerColorizer>();
             if (modelColorizer == null) modelColorizer = modelInstance.AddComponent<PlayerColorizer>();
 
+            ConfigureAnimator(modelInstance.transform);
             FrameCamera(CalculateBounds(modelInstance));
+        }
+
+        // Request 1 (menu preview follow-up to #39): the preview used to
+        // just stand there with no Animator Controller assigned at all,
+        // so it held whatever pose the model was authored in. Wiring the
+        // same controller the real game uses and parking its parameters
+        // at rest (Speed 0, Grounded true, Carrying false) settles it
+        // into that controller's own Idle state -- no per-frame driving
+        // needed since the preview character never actually moves.
+        private void ConfigureAnimator(Transform root)
+        {
+            if (playerAnimatorController == null) return;
+
+            foreach (Animator animator in root.GetComponentsInChildren<Animator>(true))
+            {
+                animator.runtimeAnimatorController = playerAnimatorController;
+
+                // Same reasoning as PlayerSkinSpawner.ConfigureAnimator --
+                // the only camera that ever renders this layer is this
+                // script's own isolated preview camera, and Unity's
+                // default culling would otherwise decide nothing renders
+                // this Animator's mesh and freeze it at bind pose.
+                animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+
+                animator.SetFloat(SpeedParam, 0f);
+                animator.SetBool(GroundedParam, true);
+                animator.SetBool(CarryingParam, false);
+            }
         }
 
         private void ApplyColor()
