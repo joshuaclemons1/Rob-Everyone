@@ -34,6 +34,21 @@ namespace RobEveryone.UI
         [SerializeField] private float bobAmplitude = 1.5f;
         [SerializeField] private float bobCyclesPerSecond = 0.05f;
 
+        // Public properties over the same serialized fields, not a
+        // separate copy -- lets MenuBackgroundBuilder push tuned values
+        // in from one convenient Inspector (see that script's own
+        // "Camera Orbit" header) while this component still owns the
+        // actual per-frame orbit math and can still be tuned directly
+        // here too, standing alone, if that ever matters.
+        public Vector3 OrbitCenter { get => orbitCenter; set => orbitCenter = value; }
+        public float OrbitRadius { get => orbitRadius; set => orbitRadius = value; }
+        public float OrbitHeight { get => orbitHeight; set => orbitHeight = value; }
+        public float OrbitSpeedDegreesPerSecond { get => orbitSpeedDegreesPerSecond; set => orbitSpeedDegreesPerSecond = value; }
+        public float LookAheadDegrees { get => lookAheadDegrees; set => lookAheadDegrees = value; }
+        public float LookTargetRadiusFraction { get => lookTargetRadiusFraction; set => lookTargetRadiusFraction = value; }
+        public float BobAmplitude { get => bobAmplitude; set => bobAmplitude = value; }
+        public float BobCyclesPerSecond { get => bobCyclesPerSecond; set => bobCyclesPerSecond = value; }
+
         private float angleDegrees;
 
         private void Start()

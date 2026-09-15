@@ -47,6 +47,24 @@ namespace RobEveryone.UI
         // delete for real once this is confirmed working in the Editor.
         [SerializeField] private List<Transform> legacyDioramaRoots = new();
 
+        // The flythrough camera's own orbit math still lives entirely in
+        // MenuBackgroundCamera (on Main Camera) -- this is just a more
+        // convenient single Inspector to tune it from, since everything
+        // else about the background already lives here. Pushed into the
+        // referenced component once in Awake (see ApplyCameraSettings);
+        // editing MenuBackgroundCamera's own fields directly still works
+        // too if backgroundCamera isn't wired.
+        [Header("Camera Orbit")]
+        [SerializeField] private MenuBackgroundCamera backgroundCamera;
+        [SerializeField] private Vector3 orbitCenter = Vector3.zero;
+        [SerializeField] private float orbitRadius = 40f;
+        [SerializeField] private float orbitHeight = 28f;
+        [SerializeField] private float orbitSpeedDegreesPerSecond = 2.5f;
+        [SerializeField] private float lookAheadDegrees = 20f;
+        [SerializeField] private float lookTargetRadiusFraction = 0.35f;
+        [SerializeField] private float bobAmplitude = 1.5f;
+        [SerializeField] private float bobCyclesPerSecond = 0.05f;
+
         private Scene loadedLobbyScene;
         private bool lobbySceneLoaded;
 
@@ -57,6 +75,8 @@ namespace RobEveryone.UI
                 if (root != null) root.gameObject.SetActive(false);
             }
 
+            ApplyCameraSettings();
+
             // Subscribed before the load starts and unsubscribed the
             // instant it fires, so this only ever captures *this* load --
             // never a later real "Lobby" load Mirror kicks off once a
@@ -64,6 +84,33 @@ namespace RobEveryone.UI
             SceneManager.sceneLoaded += OnLobbySceneLoaded;
             SceneManager.LoadSceneAsync(lobbySceneName, LoadSceneMode.Additive);
         }
+
+        private void ApplyCameraSettings()
+        {
+            if (backgroundCamera == null) return;
+
+            backgroundCamera.OrbitCenter = orbitCenter;
+            backgroundCamera.OrbitRadius = orbitRadius;
+            backgroundCamera.OrbitHeight = orbitHeight;
+            backgroundCamera.OrbitSpeedDegreesPerSecond = orbitSpeedDegreesPerSecond;
+            backgroundCamera.LookAheadDegrees = lookAheadDegrees;
+            backgroundCamera.LookTargetRadiusFraction = lookTargetRadiusFraction;
+            backgroundCamera.BobAmplitude = bobAmplitude;
+            backgroundCamera.BobCyclesPerSecond = bobCyclesPerSecond;
+        }
+
+#if UNITY_EDITOR
+        // Lets the orbit be re-tuned live without stopping Play mode --
+        // tweak the fields above, they reapply automatically. Editor-only
+        // (OnValidate is compiled out of real builds anyway) and no-ops
+        // safely outside Play mode since ApplyCameraSettings only ever
+        // touches the referenced component's own fields, not anything
+        // that requires the scene to be running.
+        private void OnValidate()
+        {
+            ApplyCameraSettings();
+        }
+#endif
 
         private void OnLobbySceneLoaded(Scene scene, LoadSceneMode mode)
         {
@@ -73,7 +120,7 @@ namespace RobEveryone.UI
             loadedLobbyScene = scene;
             lobbySceneLoaded = true;
 
-            DisableLobbyUI(scene);
+            PrepareLobbyForBackground(scene);
         }
 
         // Lobby.unity ships its own root-level "Canvas" (hotbar, cash
@@ -90,7 +137,20 @@ namespace RobEveryone.UI
         // only ever wants exactly one active in the scene at a time, and
         // Main Menu already has its own. Confirmed spamming "There are 2
         // event systems in the scene" once Lobby's copy loaded in too.
-        private static void DisableLobbyUI(Scene scene)
+        //
+        // Lobby's own lights (Light/WallLight/LightPole/Lamp -- a good
+        // number of them) normally only ever run alone, as the one
+        // active scene during a real round. Loaded in here alongside
+        // whatever Main Menu itself lights with, all of them casting
+        // shadows at once overflowed URP's shadow atlas (confirmed via
+        // the Console: "31 shadow maps" fighting over a 4096x4096
+        // atlas). This is purely a background flythrough, not a lit
+        // gameplay space anyone stands in, so shadows are switched off
+        // per light here instead of raising the atlas size or shrinking
+        // shadow resolution project-wide -- a change that would affect
+        // every *real* lit space too, for a problem only this decorative
+        // scene has.
+        private static void PrepareLobbyForBackground(Scene scene)
         {
             foreach (GameObject root in scene.GetRootGameObjects())
             {
@@ -102,6 +162,11 @@ namespace RobEveryone.UI
                 foreach (EventSystem eventSystem in root.GetComponentsInChildren<EventSystem>(true))
                 {
                     eventSystem.gameObject.SetActive(false);
+                }
+
+                foreach (Light light in root.GetComponentsInChildren<Light>(true))
+                {
+                    light.shadows = LightShadows.None;
                 }
             }
         }

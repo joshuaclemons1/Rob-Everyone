@@ -11885,6 +11885,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.UI.MenuBackgroundBuilder
   lobbySceneName: Lobby
+  backgroundCamera: {fileID: 1382896274}
+  orbitCenter: {x: 0, y: 0, z: 0}
+  orbitRadius: 40
+  orbitHeight: 28
+  orbitSpeedDegreesPerSecond: 2.5
+  lookAheadDegrees: 20
+  lookTargetRadiusFraction: 0.35
+  bobAmplitude: 1.5
+  bobCyclesPerSecond: 0.05
   legacyDioramaRoots:
   - {fileID: 118812183}
   - {fileID: 877955363}
