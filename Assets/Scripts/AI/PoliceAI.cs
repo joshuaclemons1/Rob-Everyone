@@ -351,8 +351,17 @@ namespace RobEveryone.AI
 
             // Catching is pure proximity, not gated on the vision cone --
             // standing on top of someone is a catch regardless of exactly
-            // which way Police is facing at that instant.
-            if (Vector3.Distance(transform.position, chaseTarget.position) <= catchDistance)
+            // which way Police is facing at that instant. It IS gated on
+            // there being no wall in between, though (issue #4 fix):
+            // Vector3.Distance is straight-line, so on a thin wall between
+            // two rooms it can read well under catchDistance while Police
+            // is actually navigating the long way around, on the other
+            // side of solid geometry, with no path and nothing visible to
+            // the player at all -- reproducing as "caught with no officer
+            // in sight." Reuses the same obstructionMask CanSee already
+            // raycasts against below.
+            if (Vector3.Distance(transform.position, chaseTarget.position) <= catchDistance
+                && !IsBlockedByGeometry(chaseTarget))
             {
                 CatchPlayer(chaseTarget);
                 return;
@@ -404,6 +413,32 @@ namespace RobEveryone.AI
                 if (CanSee(player.transform)) return player.transform;
             }
             return null;
+        }
+
+        // Issue #4 fix. Plain "is anything solid in the way" check, from
+        // the same eye reference point CanSee uses -- deliberately doesn't
+        // reuse CanSee itself, since that also gates on viewDistance/
+        // viewAngle/facing, none of which should matter for a point-blank
+        // proximity catch (see UpdateChase's own comment on why catching
+        // is proximity-only in the first place).
+        private bool IsBlockedByGeometry(Transform target)
+        {
+            if (target == null || eye == null) return false;
+
+            Vector3 toTarget = target.position - eye.position;
+            float distance = toTarget.magnitude;
+            if (distance <= 0.01f) return false;
+
+            // Same "a hit on the player's own collider doesn't count as
+            // blocked" carve-out CanSee's raycast makes below -- otherwise
+            // the player's own body would block their own catch the
+            // instant Police is close enough for it to matter.
+            if (Physics.Raycast(eye.position, toTarget.normalized, out RaycastHit hit, distance, obstructionMask, QueryTriggerInteraction.Ignore))
+            {
+                return hit.collider.GetComponentInParent<PlayerInventory>() == null;
+            }
+
+            return false;
         }
 
         private bool CanSee(Transform target)

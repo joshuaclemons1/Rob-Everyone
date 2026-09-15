@@ -1,0 +1,79 @@
+name: Launcher build
+
+# Build-verification only, not an interactive test -- confirms
+# Launcher/RobEveryoneLauncher actually compiles and self-contained
+# publishes on real Windows/macOS/Linux runners. Can't show you the GUI,
+# SmartScreen, or anything else that needs an actual screen -- see
+# docs/stages/launcher-setup.md for the real (manual) test steps. The
+# published build for each platform is attached to the run as a
+# downloadable artifact, so this doubles as a way to get a real win-x64
+# build onto your Windows PC without needing the .NET SDK installed
+# there at all.
+
+on:
+  push:
+    paths:
+      - "Launcher/**"
+      - ".github/workflows/launcher-build.yml"
+  pull_request:
+    paths:
+      - "Launcher/**"
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: macos-latest
+            rid: osx-arm64
+          - os: ubuntu-latest
+            rid: linux-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build
+        working-directory: Launcher/RobEveryoneLauncher
+        run: dotnet build --configuration Release
+
+      - name: Publish self-contained single-file (${{ matrix.rid }})
+        working-directory: Launcher/RobEveryoneLauncher
+        # PublishSingleFile + IncludeNativeLibrariesForSelfExtract bundles
+        # the whole self-contained .NET runtime AND Avalonia's native libs
+        # (Skia/HarfBuzz) into the one executable instead of leaving dozens
+        # of loose DLLs next to it -- a plain `--self-contained true`
+        # publish (the old command here) produced exactly that mess, which
+        # is what made the launcher confusing to hand someone: "download
+        # this whole folder of unlabeled files" instead of "download this
+        # one .exe." DebugType=none drops our own app's .pdb.
+        run: >
+          dotnet publish --configuration Release --runtime ${{ matrix.rid }} --self-contained true
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none
+          --output publish
+
+      - name: Remove native library debug symbols
+        # Confirmed via two real win-x64 CI runs: SkiaSharp/HarfBuzzSharp's
+        # own NuGet packages ship their *native* library .pdb files as
+        # explicit content items, which copy into the publish output
+        # regardless of DebugType or CopyOutputSymbolsToPublishDirectory --
+        # neither controls a referenced package's own content items, only
+        # this project's own compiled output. ~105MB combined on Windows,
+        # nobody debugging native Skia/HarfBuzz crashes here -- just
+        # deleting them after the fact is the reliable fix. shell: bash
+        # works on all three matrix OSes (Windows runners ship Git Bash).
+        shell: bash
+        run: rm -f Launcher/RobEveryoneLauncher/publish/*.pdb
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RobEveryoneLauncher-${{ matrix.rid }}
+          path: Launcher/RobEveryoneLauncher/publish/
+          retention-days: 14

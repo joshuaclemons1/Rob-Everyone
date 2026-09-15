@@ -106,6 +106,22 @@ namespace RobEveryone.Player
             if (handBone == null) TryResolveHandBone();
         }
 
+        // Issue #14 fix: re-derives the held item's scale every frame
+        // instead of once at instantiation time. LateUpdate, same as
+        // FirstPersonBodyTrim (Unity doesn't guarantee ordering between two
+        // different scripts' LateUpdate without an explicit Script
+        // Execution Order, so this doesn't assume it runs strictly before
+        // or after that one) -- ApplyScale below skips entirely on a
+        // momentarily-zeroed bone rather than latching a wrong fallback
+        // value, so being at worst one frame behind FirstPersonBodyTrim's
+        // own zero/restore is harmless; the actual bug was the scale never
+        // getting a *chance* to recompute at all once Refresh() had
+        // already run.
+        private void LateUpdate()
+        {
+            if (heldInstance != null && currentItem != null) ApplyScale(heldInstance, currentItem);
+        }
+
         private void TryResolveHandBone()
         {
             if (skinSpawner.SkinInstance == null) return;
@@ -142,19 +158,41 @@ namespace RobEveryone.Player
         {
             instance.transform.localPosition = item.HeldPositionOffset;
             instance.transform.localEulerAngles = item.HeldRotationOffset;
+            ApplyScale(instance, item);
+        }
 
-            // WorldModelScale is calibrated for a scale-1 parent (how it
-            // sits as a ground pickup) -- the hand bone can carry its own
-            // accumulated scale from the rig import, so divide it back
-            // out here rather than applying WorldModelScale directly as
-            // localScale, or the held item comes out the wrong size
-            // (confirmed: way too large) depending on that bone's
-            // lossyScale.
+        // WorldModelScale is calibrated for a scale-1 parent (how it sits
+        // as a ground pickup) -- the hand bone can carry its own
+        // accumulated scale from the rig import, so divide it back out
+        // here rather than applying WorldModelScale directly as
+        // localScale, or the held item comes out the wrong size. Called
+        // every LateUpdate (not just once from ApplyPose above), since
+        // handBone.lossyScale isn't a fixed value -- FirstPersonBodyTrim
+        // zeroes it out entirely while airborne (part of the upper-body
+        // trim), and latching whatever scale happened to be current at the
+        // one moment Refresh() ran was the actual bug (issue #14): landing
+        // on a zeroed frame fell back to the undivided, way-too-large raw
+        // WorldModelScale, permanently, until the next slot change
+        // happened to land on a non-zeroed frame.
+        private void ApplyScale(GameObject instance, ItemDefinition item)
+        {
             Vector3 parentScale = handBone.lossyScale;
+
+            // Skip entirely (keep whatever scale it already has) rather
+            // than fall back to an undivided/wrong value -- next frame's
+            // call recomputes for real once the bone's scale is no longer
+            // momentarily zero.
+            if (Mathf.Approximately(parentScale.x, 0f) ||
+                Mathf.Approximately(parentScale.y, 0f) ||
+                Mathf.Approximately(parentScale.z, 0f))
+            {
+                return;
+            }
+
             instance.transform.localScale = new Vector3(
-                parentScale.x != 0f ? item.WorldModelScale.x / parentScale.x : item.WorldModelScale.x,
-                parentScale.y != 0f ? item.WorldModelScale.y / parentScale.y : item.WorldModelScale.y,
-                parentScale.z != 0f ? item.WorldModelScale.z / parentScale.z : item.WorldModelScale.z);
+                item.WorldModelScale.x / parentScale.x,
+                item.WorldModelScale.y / parentScale.y,
+                item.WorldModelScale.z / parentScale.z);
         }
 
         // item.WorldModelPrefab is the exact same prefab used for the

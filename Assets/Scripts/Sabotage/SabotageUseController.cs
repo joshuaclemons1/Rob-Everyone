@@ -253,5 +253,28 @@ namespace RobEveryone.Sabotage
             nextReadyTime[item.ItemName] = Time.time + item.CooldownSeconds;
             return true;
         }
+
+        // Issue #1 fix. Both cooldown clocks are tracked purely against
+        // Time.time (session-wide, never reset on its own), with nothing
+        // previously clearing either dictionary between rounds -- a
+        // cooldown started late in one round could still be counting
+        // down into the next. Called by GameFlowManager.HandleRoundStarted
+        // for every player at the top of every fresh round.
+        [Server]
+        public void ServerResetCooldowns()
+        {
+            nextReadyTime.Clear();
+            if (connectionToClient != null) TargetResetLocalCooldowns(connectionToClient);
+        }
+
+        // Only the owner reads localNextReadyTime (HotbarSlotUI's own
+        // cooldown countdown text) -- clearing it keeps that display from
+        // showing time left on a cooldown the server has already
+        // forgotten about.
+        [TargetRpc]
+        private void TargetResetLocalCooldowns(NetworkConnectionToClient target)
+        {
+            localNextReadyTime.Clear();
+        }
     }
 }

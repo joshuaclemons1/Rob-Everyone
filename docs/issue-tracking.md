@@ -50,6 +50,31 @@ tracking issue), but the normal flow going forward is: open an issue
 when work starts (or when a gap is noticed), close it when the work
 ships.
 
+## Priority labels
+
+Four labels, applied alongside `bug`/`enhancement`, exist specifically
+to say what order open work should get picked up in:
+
+- **`urgent`** — needs direct action before a build can be compiled next.
+- **`non-urgent`** — needs addressed, but can wait for a future build.
+- **`unsure`** — a bug or feature that's still undecided/untracked (not
+  yet triaged into urgent/non-urgent).
+- **`long-term`** — not blocking anything else and doesn't need
+  attention over any other item. Sinks to the bottom of the list
+  regardless of anything else it's tagged, per its own definition —
+  even a `long-term` bug goes after a `non-urgent` feature.
+
+**Priority order for picking up open work**: `bug` before
+`enhancement` first, then by priority label within that (`urgent` >
+`non-urgent` > `unsure`), with anything carrying `long-term` sinking to
+the very bottom regardless of the bug/enhancement split above it. When
+a Claude session is asked "what's next" or to work down the backlog
+without a specific target named, sort open issues this way rather than
+just working through issue numbers in order.
+
+Not every issue has a priority label yet (some predate this scheme) —
+treat an unlabeled one as `unsure` until it's triaged.
+
 ## Granularity
 
 One issue per genuinely distinct, individually-workable item — not a

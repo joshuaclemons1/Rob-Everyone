@@ -46,7 +46,11 @@ namespace RobEveryone.UI
             }
 
             if (panel != null) panel.SetActive(true);
-            if (messageText != null) messageText.text = message;
+            if (messageText != null)
+            {
+                messageText.text = message;
+                ShrinkToFitIfNeeded(messageText);
+            }
             shownAt = Time.time;
 
             // Restart the animation from frame 0 each time it's shown,
@@ -84,6 +88,28 @@ namespace RobEveryone.UI
         private void HideNow()
         {
             if (panel != null) panel.SetActive(false);
+        }
+
+        // Issue #15 fix. This field shows short static strings most of
+        // the time ("Starting next round...") but also GameFlowManager's
+        // dynamically-built batch-progress summary
+        // ($"Batch progress: ${cash} cash + ${inventory} / ${quota}"),
+        // whose length depends entirely on how much cash/inventory a
+        // player is carrying -- a fixed font size tuned for the short
+        // messages can run off the edge of the panel once those numbers
+        // get large. Turns on TMP's own shrink-to-fit rather than hand-
+        // picking a smaller size, and only the first time (doesn't fight
+        // whatever's already configured if auto-size was already turned
+        // on in the Editor) -- fontSizeMax is capped at whatever size was
+        // already authored, so short messages still render exactly as
+        // before and only long ones actually shrink.
+        private static void ShrinkToFitIfNeeded(TextMeshProUGUI text)
+        {
+            if (text.enableAutoSizing) return;
+
+            text.fontSizeMax = text.fontSize;
+            text.fontSizeMin = Mathf.Max(1f, text.fontSize * 0.6f);
+            text.enableAutoSizing = true;
         }
 
         private void Update()

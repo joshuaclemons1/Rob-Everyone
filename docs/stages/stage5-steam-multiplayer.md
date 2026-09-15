@@ -101,9 +101,9 @@ let you fake two players locally) for this to mean anything:
    network required.
 3. Play a full batch together, same checklist as Stage 4's Rest Point 9.
 
-Once this works, tell me and we're done with the core multiplayer
-buildout. (Stage 4/5 are both done now — see
-[issue #34](https://github.com/joshuaclemons1/Rob-Everyone/issues/34) —
-though the real two-Steam-account overlay invite test, Rest Point 4
-above, is still open as
-[issue #17](https://github.com/joshuaclemons1/Rob-Everyone/issues/17).)
+Stage 4/5 are both done, including this Rest Point — confirmed via a
+real two-Steam-account overlay invite test during the v1.0.2-alpha
+build/testing cycle. See
+[issue #34](https://github.com/joshuaclemons1/Rob-Everyone/issues/34)
+and [issue #17](https://github.com/joshuaclemons1/Rob-Everyone/issues/17)
+(closed).

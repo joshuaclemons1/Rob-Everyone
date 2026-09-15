@@ -1,0 +1,12 @@
+bin/
+obj/
+publish/
+
+# Runtime artifacts -- created next to the launcher when it actually runs,
+# never part of the source. "Rob Everyone/" is the installed build;
+# "Rob Everyone.staging/" and "Rob Everyone.old/" are transient (see
+# UpdateService.InstallFromZip).
+Rob Everyone/
+Rob Everyone.staging/
+Rob Everyone.old/
+launcher-state.json
