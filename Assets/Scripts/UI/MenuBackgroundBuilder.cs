@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Mirror;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 
 namespace RobEveryone.UI
@@ -84,6 +85,11 @@ namespace RobEveryone.UI
         // additively-loaded scene brings in gets disabled -- found by
         // component rather than hardcoding the name "Canvas", so this
         // still works correctly if Lobby's UI hierarchy ever changes.
+        //
+        // Same problem, same fix, for Lobby's own EventSystem -- uGUI
+        // only ever wants exactly one active in the scene at a time, and
+        // Main Menu already has its own. Confirmed spamming "There are 2
+        // event systems in the scene" once Lobby's copy loaded in too.
         private static void DisableLobbyUI(Scene scene)
         {
             foreach (GameObject root in scene.GetRootGameObjects())
@@ -91,6 +97,11 @@ namespace RobEveryone.UI
                 foreach (Canvas canvas in root.GetComponentsInChildren<Canvas>(true))
                 {
                     canvas.gameObject.SetActive(false);
+                }
+
+                foreach (EventSystem eventSystem in root.GetComponentsInChildren<EventSystem>(true))
+                {
+                    eventSystem.gameObject.SetActive(false);
                 }
             }
         }
