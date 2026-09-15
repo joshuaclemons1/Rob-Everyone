@@ -69,7 +69,9 @@ checklist for testing them once back at a PC), and
 the Editor checklist for the pieces that needed real eyes), and
 [main-menu-background-flythrough-setup.md](stages/main-menu-background-flythrough-setup.md)
 (issue #51: replacing the static diorama with a moving drone-shot
-flythrough over a procedural stand-in neighborhood).
+flythrough over a procedural stand-in neighborhood), and
+[reconnect-setup.md](stages/reconnect-setup.md) (issue #53: rejoining
+an in-progress lobby after a disconnect/crash without losing your run).
 Style/asset reference (palette, sourced packs, remaining art to-do) is in
 [art-info.md](art-info.md); UI/menu element spec is in
 [ui-design.md](stages/ui-design.md); main menu build docs are

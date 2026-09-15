@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Mirror;
 using RobEveryone.Inventory;
 using RobEveryone.Player;
@@ -26,8 +27,62 @@ namespace RobEveryone.Core
     {
         public static new RobEveryoneNetworkManager singleton => (RobEveryoneNetworkManager)NetworkManager.singleton;
 
+        // Issue #53: how long a disconnected player's state stays
+        // preserved, waiting for the same SteamID to reconnect, before
+        // it's given up on and actually torn down for good. Keyed by
+        // SteamID64 (ResolveSteamId) -- the host's own local connection
+        // never resolves one (its address is always the literal string
+        // "localhost", see ResolveDisplayName's own comment), so a host
+        // disconnect always falls through to the normal immediate-
+        // teardown path in OnServerDisconnect below; that's correct,
+        // since the host going down ends the whole session for everyone
+        // regardless of any of this.
+        [SerializeField] private float reconnectWindowSeconds = 120f;
+
+        private readonly Dictionary<string, PendingReconnect> pendingReconnects = new();
+
+        private struct PendingReconnect
+        {
+            public NetworkIdentity identity;
+            public float disconnectedAt;
+        }
+
         public override void OnServerAddPlayer(NetworkConnectionToClient conn)
         {
+            string steamId = ResolveSteamId(conn);
+
+            // Issue #53: a returning player -- rebind their still-alive,
+            // still-fully-stateful object (hotbar, Cash, wherever they
+            // physically are, mid-round or in the Lobby) to this new
+            // connection instead of the stock base.OnServerAddPlayer's
+            // Instantiate-a-fresh-one path. NetworkServer.AddPlayerForConnection
+            // directly -- the same call base would have made, just handed
+            // an existing GameObject instead of a freshly Instantiated
+            // one -- not ReplacePlayerForConnection, which assumes
+            // there's already a player object on this connection to
+            // replace (it unconditionally dereferences the "previous"
+            // one internally); a fresh connection never has one.
+            if (!string.IsNullOrEmpty(steamId)
+                && pendingReconnects.TryGetValue(steamId, out PendingReconnect pending)
+                && pending.identity != null)
+            {
+                pendingReconnects.Remove(steamId);
+
+                NetworkServer.AddPlayerForConnection(conn, pending.identity.gameObject);
+
+                var reconnectedInv = pending.identity.GetComponent<PlayerInventory>();
+                if (reconnectedInv != null) reconnectedInv.SetDisplayName(ResolveDisplayName(conn));
+
+                Debug.Log($"[RobEveryoneNetworkManager] {ResolveDisplayName(conn)} reconnected (SteamID {steamId}) -- resumed their existing run.");
+
+                // Deliberately NOT HandlePlayerAdded -- that positions a
+                // *brand-new* player at a fresh spawn point. A returning
+                // player should resume exactly wherever their preserved
+                // body already is (which never moved while they were
+                // disconnected), not get teleported to a join spot.
+                return;
+            }
+
             base.OnServerAddPlayer(conn);
 
             // Player objects are otherwise destroyed by every single-mode
@@ -63,6 +118,21 @@ namespace RobEveryone.Core
             }
         }
 
+        // FizzySteamworks always reports the remote peer's SteamID64 as
+        // conn.address (see ResolveDisplayName's own comment) -- factored
+        // out since OnServerDisconnect (issue #53) needs the raw ID as a
+        // dictionary key, not just a display name. Returns null for the
+        // host's own local connection (never a real SteamID to parse) and
+        // for the KCP-transport local-testing path (no Steam address to
+        // parse either) -- both correctly mean "reconnect-matching isn't
+        // meaningful for this connection," not "treat it as some blank
+        // identity that could collide with another blank one."
+        private static string ResolveSteamId(NetworkConnectionToClient conn)
+        {
+            if (conn.connectionId == NetworkConnection.LocalConnectionId) return null;
+            return ulong.TryParse(conn.address, out ulong steamId64) ? steamId64.ToString() : null;
+        }
+
         // FizzySteamworks' own server implementation (NextServer.
         // ServerGetClientAddress) returns the remote peer's SteamID64 as a
         // string -- Mirror's own NetworkConnectionToClient.address is set
@@ -89,7 +159,8 @@ namespace RobEveryone.Core
                 if (conn.connectionId == NetworkConnection.LocalConnectionId)
                     return SteamFriends.GetPersonaName();
 
-                if (ulong.TryParse(conn.address, out ulong steamId64))
+                string remoteSteamId = ResolveSteamId(conn);
+                if (remoteSteamId != null && ulong.TryParse(remoteSteamId, out ulong steamId64))
                 {
                     string personaName = SteamFriends.GetFriendPersonaName(new CSteamID(steamId64));
                     if (!string.IsNullOrEmpty(personaName) && personaName != "[unknown]") return personaName;
@@ -107,7 +178,9 @@ namespace RobEveryone.Core
             if (conn.identity != null)
             {
                 // If they were hauling someone, drop the body before their
-                // object is torn down.
+                // object is torn down (or, per issue #53 below, held for a
+                // possible reconnect) -- can't leave a carried victim
+                // hanging off a carrier who isn't coming back for a while.
                 conn.identity.GetComponent<CarryController>()?.ServerReleaseOnDisconnect();
 
                 // Issue #45: release their claimed exit-car seat too, so a
@@ -115,13 +188,102 @@ namespace RobEveryone.Core
                 // permanently holding a slot no one will ever sit in again.
                 conn.identity.GetComponent<ExitCarState>()?.ForceRelease();
 
-                if (GameFlowManager.Instance != null)
+                // Issue #53: preserve this player's state instead of
+                // letting the disconnect destroy it, so the same SteamID
+                // can resume it later (OnServerAddPlayer above) -- hotbar,
+                // Cash, and wherever they physically are, mid-round or in
+                // the Lobby, all just keep existing untouched, unowned,
+                // exactly as they were. No serialize/restore code needed:
+                // RemovePlayerForConnection(KeepActive) detaches ownership
+                // without unspawning, so nothing about the object itself
+                // changes. base.OnServerDisconnect below still runs
+                // afterward (still needed for real connection-level
+                // cleanup -- removing this connection from every object's
+                // observer list, etc.) but by then this identity is no
+                // longer in conn.owned, so its own
+                // DestroyPlayerForConnection -> DestroyOwnedObjects pass
+                // (which is what actually destroys a *non-preserved*
+                // player's object) has nothing left of this one to touch.
+                string steamId = ResolveSteamId(conn);
+                if (!string.IsNullOrEmpty(steamId))
                 {
+                    NetworkIdentity identity = conn.identity;
+                    NetworkServer.RemovePlayerForConnection(conn, RemovePlayerOptions.KeepActive);
+                    pendingReconnects[steamId] = new PendingReconnect { identity = identity, disconnectedAt = Time.time };
+
+                    Debug.Log($"[RobEveryoneNetworkManager] Player disconnected (SteamID {steamId}) -- state held for up to {reconnectWindowSeconds}s in case they reconnect.");
+                }
+                else if (GameFlowManager.Instance != null)
+                {
+                    // No resolvable SteamID (the host, or local/KCP
+                    // testing) -- reconnect-matching isn't meaningful, so
+                    // this is a real, permanent departure exactly like
+                    // before this issue.
                     GameFlowManager.Instance.HandlePlayerRemoved(conn.identity);
                 }
             }
 
             base.OnServerDisconnect(conn);
+        }
+
+        // Issue #53: gives up on a disconnected player who never came
+        // back within reconnectWindowSeconds and actually tears their
+        // object down for good -- holding a preserved player forever
+        // isn't sustainable (a permanently-abandoned body would keep
+        // sitting in the world, still counted in PlayerInventory.
+        // AllPlayers, forever). NetworkServer.Destroy triggers the same
+        // normal unspawn/OnStopServer teardown (AllPlayers.Remove, etc.)
+        // a disconnect would have caused immediately before this issue --
+        // this is just that same teardown, deferred.
+        //
+        // pendingReconnects is only ever populated server-side (from
+        // OnServerDisconnect, itself only ever invoked server-side by
+        // Mirror), so on a client this dictionary simply always stays
+        // empty regardless of the NetworkServer.active guard below --
+        // kept anyway as the actual correctness condition, not just an
+        // optimization.
+        private readonly List<string> expiredReconnectsScratch = new();
+
+        public override void Update()
+        {
+            base.Update();
+
+            if (!NetworkServer.active || pendingReconnects.Count == 0) return;
+
+            expiredReconnectsScratch.Clear();
+            foreach (KeyValuePair<string, PendingReconnect> kvp in pendingReconnects)
+            {
+                if (Time.time - kvp.Value.disconnectedAt >= reconnectWindowSeconds)
+                {
+                    expiredReconnectsScratch.Add(kvp.Key);
+                }
+            }
+
+            foreach (string steamId in expiredReconnectsScratch)
+            {
+                PendingReconnect pending = pendingReconnects[steamId];
+                pendingReconnects.Remove(steamId);
+
+                if (pending.identity == null) continue;
+
+                Debug.Log($"[RobEveryoneNetworkManager] Reconnect window expired for SteamID {steamId} -- giving up their held state for good.");
+
+                if (GameFlowManager.Instance != null) GameFlowManager.Instance.HandlePlayerRemoved(pending.identity);
+                NetworkServer.Destroy(pending.identity.gameObject);
+            }
+        }
+
+        // Stale pending reconnects from a previous hosted session
+        // shouldn't carry over into a new one -- this singleton persists
+        // across a Stop/Start cycle (Mirror's own DontDestroyOnLoad on
+        // itself), but every preserved NetworkIdentity from the last
+        // session is already gone once the server that spawned it shuts
+        // down, so there's nothing left for a leftover entry to
+        // meaningfully rebind to.
+        public override void OnStopServer()
+        {
+            base.OnStopServer();
+            pendingReconnects.Clear();
         }
 
         // Fires on every client once their own local copy of a server-
