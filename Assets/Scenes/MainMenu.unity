@@ -4082,6 +4082,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 644120903}
+  - component: {fileID: 1841432894}
   m_Layer: 5
   m_Name: TitleWordmark
   m_TagString: Untagged
@@ -4110,6 +4111,20 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 300}
   m_SizeDelta: {x: 480.26797, y: 140}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1841432894
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 644120902}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 97d8a4754fca40b08e87bcf21345c301, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.UI.TitlePulse
+  pulseCyclesPerSecond: 0.5
+  pulseAmplitude: 0.04
 --- !u!1 &648154605
 GameObject:
   m_ObjectHideFlags: 0
