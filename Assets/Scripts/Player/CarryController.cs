@@ -31,7 +31,7 @@ namespace RobEveryone.Player
         // free on purpose, not a raycast/SphereCast radius.
         [SerializeField] private float grabAssistMaxAngle = 30f;
 
-        [SyncVar] private NetworkIdentity carried; // the victim, server-set
+        [SyncVar(hook = nameof(OnCarriedChanged))] private NetworkIdentity carried; // the victim, server-set
 
         public Transform CarryAnchor => carryAnchor;
         public bool IsCarrying => carried != null;
@@ -101,6 +101,30 @@ namespace RobEveryone.Player
                 chargeStart = -1f;
                 CmdDrop(true, viewPoint != null ? viewPoint.forward : transform.forward, force);
             }
+        }
+
+        // Issue #7: carried can go null server-side for a reason the
+        // owner's own input never triggered -- the carrier getting
+        // ragdolled mid-charge (this class's own Update() above) or a
+        // round ending while a throw is being charged (GameFlowManager.
+        // HandleRoundEnded's safety-net ServerDrop) both call ServerDrop
+        // out from under an in-progress charge. Without this, chargeStart
+        // stays sitting >= 0 on the owner's client until the SyncVar sync
+        // catches up -- and if the LMB release happens to land in that
+        // exact gap, OwnerUpdate still fires CmdDrop(thrown: true), which
+        // arrives to find carried already null and ServerDrop's own `if
+        // (carried == null) return` silently swallows it. That reads as
+        // "the throw just didn't happen" (the reported symptom: the
+        // victim stands up right where they were, no launch) instead of
+        // visibly canceling. Resetting chargeStart the instant the sync
+        // itself confirms carried is gone closes that window as tightly
+        // as the network round trip allows, and also stops a stale
+        // charge meter from lingering on the HUD (IsChargingThrow/
+        // ThrowCharge01 are chargeStart-driven) for a carry that's
+        // already over.
+        private void OnCarriedChanged(NetworkIdentity oldValue, NetworkIdentity newValue)
+        {
+            if (newValue == null) chargeStart = -1f;
         }
 
         // True while LMB is held mid-carry, charging a throw -- separate
