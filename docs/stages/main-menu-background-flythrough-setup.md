@@ -1,136 +1,103 @@
 # Main Menu background: drone-shot flythrough (issue #51)
 
 Replaces the old static single-house diorama (`Exterior`/`Roads`/`Fence`/
-`Grass` in `MainMenu.unity`) with a small, non-networked stand-in
-neighborhood the background camera slowly orbits over. Written entirely
-in code — a procedural ring of real house prefabs, a parametric camera
-orbit, a few wandering police stand-ins — rather than hand-placed scene
-content, for the same reason `MenuCharacterPreview` builds its own stage
-procedurally: it's exact, reasoned-about math instead of blind-placed
-Transforms nobody's actually seen render. This doc is the remaining
-checklist for the pieces that genuinely need real Editor eyes.
+`Grass` in `MainMenu.unity`) with a slow camera flythrough over the real
+Lobby scene, loaded additively behind the menu.
 
-## What changed, and why (read this before touching the Editor)
+## Revision history (read this first)
 
-Two real approaches were on the table (see the issue itself for the full
-writeup). Went with **option 2**: a lightweight, non-networked stand-in,
-not the real `SampleScene` loaded additively. The real `PoliceAI` is a
-`NetworkBehaviour` that leans on a live `RoundManager`/server context
-MainMenu doesn't have before a player clicks Play, and MainMenu already
-runs its own `NetworkManager` for lobby purposes — loading the whole
-gameplay scene on top of that risked a collision for a shot that's
-ultimately just cosmetic background.
+The first version of this built an abstract stand-in neighborhood --
+procedurally-ringed houses on a plain green plane, wandering police
+stand-ins -- entirely in code, on the reasoning that additively loading
+a real gameplay scene was too risky (see the issue's own feasibility
+notes about `PoliceAI`). It worked with no errors, but real playtest
+feedback was blunt: **it didn't look like the map at all**, which was
+the entire point. Rebuilt around the issue's own "option 1" instead --
+additively load a real scene -- using **Lobby**, not SampleScene, per
+direct instruction once SampleScene was confirmed too heavy to chase.
 
-Four new scripts, all in `Assets/Scripts/UI/`:
+Lobby turns out to sidestep every risk factor that ruled out SampleScene
+in the first place, confirmed by reading `Lobby.unity` directly:
 
-- **`MenuBackgroundBuilder`** — the orchestrator, on a new `MenuBackground`
-  root object. At `Awake`, it disables the old diorama's root objects
-  (`Roads` and the `Exterior`/`Fence`/`Grass` bundle — **disabled, not
-  deleted**, so this stays reversible; safe to delete for real once
-  you've confirmed the new background works), builds a flat ground
-  plane, rings 8 `House_01` instances around it (140-unit radius — at 8
-  houses that's ~110 units between centers, clear of a house's own
-  ~40x40 footprint), and spawns 3 police stand-ins.
-- **`MenuPoliceWander`** — added to each police stand-in at runtime; a
-  simple non-networked "pick a random point nearby, walk to it, repeat"
-  loop, not the real `PoliceAI` state machine.
-- **`MenuBackgroundCamera`** — on the existing Main Camera (previously
-  completely static). A parametric circular orbit, not a hand-authored
-  waypoint spline (no Cinemachine package in this project) — loops with
-  zero seam by construction, with a slight look-ahead offset and a slow
-  vertical bob so it doesn't read as a camera locked to a rail.
-- **`MenuBackgroundDimOverlay`** — on the Canvas. A single semi-
-  transparent full-screen Image, forced to the back of the sibling order
-  at runtime, so the button stack/title/character preview stay legible
-  over a moving background per the issue's own note.
+- Zero `PoliceAI`/`HomeownerAI` -- both `NetworkBehaviour`s that lean on
+  a live `RoundManager`/server context Main Menu doesn't have. Lobby
+  just doesn't have either.
+- Zero `NetworkManager` and zero `AudioListener` in the scene file.
+- Its ~19 scene-placed `NetworkIdentity` objects (shop items, pickups)
+  already carry valid baked sceneIds from Lobby's own normal use as a
+  real, already-shipping gameplay scene -- nothing new to bake.
 
-**Only `House_01` is used for the ring**, not `Real_House_01/02/03` —
-deliberately. `House_01` has zero scripts on it (pure visual shell,
-confirmed by reading the prefab directly), safe to `Instantiate` outside
-a networked context with no risk. The `Real_House_*` variants each carry
-a live `NetworkIdentity` plus other `NetworkBehaviour` scripts (loot
-spawn points, etc.) — probably harmless to instantiate un-networked
-(most Mirror component logic gates behind `isServer`/`isClient`, which
-default false outside `NetworkServer.Spawn`), but that's an assumption,
-not something confirmed running.
+## What changed, and why
 
-**Police stand-ins reference `Police.prefab`'s `BlueSoldier_Male` child
-directly, not the prefab's root.** The root carries `PoliceAI`,
-`NetworkIdentity`, `NetworkTransformReliable`, and a `NavMeshAgent` —
-this originally instantiated the whole prefab and stripped those four
-components off right afterward, but that broke Play mode for real:
-Unity runs a newly-instantiated GameObject's `Awake`/`OnEnable`
-synchronously as part of `Instantiate()` itself, before any of this
-script's own code gets a chance to run, so `NavMeshAgent` had already
-logged "no valid NavMesh" and `NetworkIdentity` had already registered
-itself before the (separately deferred-to-end-of-frame) `Destroy()`
-calls ever took effect — surfacing as a `NavMeshAgent` error on every
-spawn plus a Mirror `NetworkScenePostProcess` "no valid sceneId" build
-error. Fixed by never instantiating that root at all — `policeVisual`
-points straight at `BlueSoldier_Male` (confirmed self-contained by
-reading the prefab: its own local position exactly cancels the root's,
-so it renders in the same place with no wrapper needed), so there's
-nothing networked or NavMesh-dependent to create in the first place.
-Its Animator also ships with **Apply Root Motion on** — left as-is it
-would fight `MenuPoliceWander`'s own manual position writes, so
-`MenuPoliceWander.Awake` switches it off on the spawned stand-ins.
+`Assets/Scripts/UI/MenuBackgroundBuilder.cs` now just:
 
-**Also found and fixed while chasing that Play-mode failure, unrelated
-to #51**: `Assets/Prefabs/Houses/Homeowner.prefab` was missing a
-`NetworkIdentity` component entirely, despite carrying
-`NetworkTransformReliable` and `HomeownerAI` (both `NetworkBehaviour`s
-that require one) — a genuine pre-existing bug, confirmed via a
-project-wide scan to be the only prefab with this problem. Not
-referenced anywhere in `MainMenu.unity`, so it can't have been caused by
-this issue's own changes; it just happened to get surfaced in the same
-Console dump because compiling the new scripts here triggered a domain
-reload that re-validated every loaded prefab. Fixed by adding the
-missing `NetworkIdentity` (`_assetId: 0` — Mirror's own `OnValidate`
-self-assigns a real one the next time the Editor loads this prefab, per
-`NetworkIdentity.cs`'s own `AssignAssetID` logic, so no need to hand-
-compute one).
+1. Disables the old diorama's roots (`Roads`, and the
+   `Exterior`/`Fence`/`Grass` bundle) -- **disabled, not deleted**, still
+   reversible, safe to delete for real once confirmed working.
+2. Additively loads `Lobby` (`SceneManager.LoadSceneAsync(..., 
+   LoadSceneMode.Additive)`) behind the Main Menu.
+3. Watches for `NetworkServer.active`/`NetworkClient.active` going true
+   (a player actually clicking Host/Join via `SteamLobby`) and
+   immediately unloads *this specific* decorative Scene handle before
+   Mirror's own real scene transition can load a second "Lobby"
+   alongside it. Main Menu's own `NetworkManager` never auto-starts a
+   server/client by itself -- only those two buttons do -- so this
+   decorative copy sits completely inert (no `NetworkServer`/
+   `NetworkClient` ever touches it) right up until that moment.
+
+`MenuBackgroundCamera` (unchanged logic, new defaults) orbits around
+`orbitCenter (-5, 0, -8)` at `orbitRadius 40` / `orbitHeight 28` --
+worked out from Lobby's own `PlayerSpawnPoint`/`PawnShop`/`SellStation`
+transforms (a roughly 40x45-unit footprint), not invented numbers. Much
+closer and lower than the old ring's 110/65, appropriate for orbiting
+one building instead of a sprawling neighborhood.
+
+`MenuPoliceWander.cs` was deleted -- it was built specifically around
+`Police.prefab`'s styling, which doesn't fit Lobby thematically (it's
+the shop/hangout area, not a heist target). If the background ends up
+looking dead/static once you've seen it, ambient movement (a player
+skin or two wandering, reusing the same wander-loop technique) is an
+easy fast-follow -- just not assumed here.
 
 ## Editor steps still needed
 
-1. **Press Play and just look at it.** This is the big one — ring
-   radius, camera orbit radius/height/speed, police wander area, and the
-   dim overlay's opacity (`MenuBackgroundDimOverlay.dimAlpha`, starts at
-   0.45) are all starting values, not tuned ones. Every one of them is a
-   plain `[SerializeField]` number on the relevant component
-   (`MenuBackgroundBuilder` on `MenuBackground`, `MenuBackgroundCamera`
-   on `Main Camera`, `MenuBackgroundDimOverlay` on `Canvas`) — safe to
-   just drag values around in Play mode and see what reads best before
-   committing to numbers.
-2. **Check that the police stand-ins' feet actually touch the ground.**
-   `BlueSoldier_Male` is instantiated directly at each computed ground
-   point with no extra vertical offset, on the assumption its own rest
-   pose already has feet-at-origin (the near-universal convention for
-   this kind of rig) — if it's floating or sunk into the ground instead,
-   that assumption is wrong and `MenuBackgroundBuilder.SpawnPolice` needs
-   a manual Y offset added to `spawnPoint`.
-3. **Confirm menu legibility** over the moving background — buttons,
+This is a genuinely new approach with real unknowns that need actual
+eyes, not just tuning:
+
+1. **Press Play and look at it.** Does Lobby's geometry actually show up
+   behind the menu? Does it look right -- lighting in particular is
+   worth a close look, since Lobby's own baked lighting/reflection
+   probes (if any) are tied to it being the *active* scene, and it never
+   is here (Main Menu stays active; Lobby only ever loads additively).
+   If it looks flat or wrong, that's the first thing to check.
+2. **Tune the orbit** (`MenuBackgroundCamera` on `Main Camera`) --
+   `orbitCenter`/`orbitRadius`/`orbitHeight` are worked out from
+   transform positions, not a real look at the space. Adjust until the
+   camera reads as actually flying around the building instead of
+   floating too far out or clipping through walls.
+3. **Confirm the Host/Join unload actually works** -- click Host (or
+   Join) from the Main Menu after the background has loaded, and check
+   that the real Lobby loads cleanly with no duplicate-scene weirdness
+   (missing shop items, doubled geometry, Mirror spawn warnings). This
+   is the one piece of `MenuBackgroundBuilder` that's genuinely new
+   runtime logic, not just "point it at different content."
+4. **Confirm menu legibility** over the moving background -- buttons,
    title, and the character preview panel should all still read clearly
-   with the dim overlay in place per `main-menu-visual-design.md`'s
-   composition regions.
-4. **Optional variety**: once you've confirmed `Real_House_01/02/03`
-   instantiate cleanly with no console errors outside a network context,
-   they can be added to `MenuBackgroundBuilder`'s `House Prefabs` list
-   alongside `House_01` for a more varied-looking ring — not done by
-   default here since that's exactly the kind of thing that needs a real
-   Play-mode check, not an assumption.
-5. **Cleanup**: once the new background is confirmed working, the old
-   diorama objects (`Roads`, and the `Exterior`/`Fence`/`Grass` bundle,
-   both referenced in `MenuBackgroundBuilder`'s `Legacy Diorama Roots`
-   list) are safe to delete from the scene for real.
+   with the dim overlay in place (`MenuBackgroundDimOverlay.dimAlpha`,
+   starts at 0.45) per `main-menu-visual-design.md`'s composition
+   regions.
+5. **Cleanup**: once confirmed working, the old diorama objects
+   (`Roads`, and the `Exterior`/`Fence`/`Grass` bundle, both referenced
+   in `MenuBackgroundBuilder`'s `Legacy Diorama Roots` list) are safe to
+   delete from the scene for real.
 
 ## Where to look
 
-- `Assets/Scripts/UI/MenuBackgroundBuilder.cs` — the orchestrator.
-- `Assets/Scripts/UI/MenuPoliceWander.cs` — non-networked patrol stand-in.
+- `Assets/Scripts/UI/MenuBackgroundBuilder.cs` — loads/unloads Lobby.
 - `Assets/Scripts/UI/MenuBackgroundCamera.cs` — the orbit flythrough.
 - `Assets/Scripts/UI/MenuBackgroundDimOverlay.cs` — legibility overlay.
-- `Assets/Scripts/AI/PoliceAI.cs` — the real networked state machine this
-  deliberately doesn't run in the Main Menu.
-- `Assets/Scripts/World/HousePoolSpawner.cs` — the real gameplay house
-  spawner, for reference on house-plot sizing (this doesn't reuse its
-  networked spawn path, just its `housePlotSize` reasoning).
+- `Assets/Scenes/Lobby.unity` — the real scene now providing the
+  background (its `PawnShop`/`Interior`/`Outside`/`PlayerSpawnPoints`
+  are the landmarks the camera orbit was sized against).
+- `Assets/Scripts/Core/SteamLobby.cs` — `HostLobby`/`JoinLobby`, the
+  moment real networking starts and the decorative copy needs to go.
