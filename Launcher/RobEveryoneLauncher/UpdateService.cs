@@ -250,8 +250,8 @@ public class UpdateService
 
     // Extracts into a staging folder first and only swaps it in once that
     // fully succeeds -- a crash or killed process mid-update should never
-    // leave Game/ half-overwritten and unplayable. The previous install is
-    // kept as Game.old until the swap completes, then removed.
+    // leave GameDir half-overwritten and unplayable. The previous install
+    // is kept as GameDir + ".old" until the swap completes, then removed.
     private static void InstallFromZip(string zipPath)
     {
         if (Directory.Exists(LauncherPaths.StagingDir)) Directory.Delete(LauncherPaths.StagingDir, recursive: true);
@@ -271,9 +271,10 @@ public class UpdateService
         if (oldBackup != null) Directory.Delete(oldBackup, recursive: true);
     }
 
-    // Walks Game/ looking for something launchable. Doesn't assume a fixed
-    // nesting depth -- whether the release zip puts the build straight at
-    // the zip root or one folder deep depends on how it was zipped.
+    // Walks GameDir looking for something launchable. Doesn't assume a
+    // fixed nesting depth -- whether the release zip puts the build
+    // straight at the zip root or one folder deep depends on how it was
+    // zipped.
     public static string? FindGameExecutable()
     {
         if (!Directory.Exists(LauncherPaths.GameDir)) return null;

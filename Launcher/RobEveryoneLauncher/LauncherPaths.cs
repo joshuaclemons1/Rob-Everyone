@@ -9,12 +9,16 @@ public static class LauncherPaths
 {
     public static string RootDir { get; } = AppContext.BaseDirectory;
 
-    public static string GameDir => Path.Combine(RootDir, "Game");
+    // "Rob Everyone", not the generic "Game" this used to be -- so what a
+    // player actually sees next to the launcher .exe after the first run
+    // is self-explanatory (RobEveryoneLauncher.exe + a "Rob Everyone"
+    // folder), not an unlabeled "Game" folder.
+    public static string GameDir => Path.Combine(RootDir, "Rob Everyone");
 
     public static string StateFilePath => Path.Combine(RootDir, "launcher-state.json");
 
     // Used while downloading/extracting so a crash or killed process mid-
-    // update never leaves Game/ in a half-overwritten, unlaunchable state --
-    // UpdateService extracts here first, then atomically swaps it in.
-    public static string StagingDir => Path.Combine(RootDir, "Game.staging");
+    // update never leaves GameDir in a half-overwritten, unlaunchable state
+    // -- UpdateService extracts here first, then atomically swaps it in.
+    public static string StagingDir => Path.Combine(RootDir, "Rob Everyone.staging");
 }

@@ -50,12 +50,12 @@ independent of the UI:
    blindly grab an asset that's clearly marked for a *different*
    platform than the one it's running on.
 3. `DownloadAndInstallAsync` — streams the zip to a temp file (reporting
-   progress), extracts to a `Game.staging/` folder, then swaps it in for
-   `Game/` only once extraction fully succeeds (the previous install is
-   kept as `Game.old/` until the swap completes, then removed) — a
-   crash or killed process mid-update can't leave `Game/` half-written
-   and unplayable.
-4. `FindGameExecutable` — walks `Game/` for something launchable:
+   progress), extracts to a `Rob Everyone.staging/` folder, then swaps it
+   in for `Rob Everyone/` only once extraction fully succeeds (the
+   previous install is kept as `Rob Everyone.old/` until the swap
+   completes, then removed) — a crash or killed process mid-update can't
+   leave `Rob Everyone/` half-written and unplayable.
+4. `FindGameExecutable` — walks `Rob Everyone/` for something launchable:
    `*.exe` on Windows (skipping Unity's `UnityCrashHandler*.exe`
    companions), a `*.app` bundle on macOS, an extensionless file with
    the execute bit set on Linux.
@@ -70,8 +70,8 @@ yet (first run, no network, no build for this platform).
 
 State (which version is installed) is a small `launcher-state.json`
 written next to the launcher's own executable — deliberately not a
-per-user app-data folder, so the whole thing (launcher + `Game/` +
-state) stays one self-contained, movable folder, same spirit as the
+per-user app-data folder, so the whole thing (launcher + `Rob Everyone/`
++ state) stays one self-contained, movable folder, same spirit as the
 game's own zip releases today.
 
 ## UI
@@ -91,11 +91,27 @@ cd Launcher/RobEveryoneLauncher
 dotnet build          # or: dotnet run
 ```
 
-Needs the .NET SDK (10.0+) installed. `dotnet publish -c Release -r
-<RID> --self-contained` produces a distributable build per platform
-(`win-x64`, `osx-arm64`/`osx-x64`, `linux-x64`) — this is what should
-get zipped up and attached to each GitHub release alongside the actual
-game build, once issue #43 sets up per-platform game builds too.
+Needs the .NET SDK (10.0+) installed. A plain
+`dotnet publish -c Release -r <RID> --self-contained` technically works,
+but leaves dozens of loose runtime DLLs sitting next to the .exe —
+confusing to hand someone as "here's the launcher." The actual command
+(same one `.github/workflows/launcher-build.yml` runs) bundles all of
+that into the single executable instead:
+
+```
+dotnet publish -c Release -r <RID> --self-contained true \
+  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none
+```
+
+`<RID>` is `win-x64`, `osx-arm64`/`osx-x64`, or `linux-x64`. Output is
+one executable per platform — that's what should get zipped up and
+attached to each GitHub release alongside the actual game build, once
+issue #43 sets up per-platform game builds too. First run creates a
+`Rob Everyone/` folder next to it with the actual game files
+(`Rob Everyone.staging/`/`Rob Everyone.old/` show up briefly during an
+update, never left behind once one finishes) — the end state next to
+the launcher's own .exe is exactly `RobEveryoneLauncher.exe` +
+`Rob Everyone/` + a small `launcher-state.json`, nothing else.
 
 ## Editor: remove the old popup from `MainMenu.unity`
 

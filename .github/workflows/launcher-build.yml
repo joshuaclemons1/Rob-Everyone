@@ -44,9 +44,21 @@ jobs:
         working-directory: Launcher/RobEveryoneLauncher
         run: dotnet build --configuration Release
 
-      - name: Publish self-contained (${{ matrix.rid }})
+      - name: Publish self-contained single-file (${{ matrix.rid }})
         working-directory: Launcher/RobEveryoneLauncher
-        run: dotnet publish --configuration Release --runtime ${{ matrix.rid }} --self-contained true --output publish
+        # PublishSingleFile + IncludeNativeLibrariesForSelfExtract bundles
+        # the whole self-contained .NET runtime AND Avalonia's native libs
+        # (Skia/HarfBuzz) into the one executable instead of leaving dozens
+        # of loose DLLs next to it -- a plain `--self-contained true`
+        # publish (the old command here) produced exactly that mess, which
+        # is what made the launcher confusing to hand someone: "download
+        # this whole folder of unlabeled files" instead of "download this
+        # one .exe." DebugType=none drops the .pdb, the other loose file
+        # a default publish leaves behind.
+        run: >
+          dotnet publish --configuration Release --runtime ${{ matrix.rid }} --self-contained true
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none
+          --output publish
 
       - uses: actions/upload-artifact@v4
         with:
