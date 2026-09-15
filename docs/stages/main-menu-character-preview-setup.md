@@ -75,13 +75,42 @@ wired to the new component in the scene.
    is now unused (nothing references it anymore) — safe to delete if
    you want to tidy it up, harmless to leave.
 
+## Playtest follow-up (idle animation, drag-to-rotate, slower/animated Settings)
+
+Three more pieces landed after the first playtest pass, all wired in
+code with no extra Editor steps needed — just verify them in Play mode:
+
+1. **Idle animation** — the preview now plays the same Animator
+   Controller every in-game skin uses (`playerAnimatorController` on
+   `MenuCharacterPreview`, already wired to the same asset
+   `Player.prefab` uses), parked at rest parameters so it settles into
+   Idle instead of standing frozen. Check it actually idles instead of
+   T-posing/frozen — if it's frozen, `AnimatorCullingMode` or the
+   Animator Controller reference is the first thing to check.
+2. **Click-and-drag rotation** — new `MenuCharacterPreviewDrag`,
+   attached automatically to whatever RawImage is wired into `Preview
+   Image` (no manual Editor step). Drag left/right to spin the model;
+   release to ease back to its original facing. If the drag direction
+   feels backwards, flip the sign on `degreesPerPixel` (or the `-` in
+   `OnDrag`) — purely a feel choice, not a correctness issue.
+3. **Settings timing** — `MenuActions.fallDuration` (character preview)
+   went from 0.4s to 1s, and the Settings panel itself now animates
+   (`settingsSlideDistance`/`settingsSlideDuration`, new
+   `SettingsSlideRoutine`) instead of an instant `SetActive` swap.
+   Watch both together when opening/closing Settings — they're
+   deliberately separate durations/distances, so it's worth checking
+   they don't look mistimed against each other.
+
 ## Where to look
 
-- `Assets/Scripts/UI/MenuCharacterPreview.cs` — the new persistent
-  preview owner.
+- `Assets/Scripts/UI/MenuCharacterPreview.cs` — the persistent preview
+  owner; also now wires the shared Animator Controller and owns the
+  `SpinPivot` transform the drag script rotates.
+- `Assets/Scripts/UI/MenuCharacterPreviewDrag.cs` — click-drag-to-rotate,
+  eases back to rest on release.
 - `Assets/Scripts/UI/CustomizationUI.cs` — now just skin/color cycling,
   no preview ownership.
 - `Assets/Scripts/UI/MenuActions.cs` — `OpenSettings`/`CloseSettings`
-  now call `PlayFall`.
+  call `PlayFall` (character) and `PlaySettingsSlide` (panel itself).
 - `Assets/Scripts/UI/HotbarSlotUI.cs` — the proven isolated-camera-stage
   pattern this was modeled on.
