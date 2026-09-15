@@ -11280,7 +11280,7 @@ MonoBehaviour:
   - {fileID: 1256691620}
   - {fileID: 988274554}
   standPoint: {fileID: 352980946}
-  exitBlockedUntilSeconds: 180
+  exitBlockedUntilSeconds: 5
   carWaitDuration: 5
   seatSpacing: 0.6
 --- !u!65 &849345398
