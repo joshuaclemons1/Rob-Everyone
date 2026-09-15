@@ -135,7 +135,14 @@ namespace RobEveryone.UI
 
             modelInstance = Instantiate(prefab, modelAnchor);
             modelInstance.transform.localPosition = Vector3.zero;
-            modelInstance.transform.localRotation = Quaternion.identity;
+            // The preview camera sits in front of the model looking down
+            // +Z (it's parked at local Z -4 with an otherwise identity
+            // rotation, so its forward points back toward the origin).
+            // A character's own authored forward is also +Z, so spawning
+            // at identity rotation faces it away from the camera --
+            // confirmed bug, the model showed its back. 180 around Y
+            // turns it to face the camera instead.
+            modelInstance.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
             SetLayerRecursively(modelInstance, modelAnchor.gameObject.layer);
 
             modelColorizer = modelInstance.GetComponent<PlayerColorizer>();
