@@ -100,7 +100,8 @@ that into the single executable instead:
 
 ```
 dotnet publish -c Release -r <RID> --self-contained true \
-  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none
+  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none \
+  -p:CopyOutputSymbolsToPublishDirectory=false
 ```
 
 `<RID>` is `win-x64`, `osx-arm64`/`osx-x64`, or `linux-x64`. Output is

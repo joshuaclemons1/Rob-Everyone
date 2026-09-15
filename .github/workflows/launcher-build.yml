@@ -53,11 +53,19 @@ jobs:
         # publish (the old command here) produced exactly that mess, which
         # is what made the launcher confusing to hand someone: "download
         # this whole folder of unlabeled files" instead of "download this
-        # one .exe." DebugType=none drops the .pdb, the other loose file
-        # a default publish leaves behind.
+        # one .exe." DebugType=none drops our own app's .pdb.
+        # CopyOutputSymbolsToPublishDirectory=false is the one that isn't
+        # obvious: confirmed via a real win-x64 CI run that even with the
+        # three flags above, SkiaSharp/HarfBuzzSharp's own NuGet packages
+        # still copy their *native* library .pdb symbol files into the
+        # publish output on Windows specifically (~105MB combined) --
+        # DebugType only controls our own managed code's symbols, not
+        # content files a referenced package ships. This is the actual
+        # property for suppressing those too.
         run: >
           dotnet publish --configuration Release --runtime ${{ matrix.rid }} --self-contained true
           -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none
+          -p:CopyOutputSymbolsToPublishDirectory=false
           --output publish
 
       - uses: actions/upload-artifact@v4
