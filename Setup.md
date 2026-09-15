@@ -74,9 +74,11 @@ will misbehave — always open `MainMenu` first.
   one machine + a friend) — see [README.md](README.md)'s doc links for
   `stage5-steam-multiplayer.md` if you're specifically testing the Steam
   layer itself.
-- Alpha builds are tagged on GitHub Releases (`alpha-v1`, `alpha-v1.0.1`,
-  …) if you just want to play rather than run from source — the game
-  checks on launch and prompts if a newer one exists.
+- Alpha builds are tagged on GitHub Releases (`v1.0.0-alpha`,
+  `v1.0.1-alpha`, …) if you just want to play rather than run from
+  source — grab the standalone launcher (see
+  [docs/stages/launcher-setup.md](docs/stages/launcher-setup.md)) and it
+  checks for a newer build on every run.
 
 ## 6. Day-to-day workflow
 

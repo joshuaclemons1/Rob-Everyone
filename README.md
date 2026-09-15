@@ -54,7 +54,7 @@ New here? Start with **[Setup.md](Setup.md)**.
 
 ## Status
 
-Alpha — three builds shipped so far (`alpha-v1` → `alpha-v1.0.3`), the
+Alpha — five builds shipped so far (`v1.0.0-alpha` → `v1.0.4-alpha`), the
 core loop plus the full meta-game (shop, Jail & Bail, AI, night mode,
 VoIP, a real Settings menu) are built and playtested. Status lives in
 **[GitHub Issues](https://github.com/joshuaclemons1/Rob-Everyone/issues)**

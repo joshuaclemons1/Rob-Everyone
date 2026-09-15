@@ -22,7 +22,7 @@ public class UpdateService
 {
     // Deliberately NOT /releases/latest -- that endpoint excludes
     // prerelease/draft releases entirely, and every release this project
-    // has published so far (all the alpha-vX.X.X tags) is marked
+    // has published so far (all the vX.X.X-alpha tags) is marked
     // prerelease, so it 404s every single time. Confirmed live while
     // building this: the old in-game UpdateChecker used /releases/latest
     // too, which means it silently never found an update the whole time
@@ -34,13 +34,14 @@ public class UpdateService
     // needs more than just the single newest to search through.
     private const string ReleasesUrl = "https://api.github.com/repos/joshuaclemons1/Rob-Everyone/releases?per_page=10";
 
-    // Every real game release is tagged alpha-vX.X.X. Confirmed real risk
-    // otherwise: this repo also carries the launcher's own separate,
+    // Every real game release is tagged vX.X.X-alpha (renamed from the
+    // original alpha-vX.X.X convention -- see git history). Confirmed real
+    // risk otherwise: this repo also carries the launcher's own separate,
     // standalone release (see docs/stages/launcher-setup.md), and without
     // this filter, publishing literally anything else on the repo newer
     // than the last game release would make GetLatestReleaseAsync grab
     // that instead and try to install it as if it were a game update.
-    private const string GameReleaseTagPrefix = "alpha-v";
+    private const string GameReleaseTagSuffix = "-alpha";
 
     // Windows companion executables Unity's build drops alongside the real
     // game .exe -- never the thing we actually want to launch.
@@ -159,7 +160,7 @@ public class UpdateService
         if (!response.IsSuccessStatusCode) return null;
         await using Stream stream = await response.Content.ReadAsStreamAsync(ct);
         List<GitHubRelease>? releases = await JsonSerializer.DeserializeAsync<List<GitHubRelease>>(stream, cancellationToken: ct);
-        return releases?.FirstOrDefault(r => r.TagName.StartsWith(GameReleaseTagPrefix, StringComparison.OrdinalIgnoreCase));
+        return releases?.FirstOrDefault(r => r.TagName.EndsWith(GameReleaseTagSuffix, StringComparison.OrdinalIgnoreCase));
     }
 
     // Prefers an asset carrying this platform's suffix (RobEveryone-<tag>-win.zip

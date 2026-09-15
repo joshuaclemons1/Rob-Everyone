@@ -102,7 +102,7 @@ let you fake two players locally) for this to mean anything:
 3. Play a full batch together, same checklist as Stage 4's Rest Point 9.
 
 Stage 4/5 are both done, including this Rest Point — confirmed via a
-real two-Steam-account overlay invite test during the alpha-v1.0.2
+real two-Steam-account overlay invite test during the v1.0.2-alpha
 build/testing cycle. See
 [issue #34](https://github.com/joshuaclemons1/Rob-Everyone/issues/34)
 and [issue #17](https://github.com/joshuaclemons1/Rob-Everyone/issues/17)

@@ -7,7 +7,7 @@ namespace RobEveryoneLauncher;
 // separate from the game's own Application.version, since the launcher has
 // to know this *before* the game (or Unity) is even running. Convention:
 // InstalledVersion is always the exact GitHub release tag (e.g.
-// "alpha-v1.0.3"), matching how the game's own Player Settings Version is
+// "v1.0.3-alpha"), matching how the game's own Player Settings Version is
 // kept in sync with each release tag.
 public class LauncherState
 {

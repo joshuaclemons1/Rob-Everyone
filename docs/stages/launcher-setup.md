@@ -19,7 +19,7 @@ pre-launch updater. Tracked in
 - **A real bug found building this**: GitHub's `/releases/latest` API
   endpoint — what the old in-game checker used — excludes prerelease
   and draft releases entirely. Every release this project has published
-  so far (all the `alpha-vX.X.X` tags) is marked prerelease, so that
+  so far (all the `vX.X.X-alpha` tags) is marked prerelease, so that
   endpoint 404s every single time. Confirmed live against the real repo
   while building the launcher. This means **the old in-game update
   checker never once found an update the whole time it existed** — it
