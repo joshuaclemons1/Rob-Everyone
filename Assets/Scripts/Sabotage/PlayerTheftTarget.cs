@@ -100,14 +100,14 @@ namespace RobEveryone.Sabotage
         private void TargetOpenStealScreen(NetworkConnectionToClient target, NetworkIdentity victim)
         {
             if (victim == null) return;
-            InventoryScreenUI screen = FindFirstObjectByType<InventoryScreenUI>(FindObjectsInactive.Include);
+            InventoryScreenUI screen = FindAnyObjectByType<InventoryScreenUI>(FindObjectsInactive.Include);
             if (screen != null) screen.OpenSteal(victim.GetComponent<PlayerInventory>());
         }
 
         [TargetRpc]
         private void TargetCloseStealScreen(NetworkConnectionToClient target)
         {
-            InventoryScreenUI screen = FindFirstObjectByType<InventoryScreenUI>(FindObjectsInactive.Include);
+            InventoryScreenUI screen = FindAnyObjectByType<InventoryScreenUI>(FindObjectsInactive.Include);
             if (screen != null) screen.CloseSteal();
         }
 

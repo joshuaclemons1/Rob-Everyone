@@ -18,15 +18,14 @@ namespace RobEveryone.UI
     // a route than a fixed rotating spotlight.
     public class MenuBackgroundCamera : MonoBehaviour
     {
-        // Defaults sized to Lobby, not the original invented ring --
-        // roughly the real footprint of Lobby.unity's PawnShop building
-        // and yard (worked out from its own PlayerSpawnPoint/PawnShop/
-        // SellStation transforms: a ~40x45 unit area centered around
-        // roughly (-5, 0, -8) in Lobby's own world space), so the orbit
-        // actually circles the real building instead of empty space or
-        // clipping through it. Starting values, not tuned ones -- see
-        // the setup doc.
-        [SerializeField] private Vector3 orbitCenter = new(-5f, 0f, -8f);
+        // orbitRadius/orbitHeight sized to roughly Lobby.unity's own
+        // footprint (worked out from its PlayerSpawnPoint/PawnShop/
+        // SellStation transforms, a ~40x45 unit area) -- orbitCenter is
+        // pinned to world origin per direct instruction, not Lobby's own
+        // building position, so this is a plain scene-independent orbit
+        // rather than one aimed at a specific landmark. Starting values,
+        // not tuned ones -- see the setup doc.
+        [SerializeField] private Vector3 orbitCenter = Vector3.zero;
         [SerializeField] private float orbitRadius = 40f;
         [SerializeField] private float orbitHeight = 28f;
         [SerializeField] private float orbitSpeedDegreesPerSecond = 2.5f;

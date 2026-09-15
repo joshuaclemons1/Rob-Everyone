@@ -39,7 +39,7 @@ namespace RobEveryone.UI
         {
             Slot = GetComponent<HotbarSlotUI>();
             screen = GetComponentInParent<InventoryScreenUI>(true);
-            if (screen == null) screen = FindFirstObjectByType<InventoryScreenUI>(FindObjectsInactive.Include);
+            if (screen == null) screen = FindAnyObjectByType<InventoryScreenUI>(FindObjectsInactive.Include);
         }
 
         public void OnBeginDrag(PointerEventData eventData)

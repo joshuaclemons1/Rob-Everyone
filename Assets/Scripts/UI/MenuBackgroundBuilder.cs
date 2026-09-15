@@ -71,6 +71,28 @@ namespace RobEveryone.UI
             SceneManager.sceneLoaded -= OnLobbySceneLoaded;
             loadedLobbyScene = scene;
             lobbySceneLoaded = true;
+
+            DisableLobbyUI(scene);
+        }
+
+        // Lobby.unity ships its own root-level "Canvas" (hotbar, cash
+        // bar, pause menu, etc.) -- a Screen Space Overlay canvas like
+        // Main Menu's own, so with nothing to stop it, it renders
+        // directly on top of the menu regardless of which camera is
+        // active. Confirmed showing through in a real Play-mode test.
+        // Only the 3D geometry is wanted here, so every Canvas this
+        // additively-loaded scene brings in gets disabled -- found by
+        // component rather than hardcoding the name "Canvas", so this
+        // still works correctly if Lobby's UI hierarchy ever changes.
+        private static void DisableLobbyUI(Scene scene)
+        {
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                foreach (Canvas canvas in root.GetComponentsInChildren<Canvas>(true))
+                {
+                    canvas.gameObject.SetActive(false);
+                }
+            }
         }
 
         private void Update()

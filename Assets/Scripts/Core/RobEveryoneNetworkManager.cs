@@ -144,7 +144,7 @@ namespace RobEveryone.Core
         {
             base.OnClientSceneChanged();
 
-            LoadingScreenUI screen = FindFirstObjectByType<LoadingScreenUI>();
+            LoadingScreenUI screen = FindAnyObjectByType<LoadingScreenUI>();
             if (screen != null) screen.Hide();
         }
 
@@ -163,7 +163,7 @@ namespace RobEveryone.Core
         {
             base.OnStartHost();
 
-            LoadingScreenUI screen = FindFirstObjectByType<LoadingScreenUI>();
+            LoadingScreenUI screen = FindAnyObjectByType<LoadingScreenUI>();
             if (screen != null) screen.Show("Loading...");
         }
 
@@ -184,7 +184,7 @@ namespace RobEveryone.Core
 
             if (NetworkServer.active) return;
 
-            LoadingScreenUI screen = FindFirstObjectByType<LoadingScreenUI>();
+            LoadingScreenUI screen = FindAnyObjectByType<LoadingScreenUI>();
             if (screen != null) screen.Show("Joining game...");
         }
     }

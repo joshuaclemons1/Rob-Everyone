@@ -131,7 +131,7 @@ namespace RobEveryone.AI
         // exist at edit time.
         public override void OnStartServer()
         {
-            if (roundManager == null) roundManager = FindFirstObjectByType<RoundManager>();
+            if (roundManager == null) roundManager = FindAnyObjectByType<RoundManager>();
 
             agent.speed = EffectiveSpeed(patrolSpeed);
             if (patrolPoints.Count > 0)

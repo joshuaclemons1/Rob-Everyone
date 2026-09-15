@@ -128,7 +128,7 @@ namespace RobEveryone.Player
             Carryable best = null;
             float bestAngle = grabAssistMaxAngle;
 
-            foreach (Carryable candidate in FindObjectsByType<Carryable>(FindObjectsSortMode.None))
+            foreach (Carryable candidate in FindObjectsByType<Carryable>())
             {
                 if (candidate.gameObject == gameObject || !candidate.CanBeGrabbed) continue;
 

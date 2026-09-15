@@ -42,7 +42,7 @@ namespace RobEveryone.AI
         // already existed.
         public override void OnStartServer()
         {
-            activeOfficers.AddRange(FindObjectsByType<PoliceAI>(FindObjectsSortMode.None));
+            activeOfficers.AddRange(FindObjectsByType<PoliceAI>());
         }
 
         private void OnEnable() => HomeownerAI.OnAlertRaised += HandleAlertRaised;

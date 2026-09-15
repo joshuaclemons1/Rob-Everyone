@@ -95,7 +95,7 @@ namespace RobEveryone.Round
         [TargetRpc]
         private void TargetShowJailNotification(NetworkConnectionToClient target, string message)
         {
-            JailNotificationUI ui = FindFirstObjectByType<JailNotificationUI>();
+            JailNotificationUI ui = FindAnyObjectByType<JailNotificationUI>();
             if (ui != null) ui.Show(message, 3f);
         }
 
@@ -107,7 +107,7 @@ namespace RobEveryone.Round
         {
             if (playerName == PlayerInventory.LocalPlayer?.DisplayName) return;
 
-            JailAlertUI alert = FindFirstObjectByType<JailAlertUI>();
+            JailAlertUI alert = FindAnyObjectByType<JailAlertUI>();
             if (alert != null) alert.Show($"{playerName} got caught! Bail price is ${bailPrice}");
         }
 

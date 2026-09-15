@@ -11819,7 +11819,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 11a3c89697654ec4b4709e44586941ba, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.UI.MenuBackgroundCamera
-  orbitCenter: {x: -5, y: 0, z: -8}
+  orbitCenter: {x: 0, y: 0, z: 0}
   orbitRadius: 40
   orbitHeight: 28
   orbitSpeedDegreesPerSecond: 2.5

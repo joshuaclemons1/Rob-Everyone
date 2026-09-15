@@ -236,7 +236,7 @@ namespace RobEveryone.Core
         [Server]
         private void RescuePlayer(Transform player)
         {
-            PlayerSpawnPoint[] spawns = FindObjectsByType<PlayerSpawnPoint>(FindObjectsSortMode.None);
+            PlayerSpawnPoint[] spawns = FindObjectsByType<PlayerSpawnPoint>();
             if (spawns.Length == 0) return;
 
             TeleportPlayerTo(player, spawns[0].transform);
@@ -262,7 +262,7 @@ namespace RobEveryone.Core
         [Server]
         private JailPoint ClaimJailPoint(PlayerInventory player)
         {
-            JailPoint[] slots = FindObjectsByType<JailPoint>(FindObjectsSortMode.None);
+            JailPoint[] slots = FindObjectsByType<JailPoint>();
             if (slots.Length == 0) return null;
 
             foreach (JailPoint slot in slots)
@@ -289,7 +289,7 @@ namespace RobEveryone.Core
             PlayerInventory inventory = player.GetComponent<PlayerInventory>();
             if (inventory != null) occupiedJailPoints.Remove(inventory);
 
-            JailExitPoint exit = FindFirstObjectByType<JailExitPoint>();
+            JailExitPoint exit = FindAnyObjectByType<JailExitPoint>();
             if (exit != null) TeleportPlayerTo(player, exit.transform);
         }
 
@@ -333,7 +333,7 @@ namespace RobEveryone.Core
             Camera playerCamera = NetworkClient.localPlayer.GetComponentInChildren<Camera>(true);
             if (playerCamera == null) yield break;
 
-            foreach (Canvas canvas in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+            foreach (Canvas canvas in FindObjectsByType<Canvas>())
             {
                 if (canvas.renderMode == RenderMode.ScreenSpaceCamera && canvas.worldCamera == null)
                 {
@@ -543,7 +543,7 @@ namespace RobEveryone.Core
         [Server]
         private void PositionPlayer(Transform player, int index)
         {
-            PlayerSpawnPoint[] spawns = FindObjectsByType<PlayerSpawnPoint>(FindObjectsSortMode.None);
+            PlayerSpawnPoint[] spawns = FindObjectsByType<PlayerSpawnPoint>();
             if (spawns.Length == 0) return;
 
             Transform spawn = spawns[index % spawns.Length].transform;
@@ -806,7 +806,7 @@ namespace RobEveryone.Core
         [TargetRpc]
         private void TargetShowLoadingScreen(NetworkConnectionToClient target, string message)
         {
-            LoadingScreenUI screen = FindFirstObjectByType<LoadingScreenUI>();
+            LoadingScreenUI screen = FindAnyObjectByType<LoadingScreenUI>();
             if (screen != null) screen.Show(message);
         }
 
@@ -820,7 +820,7 @@ namespace RobEveryone.Core
         [TargetRpc]
         private void TargetShowQuotaResult(NetworkConnectionToClient target, string message)
         {
-            LoadingScreenUI screen = FindFirstObjectByType<LoadingScreenUI>();
+            LoadingScreenUI screen = FindAnyObjectByType<LoadingScreenUI>();
             if (screen == null) return;
             screen.Show(message);
             screen.Hide();
@@ -829,7 +829,7 @@ namespace RobEveryone.Core
         [ClientRpc]
         private void RpcShowLoadingScreen(string message)
         {
-            LoadingScreenUI screen = FindFirstObjectByType<LoadingScreenUI>();
+            LoadingScreenUI screen = FindAnyObjectByType<LoadingScreenUI>();
             if (screen != null) screen.Show(message);
         }
 
@@ -845,7 +845,7 @@ namespace RobEveryone.Core
         // call site now hides it directly instead.
         public void HandleClientSceneChanged()
         {
-            LoadingScreenUI screen = FindFirstObjectByType<LoadingScreenUI>();
+            LoadingScreenUI screen = FindAnyObjectByType<LoadingScreenUI>();
             if (screen != null) screen.Hide();
         }
     }
