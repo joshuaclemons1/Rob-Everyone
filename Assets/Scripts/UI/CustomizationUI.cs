@@ -7,24 +7,26 @@ namespace RobEveryone.UI
 {
     // Drives the character customization screen: Next/Previous skin
     // cycling and a color swatch picker (built from a PlayerColorPalette),
-    // both writing to PlayerCosmeticSelection, plus a live 3D preview
-    // instance that updates immediately on either change.
+    // both writing to PlayerCosmeticSelection.
+    //
+    // Issue #39 (2/3): no longer owns the live 3D preview instance --
+    // that moved to MenuCharacterPreview, which persists across every
+    // Main Menu panel instead of only existing while this specific
+    // screen is open. This component just needs to write the selection;
+    // MenuCharacterPreview already listens for PlayerCosmeticSelection.
+    // OnChanged on its own and reacts independently.
     public class CustomizationUI : MonoBehaviour
     {
         [SerializeField] private PlayerSkinRoster skinRoster;
         [SerializeField] private PlayerColorPalette palette;
-        [SerializeField] private Transform previewSpawnPoint;
         [SerializeField] private Transform swatchContainer;
         [SerializeField] private Button swatchButtonTemplate;
 
-        private GameObject previewInstance;
-        private PlayerColorizer previewColorizer;
         private bool swatchesBuilt;
 
         private void OnEnable()
         {
             BuildSwatches();
-            Refresh();
         }
 
         public void NextSkin() => ChangeSkin(1);
@@ -36,7 +38,6 @@ namespace RobEveryone.UI
 
             int next = (PlayerCosmeticSelection.SkinIndex + delta + skinRoster.Count) % skinRoster.Count;
             PlayerCosmeticSelection.SkinIndex = next;
-            Refresh();
         }
 
         private void BuildSwatches()
@@ -64,38 +65,6 @@ namespace RobEveryone.UI
         private void SelectColor(int index)
         {
             PlayerCosmeticSelection.ColorIndex = index;
-            Refresh();
-        }
-
-        private void Refresh()
-        {
-            SpawnPreview();
-            ApplyColor();
-        }
-
-        private void SpawnPreview()
-        {
-            if (skinRoster == null || skinRoster.Count == 0 || previewSpawnPoint == null) return;
-
-            GameObject skinPrefab = skinRoster.GetSkin(PlayerCosmeticSelection.SkinIndex);
-            if (skinPrefab == null) return;
-
-            if (previewInstance != null) Destroy(previewInstance);
-
-            previewInstance = Instantiate(skinPrefab, previewSpawnPoint.position, previewSpawnPoint.rotation, previewSpawnPoint);
-            previewColorizer = previewInstance.GetComponent<PlayerColorizer>();
-            if (previewColorizer == null) previewColorizer = previewInstance.AddComponent<PlayerColorizer>();
-        }
-
-        private void ApplyColor()
-        {
-            if (previewColorizer == null || palette == null) return;
-
-            IReadOnlyList<Color> colors = palette.Colors;
-            if (colors.Count == 0) return;
-
-            int colorIndex = Mathf.Clamp(PlayerCosmeticSelection.ColorIndex, 0, colors.Count - 1);
-            previewColorizer.ApplyBodyColor(colors[colorIndex]);
         }
     }
 }

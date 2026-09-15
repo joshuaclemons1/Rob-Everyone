@@ -1198,7 +1198,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.UI.CustomizationUI
   skinRoster: {fileID: 11400000, guid: 3c1530e97fff4b7bb2052ea0582e939e, type: 2}
   palette: {fileID: 11400000, guid: 9937d1164956e40c293a381f5235a1ce, type: 2}
-  previewSpawnPoint: {fileID: 1940232969}
   swatchContainer: {fileID: 1719695864}
   swatchButtonTemplate: {fileID: 46753464}
 --- !u!1 &129764850
@@ -7630,6 +7629,7 @@ GameObject:
   - component: {fileID: 1212101970}
   - component: {fileID: 1212101969}
   - component: {fileID: 1212101971}
+  - component: {fileID: 737550363}
   m_Layer: 0
   m_Name: MenuManager
   m_TagString: Untagged
@@ -7652,6 +7652,9 @@ MonoBehaviour:
   mainMenuPanel: {fileID: 1535254012}
   settingsPanel: {fileID: 1683563406}
   menuNavigator: {fileID: 1212101971}
+  characterPreview: {fileID: 737550363}
+  fallDistance: 2000
+  fallDuration: 0.4
 --- !u!4 &1212101970
 Transform:
   m_ObjectHideFlags: 0
@@ -7683,6 +7686,22 @@ MonoBehaviour:
   slideDistance: 3840
   outgoingSlideFraction: 0.08
   dimAlpha: 0.5
+--- !u!114 &737550363
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1212101968}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8369ec57bc8d476f80fedb64e86851f1, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.UI.MenuCharacterPreview
+  skinRoster: {fileID: 11400000, guid: 3c1530e97fff4b7bb2052ea0582e939e, type: 2}
+  palette: {fileID: 11400000, guid: 9937d1164956e40c293a381f5235a1ce, type: 2}
+  previewImage: {fileID: 0}
+  previewPadding: 1.15
 --- !u!1001 &1215418082
 PrefabInstance:
   m_ObjectHideFlags: 0

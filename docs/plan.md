@@ -60,10 +60,13 @@ migration, rebinding, audio mixer, graphics, accessibility, pause menu),
 [ui-implementation-setup.md](stages/ui-implementation-setup.md) (crosshair,
 Cash/Quota/Timer HUD), and
 [launcher-setup.md](stages/launcher-setup.md) (pre-launch auto-update
-launcher, replacing the old in-game update popup), and
+launcher, replacing the old in-game update popup),
 [t1-2-bug-fixes.md](stages/t1-2-bug-fixes.md) (code-only fixes for the
 Tier 1/2 priority-list bugs, written without Editor access — the
-checklist for testing them once back at a PC).
+checklist for testing them once back at a PC), and
+[main-menu-character-preview-setup.md](stages/main-menu-character-preview-setup.md)
+(issue #39: persistent character preview + Settings fall animation,
+the Editor checklist for the pieces that needed real eyes).
 Style/asset reference (palette, sourced packs, remaining art to-do) is in
 [art-info.md](art-info.md); UI/menu element spec is in
 [ui-design.md](stages/ui-design.md); main menu build docs are
