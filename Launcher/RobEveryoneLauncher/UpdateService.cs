@@ -343,6 +343,28 @@ public class UpdateService
             startInfo.UseShellExecute = false;
             startInfo.FileName = executablePath;
             startInfo.WorkingDirectory = Path.GetDirectoryName(executablePath) ?? LauncherPaths.GameDir;
+
+            // Confirmed real bug: SteamAPI_Init() failed specifically when
+            // launched Steam -> this launcher -> the game (a grandchild of
+            // Steam, not a direct child), even though the game's own
+            // steam_appid.txt sits right next to it and WorkingDirectory
+            // above is set correctly. steam_appid.txt's file-based lookup
+            // is the *fallback* Valve documents for "running independently
+            // of Steam" -- setting the SteamAppId environment variable
+            // directly on the child process is the more robust mechanism
+            // Valve recommends specifically for a launcher-spawns-game
+            // process chain like this one, and doesn't depend on Steam
+            // correctly resolving anything through however it invoked
+            // this launcher (e.g. as a Non-Steam Game shortcut). Read
+            // from the game's own steam_appid.txt rather than
+            // hardcoding 480 here too, so this doesn't need its own code
+            // change whenever the real AppID replaces the test one.
+            string appIdFile = Path.Combine(startInfo.WorkingDirectory, "steam_appid.txt");
+            if (File.Exists(appIdFile))
+            {
+                string appId = File.ReadAllText(appIdFile).Trim();
+                if (appId.Length > 0) startInfo.EnvironmentVariables["SteamAppId"] = appId;
+            }
         }
 
         Process.Start(startInfo);
