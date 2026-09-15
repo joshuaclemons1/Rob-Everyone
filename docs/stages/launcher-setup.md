@@ -100,9 +100,17 @@ that into the single executable instead:
 
 ```
 dotnet publish -c Release -r <RID> --self-contained true \
-  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none \
-  -p:CopyOutputSymbolsToPublishDirectory=false
+  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none
+rm -f bin/Release/net10.0/<RID>/publish/*.pdb
 ```
+
+The `rm` isn't optional on Windows: SkiaSharp/HarfBuzzSharp's own NuGet
+packages ship their *native* library `.pdb` files as content items that
+copy into the publish output regardless of `DebugType` (that only
+controls this project's own compiled output, not a referenced package's
+content items) — confirmed via CI, ~105MB combined. Nobody's debugging
+native Skia/HarfBuzz crashes here, so just deleting them after the fact
+is the reliable fix.
 
 `<RID>` is `win-x64`, `osx-arm64`/`osx-x64`, or `linux-x64`. Output is
 one executable per platform — that's what should get zipped up and

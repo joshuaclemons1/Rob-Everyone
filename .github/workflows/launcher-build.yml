@@ -54,19 +54,23 @@ jobs:
         # is what made the launcher confusing to hand someone: "download
         # this whole folder of unlabeled files" instead of "download this
         # one .exe." DebugType=none drops our own app's .pdb.
-        # CopyOutputSymbolsToPublishDirectory=false is the one that isn't
-        # obvious: confirmed via a real win-x64 CI run that even with the
-        # three flags above, SkiaSharp/HarfBuzzSharp's own NuGet packages
-        # still copy their *native* library .pdb symbol files into the
-        # publish output on Windows specifically (~105MB combined) --
-        # DebugType only controls our own managed code's symbols, not
-        # content files a referenced package ships. This is the actual
-        # property for suppressing those too.
         run: >
           dotnet publish --configuration Release --runtime ${{ matrix.rid }} --self-contained true
           -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none
-          -p:CopyOutputSymbolsToPublishDirectory=false
           --output publish
+
+      - name: Remove native library debug symbols
+        # Confirmed via two real win-x64 CI runs: SkiaSharp/HarfBuzzSharp's
+        # own NuGet packages ship their *native* library .pdb files as
+        # explicit content items, which copy into the publish output
+        # regardless of DebugType or CopyOutputSymbolsToPublishDirectory --
+        # neither controls a referenced package's own content items, only
+        # this project's own compiled output. ~105MB combined on Windows,
+        # nobody debugging native Skia/HarfBuzz crashes here -- just
+        # deleting them after the fact is the reliable fix. shell: bash
+        # works on all three matrix OSes (Windows runners ship Git Bash).
+        shell: bash
+        run: rm -f Launcher/RobEveryoneLauncher/publish/*.pdb
 
       - uses: actions/upload-artifact@v4
         with:
