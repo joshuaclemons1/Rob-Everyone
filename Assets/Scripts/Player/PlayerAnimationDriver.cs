@@ -12,6 +12,11 @@ namespace RobEveryone.Player
         Shoot = 1,       // Tranq Gun / Taser point-and-zap
         Swing = 2,       // Bat / Hammer melee (and thrown items, close enough)
         ReceiveHit = 3,  // non-ragdoll flinch -- reserved, nothing fires it yet
+        // Issue #50: the arms-only jump overlay used while bhopping/moving
+        // -- fired instead of the base layer's full-body Jump state so the
+        // legs stay in the Walk/Run blend the whole time. See
+        // PlayerAnimationDriver.HandleJumped/ShouldUseArmsOnlyJump.
+        Jump = 4,
     }
 
     // Drives the skin's Animator from FirstPersonController's movement
@@ -65,6 +70,15 @@ namespace RobEveryone.Player
         // How fast the upper-body Action layer fades in when a one-shot
         // fires and back out when it's done (weight units per second).
         [SerializeField] private float actionBlendSpeed = 8f;
+
+        // Issue #50: how fast a player has to be moving at the moment they
+        // jump for it to route through the arms-only PlayerActionAnim.Jump
+        // overlay instead of the full-body base-layer Jump state. Small,
+        // not zero -- FirstPersonController.HorizontalSpeed is rarely
+        // EXACTLY 0 even standing still (tiny residual input, floating
+        // point drift), so a hard > 0f check would flicker between the two
+        // on what should read as a clean standing jump.
+        [SerializeField] private float movingJumpSpeedThreshold = 0.1f;
 
         private static readonly int SpeedParam = Animator.StringToHash("Speed");
         private static readonly int GroundedParam = Animator.StringToHash("Grounded");
@@ -207,6 +221,24 @@ namespace RobEveryone.Player
         {
             if (!TryResolveAnimator() || !animator.enabled) return;
 
+            // Issue #50: a bhop/moving jump plays an arms-only overlay on
+            // the Action layer instead of snapping the whole body into the
+            // base layer's Jump pose -- the legs just keep running the
+            // whole time. Reuses the exact upper-body-one-shot machinery
+            // already built for PickUp/Shoot/Swing (PlayAction handles its
+            // own local-trigger + Command/ClientRpc relay identically to
+            // those) rather than inventing a parallel system, per the
+            // issue's own framing. A standing-still jump, or jumping while
+            // carrying (which already has its own distinct full-body
+            // transition -- see PlayerAnimatorBuilder.BuildBaseLayer's
+            // jumpToCarry), is unchanged: the ordinary full-body Jump
+            // state below, exactly as before this issue.
+            if (ShouldUseArmsOnlyJump())
+            {
+                PlayAction(PlayerActionAnim.Jump);
+                return;
+            }
+
             // The jump physics are instant now (FirstPersonController
             // applies the launch the same frame Space goes down) -- this
             // only fires the animation. JumpSpeed rescales the clip so it
@@ -226,6 +258,23 @@ namespace RobEveryone.Player
             // own copy above, an Rpc echo back to itself would double it
             // up a frame later).
             CmdNotifyJumped(speedMultiplier);
+        }
+
+        // See movingJumpSpeedThreshold's own comment for the speed side of
+        // this. Carrying is excluded regardless of speed -- it already has
+        // its own distinct full-body carry-jump transition in the base
+        // layer, and layering an arms overlay on top of hands already full
+        // holding a downed player would look wrong. Falls back to false if
+        // the controller has no Action layer at all (an un-rebuilt
+        // PlayerAnimator.controller), same defensive pattern
+        // TryResolveAnimator already uses elsewhere in this file --
+        // PlayAction itself also no-ops without one, but checking here
+        // too keeps this method's own name ("should") honest.
+        private bool ShouldUseArmsOnlyJump()
+        {
+            return actionLayerIndex >= 0
+                && firstPersonController.HorizontalSpeed > movingJumpSpeedThreshold
+                && (carryController == null || !carryController.IsCarrying);
         }
 
         // Split out so the locally-triggering owner and the RPC-driven

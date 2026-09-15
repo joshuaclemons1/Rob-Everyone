@@ -23,8 +23,11 @@ namespace RobEveryone.EditorTools
     //   Action Layer (upper-body mask, Override, weight driven from code)
     //     - None        : empty default state (base layer shows through)
     //     - Action      : 1D blend tree on ActionType -> PickUp / Shoot /
-    //                     Swing / RecieveHit  (tagged "Action" so
+    //                     Swing / RecieveHit / Jump (tagged "Action" so
     //                     PlayerAnimationDriver knows to fade the layer in)
+    //                     -- Jump here is issue #50's arms-only bhop/
+    //                     moving-jump overlay, the base layer's own Jump
+    //                     state stays reserved for a standing-still jump
     //
     // Parameters: Speed, Grounded, Jump (trigger), JumpSpeed, Carrying,
     // Action (trigger), ActionType (int) -- matches PlayerAnimationDriver
@@ -202,7 +205,13 @@ namespace RobEveryone.EditorTools
                 (clips["PickUp"], 0f),
                 (clips["Shoot_OneHanded"], 1f),
                 (clips["SwordSlash"], 2f),
-                (clips["RecieveHit"], 3f));
+                (clips["RecieveHit"], 3f),
+                // Issue #50: arms-only overlay for a bhop/moving jump --
+                // reuses this same one-shot layer instead of a parallel
+                // state/transition set, per PlayerActionAnim.Jump's own
+                // comment. Same Jump clip the base layer's own Jump state
+                // uses, just masked to the upper body here.
+                (clips["Jump"], 4f));
             AnimatorState actionState = FindState(sm, "Action");
             actionState.tag = "Action"; // PlayerAnimationDriver.UpdateActionLayerWeight keys off this
 
