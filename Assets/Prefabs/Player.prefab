@@ -341,6 +341,7 @@ GameObject:
   - component: {fileID: 2769242573910325723}
   - component: {fileID: 6985670110692925475}
   - component: {fileID: 5901966218566560062}
+  - component: {fileID: 5829648498184655383}
   m_Layer: 8
   m_Name: Player
   m_TagString: Untagged
@@ -415,6 +416,10 @@ MonoBehaviour:
   crouchHeightRatio: 0.55
   groundAcceleration: 60
   holdToAutoHop: 1
+  bobCyclesPerSecond: 0.6
+  bobVerticalAmplitude: 0.045
+  bobHorizontalAmplitude: 0.03
+  bobIntensitySmoothing: 8
   airAcceleration: 100
   airWishSpeed: 3
   maxAirSpeed: 24
@@ -763,6 +768,7 @@ MonoBehaviour:
   - {fileID: 8300000, guid: e365c07f1c604a14d920ab528a634ead, type: 3}
   jailedVolume: 0.8
   rescuedVolume: 0.7
+  confinementRadius: 4
 --- !u!114 &7344029612143130520
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -976,3 +982,16 @@ MonoBehaviour:
   minSpeedToStep: 0.5
   volume: 0.1
   maxAudibleDistance: 20
+--- !u!114 &5829648498184655383
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4564336539568727325}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3edeb308fa8fd451292b0e6a787f1779, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Core.Issue5PositionDebug
+  teleportJumpThreshold: 5
