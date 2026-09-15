@@ -123,6 +123,21 @@ namespace RobEveryone.Player
             firstPersonController = GetComponent<FirstPersonController>();
             skinSpawner = GetComponent<PlayerSkinSpawner>();
             carryController = GetComponent<CarryController>();
+
+            // Issue #52: a live skin swap (pedestal/mirror) destroys and
+            // replaces SkinInstance out from under this cached Animator
+            // reference. Dropping it here just makes TryResolveAnimator
+            // re-run its own already-lazy resolve against the new
+            // instance next time anything needs it -- no different from
+            // how it already handles a skin that simply hadn't arrived
+            // yet.
+            skinSpawner.OnSkinRebuilt += HandleSkinRebuilt;
+        }
+
+        private void HandleSkinRebuilt()
+        {
+            animator = null;
+            actionLayerIndex = -1;
         }
 
         private void Start()
@@ -167,6 +182,7 @@ namespace RobEveryone.Player
         private void OnDestroy()
         {
             if (firstPersonController != null) firstPersonController.Jumped -= HandleJumped;
+            if (skinSpawner != null) skinSpawner.OnSkinRebuilt -= HandleSkinRebuilt;
         }
 
         private void Update()

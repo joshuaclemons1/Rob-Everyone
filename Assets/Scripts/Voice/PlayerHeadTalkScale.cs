@@ -37,6 +37,23 @@ namespace RobEveryone.Voice
         {
             skinSpawner = GetComponent<PlayerSkinSpawner>();
             playback = GetComponent<SteamVoicePlayback>();
+
+            // Issue #52: a live skin swap (pedestal/mirror) destroys the
+            // exact bone this was resolved against -- dropping the cached
+            // reference lets Update's own already-lazy poll re-find it on
+            // the new skin, same path it already uses while waiting for
+            // the very first skin to arrive.
+            skinSpawner.OnSkinRebuilt += HandleSkinRebuilt;
+        }
+
+        private void HandleSkinRebuilt()
+        {
+            headBone = null;
+        }
+
+        private void OnDestroy()
+        {
+            if (skinSpawner != null) skinSpawner.OnSkinRebuilt -= HandleSkinRebuilt;
         }
 
         private void Update()
