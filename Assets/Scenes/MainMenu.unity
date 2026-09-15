@@ -4170,8 +4170,8 @@ RectTransform:
   m_GameObject: {fileID: 644120902}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 1.5, y: 1.5, z: 1.5}
+  m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 1190051945}
   - {fileID: 1631166055}
@@ -7573,7 +7573,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1190051945
 RectTransform:
   m_ObjectHideFlags: 0
@@ -9489,6 +9489,7 @@ GameObject:
   - component: {fileID: 1650006177}
   - component: {fileID: 1650006176}
   - component: {fileID: 1650006175}
+  - component: {fileID: 488319663}
   m_Layer: 5
   m_Name: Canvas
   m_TagString: Untagged
@@ -9941,6 +9942,7 @@ GameObject:
   - component: {fileID: 1839367781}
   - component: {fileID: 1839367780}
   - component: {fileID: 1839367783}
+  - component: {fileID: 1382896274}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -10333,37 +10335,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 4786e3007522b4a0993b6f46b32a44f3, type: 3}
   m_PrefabInstance: {fileID: 1938505648}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1940232968
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1940232969}
-  m_Layer: 0
-  m_Name: PreviewSpawnPoint
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1940232969
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1940232968}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0.976296, z: -0, w: -0.21643949}
-  m_LocalPosition: {x: 2.5, y: 3.5, z: 6.5}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 205, z: 0}
 --- !u!1001 &1970261916
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -11836,6 +11807,95 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 09e299d425707634bb81552a60510216, type: 3}
+--- !u!114 &1382896274
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1839367779}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11a3c89697654ec4b4709e44586941ba, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.UI.MenuBackgroundCamera
+  orbitCenter: {x: 0, y: 0, z: 0}
+  orbitRadius: 110
+  orbitHeight: 65
+  orbitSpeedDegreesPerSecond: 2.5
+  lookAheadDegrees: 20
+  lookTargetRadiusFraction: 0.35
+  bobAmplitude: 3
+  bobCyclesPerSecond: 0.05
+--- !u!114 &488319663
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1650006174}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 920be0508916451592a05768e217e4a3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.UI.MenuBackgroundDimOverlay
+  dimAlpha: 0.45
+--- !u!1 &876599519
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1145492812}
+  - component: {fileID: 1433915687}
+  m_Layer: 0
+  m_Name: MenuBackground
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1145492812
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 876599519}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1433915687
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 876599519}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 310aa459cbdf4c4fb4da46d16872dc7a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.UI.MenuBackgroundBuilder
+  housePrefabs:
+  - {fileID: 586972566769548281, guid: 42ca1e21e87269d439d83f8017040a58, type: 3}
+  policePrefab: {fileID: 2459249183311875806, guid: a8d8b7926eddd1449a77f2642d0caf4c, type: 3}
+  houseCount: 8
+  ringRadius: 140
+  policeCount: 3
+  policeWanderExtents: {x: 35, y: 35}
+  groundSize: 600
+  groundColor: {r: 0.24, g: 0.35, b: 0.2, a: 1}
+  legacyDioramaRoots:
+  - {fileID: 118812183}
+  - {fileID: 877955363}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -11844,7 +11904,6 @@ SceneRoots:
   - {fileID: 163064253}
   - {fileID: 542312473}
   - {fileID: 1212101970}
-  - {fileID: 1940232969}
   - {fileID: 877955362}
   - {fileID: 1436672844}
   - {fileID: 183324517}
@@ -11852,3 +11911,4 @@ SceneRoots:
   - {fileID: 1650006178}
   - {fileID: 1019379344}
   - {fileID: 2070244331}
+  - {fileID: 1145492812}

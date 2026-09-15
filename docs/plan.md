@@ -66,7 +66,10 @@ Tier 1/2 priority-list bugs, written without Editor access — the
 checklist for testing them once back at a PC), and
 [main-menu-character-preview-setup.md](stages/main-menu-character-preview-setup.md)
 (issue #39: persistent character preview + Settings fall animation,
-the Editor checklist for the pieces that needed real eyes).
+the Editor checklist for the pieces that needed real eyes), and
+[main-menu-background-flythrough-setup.md](stages/main-menu-background-flythrough-setup.md)
+(issue #51: replacing the static diorama with a moving drone-shot
+flythrough over a procedural stand-in neighborhood).
 Style/asset reference (palette, sourced packs, remaining art to-do) is in
 [art-info.md](art-info.md); UI/menu element spec is in
 [ui-design.md](stages/ui-design.md); main menu build docs are
