@@ -403,7 +403,7 @@
     <div class="stat-row">
       <span class="chip">4–8 players</span>
       <span class="chip">No winner, just quota</span>
-      <span class="chip" id="version-chip">Alpha v1.0.3</span>
+      <span class="chip" id="version-chip">v1.0.4-alpha</span>
     </div>
   </div>
 
@@ -519,7 +519,7 @@
     <div class="status-panel">
       <div class="status-top">
         <span class="alpha-stamp">Alpha</span>
-        <span class="version" id="version-line">build alpha-v1.0.3</span>
+        <span class="version" id="version-line">build v1.0.4-alpha</span>
       </div>
       <p class="status-copy">The core loop and the full meta-game are in and getting real
         playtests. It's an alpha: expect the occasional bug, and expect it to keep changing
@@ -579,7 +579,13 @@
   // API works from any host that serves this file. Both endpoints send
   // Access-Control-Allow-Origin: * for public reads, confirmed live
   // before shipping this.
-  var RELEASES_URL = 'https://api.github.com/repos/joshuaclemons1/Rob-Everyone/releases?per_page=1';
+  // per_page=10, not 1 -- this repo also carries the launcher's own
+  // separate, standalone release (currently newer than the latest actual
+  // game build), so the fetch below has to skip past anything that isn't
+  // tagged as a real game release to find it. Same reasoning as
+  // UpdateService.cs's own GameReleaseTagSuffix.
+  var RELEASES_URL = 'https://api.github.com/repos/joshuaclemons1/Rob-Everyone/releases?per_page=10';
+  var GAME_RELEASE_TAG_SUFFIX = '-alpha';
   var STATUS_MD_URL = 'https://raw.githubusercontent.com/joshuaclemons1/Rob-Everyone/main/docs/site-status.md';
 
   function esc(s) {
@@ -607,10 +613,14 @@
   fetch(RELEASES_URL, { headers: { Accept: 'application/vnd.github+json' } })
     .then(function (res) { return res.ok ? res.json() : null; })
     .then(function (releases) {
-      if (!releases || !releases.length || !releases[0].tag_name) return;
-      var version = releases[0].tag_name;
+      if (!releases) return;
+      var release = releases.find(function (r) {
+        return r.tag_name && r.tag_name.toLowerCase().endsWith(GAME_RELEASE_TAG_SUFFIX);
+      });
+      if (!release) return;
+      var version = release.tag_name;
       var chip = document.getElementById('version-chip');
-      if (chip) chip.textContent = 'Alpha ' + version.replace(/^alpha-/i, '');
+      if (chip) chip.textContent = version;
       var line = document.getElementById('version-line');
       if (line) line.textContent = 'build ' + version;
     })
