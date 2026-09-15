@@ -69,9 +69,12 @@ checklist for testing them once back at a PC), and
 the Editor checklist for the pieces that needed real eyes), and
 [main-menu-background-flythrough-setup.md](stages/main-menu-background-flythrough-setup.md)
 (issue #51: replacing the static diorama with a moving drone-shot
-flythrough over a procedural stand-in neighborhood), and
-[reconnect-setup.md](stages/reconnect-setup.md) (issue #53: rejoining
-an in-progress lobby after a disconnect/crash without losing your run).
+flythrough over a procedural stand-in neighborhood), [reconnect-setup.md](stages/reconnect-setup.md) (issue #53: rejoining
+an in-progress lobby after a disconnect/crash without losing your run),
+and
+[lobby-customization-building-plan.md](stages/lobby-customization-building-plan.md)
+(issue #52: implementation plan, not yet built, for the in-Lobby
+skin/color customization building).
 Style/asset reference (palette, sourced packs, remaining art to-do) is in
 [art-info.md](art-info.md); UI/menu element spec is in
 [ui-design.md](stages/ui-design.md); main menu build docs are
