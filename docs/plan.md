@@ -73,8 +73,13 @@ flythrough over a procedural stand-in neighborhood), [reconnect-setup.md](stages
 an in-progress lobby after a disconnect/crash without losing your run),
 and
 [lobby-customization-building-plan.md](stages/lobby-customization-building-plan.md)
-(issue #52: implementation plan, not yet built, for the in-Lobby
-skin/color customization building).
+(issue #52: implementation plan for the in-Lobby skin/color
+customization building; Phases 0-2 are built, see the plan for what
+each does), and
+[lobby-customization-building-editor-setup.md](stages/lobby-customization-building-editor-setup.md)
+(Phases 3 & 4 of the same issue: placing/wiring the pedestals, paint
+cans, mirror cycle buttons, and the mirror's own reflection rendering
+in `Lobby.unity`, with rest points).
 Style/asset reference (palette, sourced packs, remaining art to-do) is in
 [art-info.md](art-info.md); UI/menu element spec is in
 [ui-design.md](stages/ui-design.md); main menu build docs are
