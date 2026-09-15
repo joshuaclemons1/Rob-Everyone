@@ -45,6 +45,29 @@ namespace RobEveryone.Player
         // autohop). Off = jump only on the initial press.
         [SerializeField] private bool holdToAutoHop = true;
 
+        // View bob -- issue #55. Purely a local visual effect layered onto
+        // HandleCrouch's own camera Y write (HandleViewBob below), never
+        // networked -- this component's camera concerns are already fully
+        // local/client-predicted, same as everything else here. Scales
+        // continuously off HorizontalSpeed rather than branching on
+        // IsSprinting/IsCrouching separately: sprint is just a higher
+        // HorizontalSpeed than walk, so it naturally gets a bigger, faster
+        // bob for free from the same formula, and a crouch-walk naturally
+        // gets a smaller one the same way -- no separate per-state cases
+        // to keep in sync if walk/sprint/crouch speeds get retuned later.
+        [SerializeField] private float bobCyclesPerSecond = 1.8f;
+        [SerializeField] private float bobVerticalAmplitude = 0.045f;
+        [SerializeField] private float bobHorizontalAmplitude = 0.03f;
+        // How fast bob intensity ramps toward its target (starting to
+        // move, stopping, leaving the ground) rather than snapping
+        // instantly -- avoids a visible pop the instant Speed crosses
+        // zero, and means stopping mid-swing damps out smoothly instead
+        // of the offset jumping straight back to zero.
+        [SerializeField] private float bobIntensitySmoothing = 8f;
+
+        private float bobPhase;
+        private float bobIntensity;
+
         // Bhop-style air control: id Software's classic "air-accelerate"
         // formula, tuned toward Source values. `airWishSpeed` is a tight
         // per-tick cap on how much speed you can add *in the current
@@ -237,6 +260,12 @@ namespace RobEveryone.Player
             if (!LookSuppressed) HandleLook();
             HandleCrouch();
             HandleMove();
+            // After HandleMove, not before -- HorizontalSpeed reads off
+            // horizontalVelocity, which HandleMove is what actually
+            // updates this frame. Running bob first would read last
+            // frame's speed instead of this one's, a frame of lag that's
+            // easy to just not have.
+            HandleViewBob();
         }
 
         private void HandleLook()
@@ -266,13 +295,46 @@ namespace RobEveryone.Player
             // when standing (heightDelta == 0).
             controller.center = standCenter - new Vector3(0f, heightDelta * 0.5f, 0f);
 
-            // Skip the camera bob while the inventory screen owns the
-            // camera (PlayerCameraRig has it detached) -- the body still
-            // crouches, but the camera write would just be fought by the
-            // rig every LateUpdate.
+            // Skip this camera-height write while the inventory screen
+            // owns the camera (PlayerCameraRig has it detached) -- the
+            // body still crouches, but the write would just be fought by
+            // the rig every LateUpdate. HandleViewBob below uses this
+            // exact same guard for the same reason.
             if (cameraTransform == null || LookSuppressed) return;
             Vector3 camPos = cameraTransform.localPosition;
             camPos.y = standCameraY - heightDelta;
+            cameraTransform.localPosition = camPos;
+        }
+
+        // Adds an oscillating offset on top of HandleCrouch's own camera Y
+        // write -- deliberately touches nothing about the controller or
+        // movement itself, this is purely how the camera looks, not how
+        // the player moves. Vertical bobs at double the horizontal sway's
+        // frequency (the classic figure-8 head-bob shape: two footfalls'
+        // worth of up-down per one full side-to-side sway) rather than a
+        // single plain sine wave, which reads as a much more natural gait.
+        private void HandleViewBob()
+        {
+            // Keeps advancing (toward zero) even while suppressed/no
+            // camera, so bobIntensity/bobPhase are already exactly where
+            // they should be the instant bob is un-suppressed again --
+            // never a snap once LookSuppressed clears.
+            float targetIntensity = controller.isGrounded ? HorizontalSpeed / Mathf.Max(walkSpeed, 0.01f) : 0f;
+            bobIntensity = Mathf.Lerp(bobIntensity, targetIntensity, bobIntensitySmoothing * Time.deltaTime);
+            bobPhase += Time.deltaTime * bobCyclesPerSecond * Mathf.PI * 2f * bobIntensity;
+
+            // Same guard HandleCrouch's own camera write uses -- the rig
+            // has the camera detached (inventory screen, chase-cam,
+            // ragdoll), so writing here would just get fought every
+            // LateUpdate for nothing.
+            if (cameraTransform == null || LookSuppressed) return;
+
+            float verticalBob = Mathf.Sin(bobPhase * 2f) * bobVerticalAmplitude * bobIntensity;
+            float horizontalBob = Mathf.Cos(bobPhase) * bobHorizontalAmplitude * bobIntensity;
+
+            Vector3 camPos = cameraTransform.localPosition;
+            camPos.y += verticalBob; // adds onto HandleCrouch's own baseline this same frame, doesn't replace it
+            camPos.x = horizontalBob; // nothing else writes x -- safe to set outright, not add
             cameraTransform.localPosition = camPos;
         }
 
