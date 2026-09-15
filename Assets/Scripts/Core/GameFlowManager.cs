@@ -546,7 +546,13 @@ namespace RobEveryone.Core
             PlayerSpawnPoint[] spawns = FindObjectsByType<PlayerSpawnPoint>(FindObjectsSortMode.None);
             if (spawns.Length == 0) return;
 
-            TeleportPlayerTo(player, spawns[index % spawns.Length].transform);
+            Transform spawn = spawns[index % spawns.Length].transform;
+            // TEMPORARY (issue #5 debugging): the server's own intended
+            // target -- compare this against what PositionLocalPlayerWhenReady
+            // logs it actually applied, and against any Issue5PositionDebug
+            // jump warning, to see exactly where the three diverge.
+            Debug.Log($"[Issue5] Server PositionPlayer: {player.name} -> index {index} -> spawn '{spawn.name}' at {spawn.position}, scene={SceneManager.GetActiveScene().name}, t={Time.time:F2}");
+            TeleportPlayerTo(player, spawn);
         }
 
         // Shared host-vs-remote-client teleport body -- originally
@@ -593,6 +599,8 @@ namespace RobEveryone.Core
         [TargetRpc]
         private void TargetPositionPlayer(NetworkConnectionToClient target, Vector3 position, Quaternion rotation)
         {
+            // TEMPORARY (issue #5 debugging).
+            Debug.Log($"[Issue5] TargetPositionPlayer received: target={position}, scene={SceneManager.GetActiveScene().name}, t={Time.time:F2}");
             StartCoroutine(PositionLocalPlayerWhenReady(position, rotation));
         }
 
@@ -604,6 +612,7 @@ namespace RobEveryone.Core
         // instead of retrying.
         private IEnumerator PositionLocalPlayerWhenReady(Vector3 position, Quaternion rotation)
         {
+            bool hadToWait = NetworkClient.localPlayer == null; // TEMPORARY (issue #5 debugging)
             float timeout = Time.time + 5f;
             while (NetworkClient.localPlayer == null && Time.time < timeout) yield return null;
 
@@ -612,6 +621,9 @@ namespace RobEveryone.Core
                 Debug.LogWarning("[GameFlowManager] TargetPositionPlayer timed out waiting for NetworkClient.localPlayer.");
                 yield break;
             }
+
+            // TEMPORARY (issue #5 debugging).
+            Debug.Log($"[Issue5] localPlayer ready (hadToWait={hadToWait}), applying target={position}, t={Time.time:F2}");
 
             Transform player = NetworkClient.localPlayer.transform;
 
@@ -647,6 +659,12 @@ namespace RobEveryone.Core
 
                 NetworkTransformReliable netTransform = player.GetComponent<NetworkTransformReliable>();
                 if (netTransform != null) netTransform.CmdTeleport(position, rotation);
+
+                // TEMPORARY (issue #5 debugging): what actually got applied
+                // and whether CmdTeleport was even sent -- if netTransform
+                // is null here, the reset broadcast every OTHER observer
+                // depends on never went out at all.
+                Debug.Log($"[Issue5] Applied locally: {player.position}, CmdTeleport sent={netTransform != null}, t={Time.time:F2}");
             });
         }
 

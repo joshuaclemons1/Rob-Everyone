@@ -38,6 +38,13 @@ namespace RobEveryone.Inventory
     // itself. AddItem/SellSelectedSlot/etc. only ever run on the server now
     // (called from server-context code -- Interactor's Command, or
     // SellStation's Command), never called directly by a client.
+    // TEMPORARY (issue #5 debugging): RequireComponent auto-attaches
+    // Issue5PositionDebug to every Player instance at spawn, without
+    // needing to hand-edit the prefab -- Unity adds a required
+    // component automatically, including on a runtime Instantiate().
+    // Remove this attribute (and Issue5PositionDebug.cs itself) once
+    // #5 is diagnosed and fixed.
+    [RequireComponent(typeof(Issue5PositionDebug))]
     public class PlayerInventory : NetworkBehaviour
     {
         public const int SlotCount = 5;
