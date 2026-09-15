@@ -30,6 +30,13 @@ namespace RobEveryone.UI
         private void Awake()
         {
             animator = GetComponentInChildren<Animator>();
+            // Police.prefab's Animator ships with Apply Root Motion on
+            // (the real PoliceAI/NavMeshAgent pairing presumably consumes
+            // it deliberately) -- left on here, it would fight this
+            // script's own manual position writes below every frame.
+            // This stand-in only needs the walk cycle to look right, not
+            // to actually drive movement, so root motion is switched off.
+            if (animator != null) animator.applyRootMotion = false;
             speedHash = Animator.StringToHash(animatorSpeedParam);
             origin = transform.position;
             PickNewTarget();

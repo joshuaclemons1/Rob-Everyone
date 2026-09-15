@@ -52,11 +52,43 @@ a live `NetworkIdentity` plus other `NetworkBehaviour` scripts (loot
 spawn points, etc.) — probably harmless to instantiate un-networked
 (most Mirror component logic gates behind `isServer`/`isClient`, which
 default false outside `NetworkServer.Spawn`), but that's an assumption,
-not something confirmed running. Same reasoning for `Police.prefab`'s
-own networked components (`PoliceAI`, `NetworkIdentity`,
-`NetworkTransformReliable`, `NavMeshAgent`) — `MenuBackgroundBuilder`
-strips all four off each spawned stand-in at runtime before adding
-`MenuPoliceWander`.
+not something confirmed running.
+
+**Police stand-ins reference `Police.prefab`'s `BlueSoldier_Male` child
+directly, not the prefab's root.** The root carries `PoliceAI`,
+`NetworkIdentity`, `NetworkTransformReliable`, and a `NavMeshAgent` —
+this originally instantiated the whole prefab and stripped those four
+components off right afterward, but that broke Play mode for real:
+Unity runs a newly-instantiated GameObject's `Awake`/`OnEnable`
+synchronously as part of `Instantiate()` itself, before any of this
+script's own code gets a chance to run, so `NavMeshAgent` had already
+logged "no valid NavMesh" and `NetworkIdentity` had already registered
+itself before the (separately deferred-to-end-of-frame) `Destroy()`
+calls ever took effect — surfacing as a `NavMeshAgent` error on every
+spawn plus a Mirror `NetworkScenePostProcess` "no valid sceneId" build
+error. Fixed by never instantiating that root at all — `policeVisual`
+points straight at `BlueSoldier_Male` (confirmed self-contained by
+reading the prefab: its own local position exactly cancels the root's,
+so it renders in the same place with no wrapper needed), so there's
+nothing networked or NavMesh-dependent to create in the first place.
+Its Animator also ships with **Apply Root Motion on** — left as-is it
+would fight `MenuPoliceWander`'s own manual position writes, so
+`MenuPoliceWander.Awake` switches it off on the spawned stand-ins.
+
+**Also found and fixed while chasing that Play-mode failure, unrelated
+to #51**: `Assets/Prefabs/Houses/Homeowner.prefab` was missing a
+`NetworkIdentity` component entirely, despite carrying
+`NetworkTransformReliable` and `HomeownerAI` (both `NetworkBehaviour`s
+that require one) — a genuine pre-existing bug, confirmed via a
+project-wide scan to be the only prefab with this problem. Not
+referenced anywhere in `MainMenu.unity`, so it can't have been caused by
+this issue's own changes; it just happened to get surfaced in the same
+Console dump because compiling the new scripts here triggered a domain
+reload that re-validated every loaded prefab. Fixed by adding the
+missing `NetworkIdentity` (`_assetId: 0` — Mirror's own `OnValidate`
+self-assigns a real one the next time the Editor loads this prefab, per
+`NetworkIdentity.cs`'s own `AssignAssetID` logic, so no need to hand-
+compute one).
 
 ## Editor steps still needed
 
@@ -69,12 +101,13 @@ strips all four off each spawned stand-in at runtime before adding
    on `Main Camera`, `MenuBackgroundDimOverlay` on `Canvas`) — safe to
    just drag values around in Play mode and see what reads best before
    committing to numbers.
-2. **Check the Console for errors/warnings on Play**, specifically
-   around the police stand-ins (`NavMeshAgent` may log a one-time
-   "not close enough to the NavMesh" warning before
-   `MenuBackgroundBuilder` strips it off the following frame — expected,
-   harmless, not a bug) and confirm nothing else complains about running
-   outside a network context.
+2. **Check that the police stand-ins' feet actually touch the ground.**
+   `BlueSoldier_Male` is instantiated directly at each computed ground
+   point with no extra vertical offset, on the assumption its own rest
+   pose already has feet-at-origin (the near-universal convention for
+   this kind of rig) — if it's floating or sunk into the ground instead,
+   that assumption is wrong and `MenuBackgroundBuilder.SpawnPolice` needs
+   a manual Y offset added to `spawnPoint`.
 3. **Confirm menu legibility** over the moving background — buttons,
    title, and the character preview panel should all still read clearly
    with the dim overlay in place per `main-menu-visual-design.md`'s

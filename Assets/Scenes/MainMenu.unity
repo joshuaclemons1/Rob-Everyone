@@ -11886,7 +11886,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.UI.MenuBackgroundBuilder
   housePrefabs:
   - {fileID: 586972566769548281, guid: 42ca1e21e87269d439d83f8017040a58, type: 3}
-  policePrefab: {fileID: 2459249183311875806, guid: a8d8b7926eddd1449a77f2642d0caf4c, type: 3}
+  policeVisual: {fileID: 5533307698001195127, guid: a8d8b7926eddd1449a77f2642d0caf4c, type: 3}
   houseCount: 8
   ringRadius: 140
   policeCount: 3

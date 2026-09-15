@@ -1,8 +1,5 @@
 using System.Collections.Generic;
-using Mirror;
-using RobEveryone.AI;
 using UnityEngine;
-using UnityEngine.AI;
 
 namespace RobEveryone.UI
 {
@@ -26,7 +23,18 @@ namespace RobEveryone.UI
     public class MenuBackgroundBuilder : MonoBehaviour
     {
         [SerializeField] private List<GameObject> housePrefabs = new();
-        [SerializeField] private GameObject policePrefab;
+
+        // Wired to Police.prefab's own "BlueSoldier_Male" child object,
+        // NOT the prefab's root -- see this class's own SpawnPolice
+        // comment for why: the root carries live networked/NavMesh
+        // components that Unity initializes the instant Instantiate
+        // creates them (before any runtime code can strip them), and
+        // that already broke Play mode once (NavMeshAgent errors with no
+        // baked NavMesh here, and a Mirror NetworkIdentity scene-id
+        // build error). Referencing just the visual child sidesteps the
+        // problem entirely instead of trying to out-race Unity's own
+        // component initialization order.
+        [SerializeField] private GameObject policeVisual;
 
         [SerializeField] private int houseCount = 8;
         [SerializeField] private float ringRadius = 140f;
@@ -89,45 +97,42 @@ namespace RobEveryone.UI
             }
         }
 
+        // The real Police.prefab's ROOT ships as a networked gameplay
+        // object (NetworkIdentity, NetworkTransformReliable, the real
+        // PoliceAI state machine, a NavMeshAgent needing a baked
+        // NavMesh this scene doesn't have) -- none of that is meant to
+        // run outside a live server. Originally this instantiated the
+        // whole prefab and stripped those components off afterward, but
+        // Unity initializes a newly-instantiated GameObject's components
+        // (Awake/OnEnable) synchronously as part of Instantiate() itself,
+        // before any of this method's own code runs -- so NavMeshAgent
+        // had already logged its "no valid NavMesh" error, and
+        // NetworkIdentity had already registered itself, before Destroy()
+        // (itself deferred to end of frame) ever got a chance to remove
+        // them. Confirmed broken this way in a real Play-mode test.
+        //
+        // Fixed by never instantiating the problematic root at all --
+        // policeVisual references Police.prefab's "BlueSoldier_Male"
+        // child directly (the Animator + mesh, confirmed self-contained
+        // by reading the prefab: its own local position exactly cancels
+        // the root's, meaning it already renders in the same place with
+        // no wrapper needed). Only the model and Animator get created,
+        // so there's nothing left to strip afterward.
         private void SpawnPolice()
         {
-            if (policePrefab == null || policeCount <= 0) return;
+            if (policeVisual == null || policeCount <= 0) return;
 
             for (int i = 0; i < policeCount; i++)
             {
                 Vector2 offset = Random.insideUnitCircle * 0.6f;
                 Vector3 spawnPoint = transform.position + new Vector3(offset.x * policeWanderExtents.x, 0f, offset.y * policeWanderExtents.y);
 
-                GameObject instance = Instantiate(policePrefab, spawnPoint, Quaternion.identity, transform);
+                GameObject instance = Instantiate(policeVisual, spawnPoint, Quaternion.identity, transform);
                 instance.name = $"MenuPoliceStandIn ({i})";
-                StripNetworkComponents(instance);
 
                 MenuPoliceWander wander = instance.AddComponent<MenuPoliceWander>();
                 wander.Initialize(policeWanderExtents);
             }
-        }
-
-        // The real Police.prefab ships as a networked gameplay object
-        // (NetworkIdentity, NetworkTransformReliable, the real PoliceAI
-        // state machine, a NavMeshAgent) -- none of that is meant to run
-        // outside a live server, and this stand-in ring has no baked
-        // NavMesh under it anyway. Stripped down to just the model,
-        // collider, and Animator (matching the same "purely cosmetic,
-        // client-only" pattern already used elsewhere in this project --
-        // see this script's own header comment), then MenuPoliceWander
-        // takes over movement in their place.
-        private static void StripNetworkComponents(GameObject instance)
-        {
-            DestroyIfPresent<PoliceAI>(instance);
-            DestroyIfPresent<NetworkTransformReliable>(instance);
-            DestroyIfPresent<NetworkIdentity>(instance);
-            DestroyIfPresent<NavMeshAgent>(instance);
-        }
-
-        private static void DestroyIfPresent<T>(GameObject instance) where T : Component
-        {
-            T component = instance.GetComponent<T>();
-            if (component != null) Destroy(component);
         }
 
         // URP's Lit shader names its color property "_BaseColor", not the
