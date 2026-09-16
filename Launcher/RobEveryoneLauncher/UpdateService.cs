@@ -71,14 +71,21 @@ public class UpdateService
         progress.Report(new UpdateProgress { Phase = UpdatePhase.Checking, Message = "Checking for updates..." });
 
         GitHubRelease? release = null;
+        string? checkFailureReason = null;
         try
         {
             release = await GetLatestReleaseAsync(ct);
         }
-        catch
+        catch (Exception ex)
         {
-            // Network hiccup, rate limit, malformed response -- fall through
-            // to the "fails open" handling below rather than surfacing this.
+            // Used to be a bare `catch { }` -- genuinely useful, since a
+            // real bug and "you're actually offline" produced the exact
+            // same on-screen message with nothing to tell them apart by.
+            // Still fails open the same way (falls through below), just
+            // no longer blind about why.
+            checkFailureReason = DescribeFailure(ex);
+            try { File.AppendAllText(LauncherPaths.ErrorLogPath, $"{DateTime.Now:u} update check failed: {checkFailureReason}\n{ex}\n\n"); }
+            catch { /* best-effort -- a disk/permissions problem here shouldn't mask the real error */ }
         }
 
         if (release == null)
@@ -92,7 +99,9 @@ public class UpdateService
             progress.Report(new UpdateProgress
             {
                 Phase = UpdatePhase.Error,
-                Message = "Couldn't reach GitHub and no local install exists yet. Check your connection and try again.",
+                Message = checkFailureReason == null
+                    ? "Couldn't reach GitHub and no local install exists yet. Check your connection and try again."
+                    : $"Couldn't reach GitHub and no local install exists yet: {checkFailureReason} See launcher-error.log for details.",
             });
             return null;
         }
@@ -157,11 +166,50 @@ public class UpdateService
     private static async Task<GitHubRelease?> GetLatestReleaseAsync(CancellationToken ct)
     {
         using HttpResponseMessage response = await Http.GetAsync(ReleasesUrl, ct);
-        if (!response.IsSuccessStatusCode) return null;
+
+        // Used to just `return null` here on any non-success status,
+        // indistinguishable (once caught above) from a real network
+        // failure. GitHub's unauthenticated REST API caps out at 60
+        // requests/hour *per IP* -- a genuine, easy-to-hit cause during
+        // active same-day team playtesting (several people, repeated
+        // launches, one shared home/office IP) -- so that specific case
+        // gets its own clear message rather than reading the raw 403.
+        if (!response.IsSuccessStatusCode)
+        {
+            bool rateLimited = response.StatusCode == System.Net.HttpStatusCode.Forbidden
+                && response.Headers.TryGetValues("X-RateLimit-Remaining", out IEnumerable<string>? remaining)
+                && remaining.Contains("0");
+            if (rateLimited)
+            {
+                string resetMessage = "";
+                if (response.Headers.TryGetValues("X-RateLimit-Reset", out IEnumerable<string>? resetValues)
+                    && long.TryParse(resetValues.FirstOrDefault(), out long resetUnix))
+                {
+                    DateTimeOffset reset = DateTimeOffset.FromUnixTimeSeconds(resetUnix);
+                    resetMessage = $" (resets {reset.ToLocalTime():t})";
+                }
+                throw new InvalidOperationException($"GitHub API rate limit hit{resetMessage} -- too many update checks from this network in the last hour");
+            }
+            throw new HttpRequestException($"GitHub API returned {(int)response.StatusCode} {response.ReasonPhrase}");
+        }
+
         await using Stream stream = await response.Content.ReadAsStreamAsync(ct);
         List<GitHubRelease>? releases = await JsonSerializer.DeserializeAsync<List<GitHubRelease>>(stream, cancellationToken: ct);
         return releases?.FirstOrDefault(r => r.TagName.EndsWith(GameReleaseTagSuffix, StringComparison.OrdinalIgnoreCase));
     }
+
+    // Short, user-facing summary for the on-screen error -- the full
+    // exception (with stack trace) always goes to launcher-error.log
+    // regardless, this is just what's worth showing without opening a log
+    // file first.
+    private static string DescribeFailure(Exception ex) => ex switch
+    {
+        InvalidOperationException rateLimit => rateLimit.Message,
+        HttpRequestException http => http.Message,
+        TaskCanceledException => "the request timed out",
+        JsonException => "GitHub returned something this launcher couldn't parse",
+        _ => ex.Message,
+    };
 
     // Prefers an asset carrying this platform's suffix (RobEveryone-<tag>-win.zip
     // etc -- the convention issue #43 introduces); falls back to "there's
