@@ -134,6 +134,25 @@ namespace RobEveryone.Core
         // reference in here would otherwise be stale.
         private readonly Dictionary<PlayerInventory, JailPoint> occupiedJailPoints = new();
 
+        // Global teleport de-dupe/self-heal state, keyed per player --
+        // issue #5's actual root cause, confirmed via live log evidence
+        // (see JailState.EnterJail's own comment): NetworkTransformReliable
+        // is client-authoritative, so TeleportPlayerTo's remote path is an
+        // async TargetRpc round-trip, not an instant write. ANY server-side
+        // code that re-checks a remote player's Transform before that round
+        // trip lands is reading a stale value -- the jail confinement check
+        // was one caller that got bitten by this; there's nothing stopping
+        // any other current or future caller (Lobby spawn placement, exit
+        // car seating, rescue, fall-safety) from hitting the identical gap.
+        // Rather than fix each call site one at a time as bugs surface,
+        // this makes the guarantee true at the one shared choke point every
+        // caller already goes through.
+        private readonly Dictionary<NetworkIdentity, float> lastTeleportIssuedAt = new();
+        private readonly Dictionary<NetworkIdentity, Vector3> lastTeleportTarget = new();
+        private const float TeleportDebounceWindow = 0.5f;
+        private const float TeleportSettleTimeout = 1.5f;
+        private const int MaxTeleportRetries = 3;
+
         // The gameplay-vs-shop phase gate (used by PlayerInventory's
         // Prison Wallet rules: stash only mid-round, retrieve only in the
         // Lobby). ServerChangeScene is single-mode, so the active scene
@@ -378,10 +397,12 @@ namespace RobEveryone.Core
         [Server]
         public void HandlePlayerRemoved(NetworkIdentity playerIdentity)
         {
-            // No bookkeeping needed here beyond what PlayerInventory's own
-            // OnStopServer already does (removing itself from AllPlayers)
-            // -- kept as a named hook in case a disconnect mid-round ever
-            // needs special handling (e.g. auto-resolving their round).
+            // Otherwise a disconnected player's entry lingers in these
+            // forever -- harmless functionally (their NetworkIdentity can
+            // never match a future lookup), but an unbounded leak over a
+            // long-running host session.
+            lastTeleportIssuedAt.Remove(playerIdentity);
+            lastTeleportTarget.Remove(playerIdentity);
         }
 
         [Server]
@@ -590,8 +611,29 @@ namespace RobEveryone.Core
 
             if (remote)
             {
+                // Global debounce: if an equivalent teleport for this exact
+                // player is already in flight (issued within the last
+                // TeleportDebounceWindow, same target), skip re-issuing --
+                // this is the general shape of the jail confinement bug
+                // (an Update() loop re-checking a not-yet-converged
+                // Transform and re-firing every frame), now closed for
+                // every caller at once instead of one at a time as each is
+                // individually discovered. A genuinely DIFFERENT target
+                // still goes through immediately -- this only suppresses
+                // redundant duplicates, never a real change of destination.
+                if (lastTeleportIssuedAt.TryGetValue(identity, out float issuedAt)
+                    && Time.time - issuedAt < TeleportDebounceWindow
+                    && lastTeleportTarget.TryGetValue(identity, out Vector3 lastTarget)
+                    && Vector3.Distance(lastTarget, position) < 0.1f)
+                {
+                    Debug.Log($"[Issue5] TeleportPlayerTo DEBOUNCED (duplicate within {TeleportDebounceWindow}s) netId={identity.netId} target={position}");
+                    return;
+                }
+                lastTeleportIssuedAt[identity] = Time.time;
+                lastTeleportTarget[identity] = position;
+
                 TargetPositionPlayer(identity.connectionToClient, position, rotation);
-                StartCoroutine(LogServerSideSettleCheck(identity, player, position));
+                StartCoroutine(VerifyAndRetryTeleport(identity, player, position, rotation, attempt: 1));
                 return;
             }
 
@@ -615,22 +657,49 @@ namespace RobEveryone.Core
             StartCoroutine(PositionLocalPlayerWhenReady(position, rotation));
         }
 
-        // Server-side check, 2s after issuing a remote teleport: does the
-        // SERVER's own copy of this Transform (what ReadySpot's
-        // OnTriggerEnter/Exit -- server-only -- actually checks against)
-        // ever converge to the intended position? NetworkTransformReliable
-        // is client-authoritative, so this Transform only updates once the
+        // Self-heals a remote teleport that never actually landed. Does
+        // the SERVER's own copy of this Transform (what ReadySpot's
+        // OnTriggerEnter/Exit -- server-only -- actually checks against,
+        // and what blocked round start in the original bug report) ever
+        // converge to the intended position? NetworkTransformReliable is
+        // client-authoritative, so this Transform only updates once the
         // owning client's own sync snapshots (regular interval + the
-        // CmdTeleport round-trip) actually arrive back here. If this logs
-        // a mismatch, the bug is in sync never landing server-side, not in
-        // anything client-visual.
+        // CmdTeleport round-trip) actually arrive back here -- a dropped
+        // packet, a client-side exception mid-coroutine, or any cause we
+        // haven't identified yet can all leave that round trip never
+        // completing. Re-issuing (bounded to MaxTeleportRetries, so a
+        // genuinely disconnected client doesn't retry forever) recovers
+        // from any of those without needing to know which one happened --
+        // this is the actual guarantee: not just "don't cause new
+        // desyncs" but "notice and correct one no matter the cause."
         [Server]
-        private IEnumerator LogServerSideSettleCheck(NetworkIdentity identity, Transform player, Vector3 intended)
+        private IEnumerator VerifyAndRetryTeleport(NetworkIdentity identity, Transform player, Vector3 intended, Quaternion rotation, int attempt)
         {
-            yield return new WaitForSeconds(2f);
-            if (player == null) yield break;
+            yield return new WaitForSeconds(TeleportSettleTimeout);
+            if (player == null || identity == null) yield break;
+
             float distance = Vector3.Distance(player.position, intended);
-            Debug.Log($"[Issue5] SERVER-SIDE SETTLE CHECK netId={identity.netId} intended={intended} actualServerPos={player.position} distance={distance:F2} {(distance > 0.5f ? "*** MISMATCH ***" : "ok")}");
+            if (distance <= 0.5f)
+            {
+                Debug.Log($"[Issue5] Teleport settled OK netId={identity.netId} attempt={attempt} distance={distance:F2}");
+                yield break;
+            }
+
+            if (attempt >= MaxTeleportRetries)
+            {
+                Debug.LogWarning($"[Issue5] Teleport FAILED TO SETTLE after {attempt} attempts netId={identity.netId} intended={intended} actualServerPos={player.position} distance={distance:F2} -- giving up, likely a dead/dropped connection.");
+                yield break;
+            }
+
+            Debug.LogWarning($"[Issue5] Teleport didn't settle (attempt {attempt}), retrying -- netId={identity.netId} intended={intended} actualServerPos={player.position} distance={distance:F2}");
+
+            // Bypass the debounce above -- this retry IS the exception to
+            // "don't re-issue a duplicate," since the whole point is that
+            // the previous issue never actually landed.
+            lastTeleportIssuedAt[identity] = Time.time;
+            lastTeleportTarget[identity] = intended;
+            TargetPositionPlayer(identity.connectionToClient, intended, rotation);
+            StartCoroutine(VerifyAndRetryTeleport(identity, player, intended, rotation, attempt + 1));
         }
 
         // Mirrors WireLocalCameraToCanvases' own reasoning above -- this
