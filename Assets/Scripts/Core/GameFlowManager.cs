@@ -353,7 +353,9 @@ namespace RobEveryone.Core
             // this player's object, which means its PlayerInventory's own
             // OnStartServer has already added it to AllPlayers -- so it's
             // the last entry, and that's the index to place it at.
-            StartCoroutine(PositionNewPlayerNextFrame(playerIdentity, PlayerInventory.AllPlayers.Count - 1));
+            int index = PlayerInventory.AllPlayers.Count - 1;
+            Debug.Log($"[Issue5] HandlePlayerAdded netId={playerIdentity.netId} conn={playerIdentity.connectionToClient?.connectionId} assignedIndex={index} allPlayersCount={PlayerInventory.AllPlayers.Count}");
+            StartCoroutine(PositionNewPlayerNextFrame(playerIdentity, index));
         }
 
         // A one-frame delay before the very first PositionPlayer call for
@@ -369,6 +371,7 @@ namespace RobEveryone.Core
         private IEnumerator PositionNewPlayerNextFrame(NetworkIdentity playerIdentity, int index)
         {
             yield return null;
+            Debug.Log($"[Issue5] PositionNewPlayerNextFrame resuming netId={playerIdentity.netId} index={index} frame={Time.frameCount}");
             PositionPlayer(playerIdentity.transform, index);
         }
 
@@ -405,6 +408,7 @@ namespace RobEveryone.Core
             // NetworkServer.SpawnObjects()'s own comment ("NetworkIdentity
             // objects in a scene are disabled by default").
             List<PlayerInventory> players = PlayerInventory.AllPlayers;
+            Debug.Log($"[Issue5] HandleSceneLoaded scene={scene.name} frame={Time.frameCount} playerCount={players.Count} order=[{string.Join(",", players.ConvertAll(p => p != null ? p.GetComponent<NetworkIdentity>().netId.ToString() : "null"))}]");
             for (int i = 0; i < players.Count; i++)
             {
                 PositionPlayer(players[i].transform, i);
@@ -544,14 +548,18 @@ namespace RobEveryone.Core
         private void PositionPlayer(Transform player, int index)
         {
             PlayerSpawnPoint[] spawns = FindObjectsByType<PlayerSpawnPoint>();
-            if (spawns.Length == 0) return;
+            if (spawns.Length == 0)
+            {
+                Debug.Log($"[Issue5] PositionPlayer FOUND ZERO SPAWN POINTS for index={index}, no-op -- player left wherever it physically was.");
+                return;
+            }
 
             Transform spawn = spawns[index % spawns.Length].transform;
             // TEMPORARY (issue #5 debugging): the server's own intended
             // target -- compare this against what PositionLocalPlayerWhenReady
             // logs it actually applied, and against any Issue5PositionDebug
             // jump warning, to see exactly where the three diverge.
-            Debug.Log($"[Issue5] Server PositionPlayer: {player.name} -> index {index} -> spawn '{spawn.name}' at {spawn.position}, scene={SceneManager.GetActiveScene().name}, t={Time.time:F2}");
+            Debug.Log($"[Issue5] Server PositionPlayer: {player.name} -> index {index} -> spawn '{spawn.name}' at {spawn.position}, spawnCount={spawns.Length}, scene={SceneManager.GetActiveScene().name}, t={Time.time:F2}");
             TeleportPlayerTo(player, spawn);
         }
 
@@ -578,9 +586,12 @@ namespace RobEveryone.Core
             NetworkIdentity identity = player.GetComponent<NetworkIdentity>();
             bool remote = identity != null && !identity.isLocalPlayer && identity.connectionToClient != null;
 
+            Debug.Log($"[Issue5] TeleportPlayerTo netId={identity?.netId} remote={remote} target={position} frame={Time.frameCount}");
+
             if (remote)
             {
                 TargetPositionPlayer(identity.connectionToClient, position, rotation);
+                StartCoroutine(LogServerSideSettleCheck(identity, player, position));
                 return;
             }
 
@@ -600,8 +611,26 @@ namespace RobEveryone.Core
         private void TargetPositionPlayer(NetworkConnectionToClient target, Vector3 position, Quaternion rotation)
         {
             // TEMPORARY (issue #5 debugging).
-            Debug.Log($"[Issue5] TargetPositionPlayer received: target={position}, scene={SceneManager.GetActiveScene().name}, t={Time.time:F2}");
+            Debug.Log($"[Issue5] TargetPositionPlayer received: target={position}, scene={SceneManager.GetActiveScene().name}, t={Time.time:F2}, frame={Time.frameCount}");
             StartCoroutine(PositionLocalPlayerWhenReady(position, rotation));
+        }
+
+        // Server-side check, 2s after issuing a remote teleport: does the
+        // SERVER's own copy of this Transform (what ReadySpot's
+        // OnTriggerEnter/Exit -- server-only -- actually checks against)
+        // ever converge to the intended position? NetworkTransformReliable
+        // is client-authoritative, so this Transform only updates once the
+        // owning client's own sync snapshots (regular interval + the
+        // CmdTeleport round-trip) actually arrive back here. If this logs
+        // a mismatch, the bug is in sync never landing server-side, not in
+        // anything client-visual.
+        [Server]
+        private IEnumerator LogServerSideSettleCheck(NetworkIdentity identity, Transform player, Vector3 intended)
+        {
+            yield return new WaitForSeconds(2f);
+            if (player == null) yield break;
+            float distance = Vector3.Distance(player.position, intended);
+            Debug.Log($"[Issue5] SERVER-SIDE SETTLE CHECK netId={identity.netId} intended={intended} actualServerPos={player.position} distance={distance:F2} {(distance > 0.5f ? "*** MISMATCH ***" : "ok")}");
         }
 
         // Mirrors WireLocalCameraToCanvases' own reasoning above -- this
@@ -614,7 +643,8 @@ namespace RobEveryone.Core
         {
             bool hadToWait = NetworkClient.localPlayer == null; // TEMPORARY (issue #5 debugging)
             float timeout = Time.time + 5f;
-            while (NetworkClient.localPlayer == null && Time.time < timeout) yield return null;
+            int waitedFrames = 0;
+            while (NetworkClient.localPlayer == null && Time.time < timeout) { waitedFrames++; yield return null; }
 
             if (NetworkClient.localPlayer == null)
             {
@@ -626,6 +656,7 @@ namespace RobEveryone.Core
             Debug.Log($"[Issue5] localPlayer ready (hadToWait={hadToWait}), applying target={position}, t={Time.time:F2}");
 
             Transform player = NetworkClient.localPlayer.transform;
+            Debug.Log($"[Issue5] PositionLocalPlayerWhenReady applying netId={NetworkClient.localPlayer.netId} target={position} waitedFrames={waitedFrames} preApplyPos={player.position} frame={Time.frameCount}");
 
             // A raw Transform.position set here moves the object locally,
             // but NetworkTransform's own interpolation/delta-compression
@@ -664,7 +695,7 @@ namespace RobEveryone.Core
                 // and whether CmdTeleport was even sent -- if netTransform
                 // is null here, the reset broadcast every OTHER observer
                 // depends on never went out at all.
-                Debug.Log($"[Issue5] Applied locally: {player.position}, CmdTeleport sent={netTransform != null}, t={Time.time:F2}");
+                Debug.Log($"[Issue5] Applied locally: {player.position}, CmdTeleport sent={netTransform != null}, t={Time.time:F2}, frame={Time.frameCount}");
             });
         }
 

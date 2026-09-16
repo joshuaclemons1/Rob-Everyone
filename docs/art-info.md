@@ -139,7 +139,9 @@ list) is locked enough that the work won't get thrown away.
   Plugs directly into [InventoryUI.cs](../Assets/Scripts/UI/InventoryUI.cs)
   and [RoundUI.cs](../Assets/Scripts/UI/RoundUI.cs) once it looks right.
 - **Musical identity** — sketch the game's sonic palette (instrumentation,
-  tempo, genre lean). Doesn't need to be a finished track yet.
+  tempo, genre lean). Doesn't need to be a finished track yet. Full track
+  list, format, and looping/transition spec now in
+  [music-brief.md](music-brief.md).
 - **Logo / title treatment** — for the eventual title screen, no rush.
 
 ### Needed for Stage 3 (full offline loop) — current stage
@@ -188,7 +190,9 @@ list) is locked enough that the work won't get thrown away.
   been spotted" loop, **crossfading based on nearby Homeowner/Police alert
   state** (confirmed trigger, not just a concept) — the binary state
   transitions already in `HomeownerAI.cs`/`PoliceAI.cs` are what should
-  drive the crossfade.
+  drive the crossfade. See [music-brief.md](music-brief.md) for the exact
+  layered-stems approach this needs and the full track list (Day/Night
+  variants, Menu/Lobby themes, stingers).
 
 ### Needed for Stage 5–6 (Steam multiplayer, sabotage)
 
