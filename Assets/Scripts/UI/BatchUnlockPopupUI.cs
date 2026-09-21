@@ -131,13 +131,6 @@ namespace RobEveryone.UI
             if (GameFlowManager.Instance.RoundInBatch != 3) return;
 
             List<ItemDefinition> newlyUnlocked = CollectNewlyUnlockedItems(GameFlowManager.Instance.EffectiveShopBatch);
-            // TEMPORARY (issue #61 debugging): a real playtest found only
-            // the first of two simultaneously-unlocked items' screens
-            // ever showed, with no error -- nothing in a static read of
-            // the code explains it, so this logs exactly what the next
-            // run actually sees instead of guessing further.
-            Debug.Log($"[Issue61] TryShow: EffectiveShopBatch={GameFlowManager.Instance.EffectiveShopBatch}, " +
-                $"newlyUnlocked.Count={newlyUnlocked.Count}, items=[{string.Join(", ", newlyUnlocked.ConvertAll(i => i.ItemName))}]");
             if (newlyUnlocked.Count == 0) return;
 
             BuildPreviewStage();
@@ -155,9 +148,6 @@ namespace RobEveryone.UI
             List<ItemDefinition> result = new();
             foreach (ShopShelfItem shelf in FindObjectsByType<ShopShelfItem>())
             {
-                // TEMPORARY (issue #61 debugging).
-                Debug.Log($"[Issue61] CollectNewlyUnlockedItems: shelf='{shelf.name}' UnlockBatch={shelf.UnlockBatch} " +
-                    $"Item={(shelf.Item != null ? shelf.Item.ItemName : "null")} matches={shelf.UnlockBatch == effectiveBatch}");
                 if (shelf.UnlockBatch != effectiveBatch || shelf.Item == null) continue;
                 if (seen.Add(shelf.Item)) result.Add(shelf.Item);
             }
@@ -166,21 +156,33 @@ namespace RobEveryone.UI
 
         private IEnumerator ShowSequence(List<ItemDefinition> items)
         {
+            // Confirmed real cause of "only one of two items' screens
+            // ever showed" (varying which one, run to run, with no
+            // error): LoadingScreenUI is a full-screen cover that stays
+            // up for its own fixed minimumDisplayDuration (5s default)
+            // regardless of how fast the scene actually loaded -- by
+            // design, so a fast load doesn't flash its message too
+            // briefly to read (see its own comment). This popup's own
+            // OnEnable fires the instant the Lobby scene loads, which
+            // can easily be *before* that cover has actually gone away
+            // -- racing it meant whichever item(s) this sequence showed
+            // while still hidden behind it were invisible, entirely
+            // independent of this component's own (correctly-running,
+            // confirmed via logging) logic. Wait for it to actually
+            // finish before starting this popup's own reveal.
+            LoadingScreenUI loadingScreen = FindAnyObjectByType<LoadingScreenUI>();
+            while (loadingScreen != null && loadingScreen.IsShowing) yield return null;
+
             if (panel != null) panel.SetActive(true);
 
             foreach (ItemDefinition item in items)
             {
-                // TEMPORARY (issue #61 debugging).
-                Debug.Log($"[Issue61] ShowSequence: now showing '{item.ItemName}', waiting {secondsPerItem}s");
-
                 if (titleText != null) titleText.text = "Item Unlocked";
                 if (itemNameText != null) itemNameText.text = item.ItemName;
                 SetModel(item.WorldModelPrefab);
 
                 yield return new WaitForSeconds(secondsPerItem);
             }
-
-            Debug.Log("[Issue61] ShowSequence: finished, hiding panel."); // TEMPORARY
 
             if (panel != null) panel.SetActive(false);
         }
@@ -229,10 +231,6 @@ namespace RobEveryone.UI
 
         private void SetModel(GameObject prefab)
         {
-            // TEMPORARY (issue #61 debugging).
-            Debug.Log($"[Issue61] SetModel: prefab='{(prefab != null ? prefab.name : "null")}', " +
-                $"tearing down previous modelPivot={(modelPivot != null)}");
-
             if (modelPivot != null)
             {
                 Destroy(modelPivot.gameObject);
@@ -256,7 +254,6 @@ namespace RobEveryone.UI
             modelInstance.transform.localRotation = Quaternion.identity;
             SetLayerRecursively(modelInstance, modelAnchor.gameObject.layer);
             StripNetworkComponents(modelInstance);
-            Debug.Log($"[Issue61] SetModel: instantiated '{modelInstance.name}' successfully, stripped network components."); // TEMPORARY
 
             Bounds bounds = CalculateBounds(modelInstance);
             Vector3 recenterOffset = modelPivot.position - bounds.center;
