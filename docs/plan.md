@@ -79,7 +79,9 @@ each does), and
 [lobby-customization-building-editor-setup.md](stages/lobby-customization-building-editor-setup.md)
 (Phases 3 & 4 of the same issue: placing/wiring the pedestals, paint
 cans, mirror cycle buttons, and the mirror's own reflection rendering
-in `Lobby.unity`, with rest points).
+in `Lobby.unity`, with rest points), and
+[sfx-plan.md](stages/sfx-plan.md) (issues #22/#23: what audio already
+exists vs. the real gaps, sabotage item use sounds first).
 Style/asset reference (palette, sourced packs, remaining art to-do) is in
 [art-info.md](art-info.md); UI/menu element spec is in
 [ui-design.md](stages/ui-design.md); main menu build docs are
