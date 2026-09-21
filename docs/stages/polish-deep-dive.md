@@ -124,7 +124,8 @@ first, matching the reference games' own "stylized, not photorealistic,
 but *considered*" formula (none of these games are graphically
 expensive; they're graphically *deliberate*).
 
-1. **A real post-processing pass** (#64) — likely the single cheapest lever
+1. **A real post-processing pass** (#64, walkthrough:
+   [postprocessing-setup.md](postprocessing-setup.md)) — likely the single cheapest lever
    available. If `DefaultVolumeProfile`/the per-scene profiles turn out
    to be untuned defaults, even a modest pass (color grading for a
    consistent daytime "look," a touch of bloom on emissive/light

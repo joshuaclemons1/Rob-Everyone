@@ -86,7 +86,10 @@ sessions stall after the first quota batch, researched directly
 against Super Battle Golf and Gamble With Your Friends), and
 [polish-deep-dive.md](stages/polish-deep-dive.md) (a second, deeper
 research pass covering both gameplay depth and graphics/visual
-fidelity, with a prioritized actionable list for each).
+fidelity, with a prioritized actionable list for each), and
+[postprocessing-setup.md](stages/postprocessing-setup.md) (issue #64:
+Editor walkthrough for the post-processing pass, with three named
+value-table presets to compare).
 Style/asset reference (palette, sourced packs, remaining art to-do) is in
 [art-info.md](art-info.md); UI/menu element spec is in
 [ui-design.md](stages/ui-design.md); main menu build docs are
