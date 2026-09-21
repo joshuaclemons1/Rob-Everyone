@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using Mirror;
 using RobEveryone.Core;
 using RobEveryone.Interaction;
 using RobEveryone.Inventory;
@@ -18,20 +16,6 @@ namespace RobEveryone.Shop
     [RequireComponent(typeof(Collider))]
     public class ShopShelfItem : MonoBehaviour, IInteractable, IInteractableWarning
     {
-        // Self-registering, mirroring PlayerInventory.AllPlayers -- lets
-        // GameFlowManager (issue #61) look up what's unlocking at the
-        // next batch without needing the Lobby scene (where these shelves
-        // physically live) to be loaded at the moment it asks, since
-        // HandleRoundEnded runs while the gameplay scene is still active.
-        // Guarded by NetworkServer.active rather than a NetworkBehaviour
-        // server callback -- this component isn't networked (every
-        // shelf's supply/unlock state is derived, not synced), but every
-        // connected machine still loads its own local copy of the Lobby
-        // scene's objects the same way client-side scene sync always
-        // works, so only the host/server's own copy should actually
-        // register -- the list is only ever read from [Server] code.
-        public static readonly List<ShopShelfItem> AllShelves = new();
-
         [SerializeField] private ItemDefinition item;
         // Which batch this item unlocks at -- gameplay-design.md calls
         // for items gated behind quota tier, not all available from the
@@ -41,21 +25,13 @@ namespace RobEveryone.Shop
         // multiple rivals at once).
         [SerializeField] private int unlockBatch = 1;
 
-        // Read by GameFlowManager (issue #61) to announce what's coming
-        // at the next batch -- exposed rather than making that code reach
-        // past the SerializeField directly.
+        // Read by BatchUnlockPopupUI (issue #61) to find what's newly
+        // unlocked -- exposed rather than making that code reach past the
+        // SerializeFields directly. Item is the full ItemDefinition (not
+        // just its name) since the popup needs WorldModelPrefab for its
+        // spinning preview too.
         public int UnlockBatch => unlockBatch;
-        public string ItemName => item != null ? item.ItemName : null;
-
-        private void Awake()
-        {
-            if (NetworkServer.active) AllShelves.Add(this);
-        }
-
-        private void OnDestroy()
-        {
-            AllShelves.Remove(this);
-        }
+        public ItemDefinition Item => item;
 
         private bool Unlocked =>
             GameFlowManager.Instance != null && GameFlowManager.Instance.BatchNumber >= unlockBatch;

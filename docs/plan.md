@@ -89,7 +89,10 @@ research pass covering both gameplay depth and graphics/visual
 fidelity, with a prioritized actionable list for each), and
 [postprocessing-setup.md](stages/postprocessing-setup.md) (issue #64:
 Editor walkthrough for the post-processing pass, with three named
-value-table presets to compare).
+value-table presets to compare), and
+[batch-unlock-popup-setup.md](stages/batch-unlock-popup-setup.md)
+(issue #61: Editor setup for the in-Lobby "Item Unlocked" popup, plus
+why the original loading-screen-text approach never showed up).
 Style/asset reference (palette, sourced packs, remaining art to-do) is in
 [art-info.md](art-info.md); UI/menu element spec is in
 [ui-design.md](stages/ui-design.md); main menu build docs are
