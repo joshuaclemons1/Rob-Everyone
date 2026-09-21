@@ -291,18 +291,35 @@ namespace RobEveryone.AI
             searchTimer -= Time.deltaTime;
             if (searchTimer <= 0f)
             {
-                if (isDispatched)
-                {
-                    ReturnToSpawn();
-                    return;
-                }
+                GiveUpAndResumeOrReturn();
+            }
+        }
 
-                agent.speed = EffectiveSpeed(patrolSpeed);
-                State = PoliceState.Patrol;
-                if (patrolPoints.Count > 0)
-                {
-                    agent.SetDestination(patrolPoints[patrolIndex].position);
-                }
+        // Whatever made an officer give up on a player (a search timing
+        // out, a chase losing its target -- see UpdateChase) funnels
+        // through here: a dispatched officer heads home instead of
+        // resuming patrol, exactly once, from a single shared decision
+        // point. Originally only wired into UpdateSearching's own
+        // timeout, which meant UpdateChase's own "target went null"
+        // branch bypassed it entirely and just set State = Patrol
+        // directly -- confirmed bug: a dispatched officer whose target
+        // disconnected mid-chase landed in Patrol with no patrol points
+        // of its own (the base prefab's are deliberately empty, see
+        // OnStartServer's own comment) and stood frozen forever,
+        // permanently occupying a slot against PoliceDispatcher's cap.
+        private void GiveUpAndResumeOrReturn()
+        {
+            if (isDispatched)
+            {
+                ReturnToSpawn();
+                return;
+            }
+
+            agent.speed = EffectiveSpeed(patrolSpeed);
+            State = PoliceState.Patrol;
+            if (patrolPoints.Count > 0)
+            {
+                agent.SetDestination(patrolPoints[patrolIndex].position);
             }
         }
 
@@ -328,7 +345,22 @@ namespace RobEveryone.AI
                 return;
             }
 
-            if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
+            if (agent.pathPending) return;
+
+            // Defensive: a dispatch spawn point that isn't actually
+            // reachable on the baked NavMesh (off-mesh, inside geometry,
+            // a station point placed before the map's own NavMesh existed,
+            // etc.) makes SetDestination fail silently -- no exception,
+            // just an invalid/partial path with remainingDistance stuck
+            // reporting Infinity, so the plain "did we arrive" check below
+            // would never pass on its own. A plausible second explanation
+            // for the same reported symptom (a dispatched officer frozen
+            // in place, never despawning) alongside GiveUpAndResumeOrReturn's
+            // own confirmed gap above -- treat a failed path the same as
+            // arriving so this can't get stuck forever either way.
+            bool arrived = agent.remainingDistance <= agent.stoppingDistance;
+            bool pathFailed = agent.pathStatus != NavMeshPathStatus.PathComplete;
+            if (arrived || pathFailed)
             {
                 NetworkServer.Destroy(gameObject);
             }
@@ -338,7 +370,7 @@ namespace RobEveryone.AI
         {
             if (chaseTarget == null)
             {
-                State = PoliceState.Patrol;
+                GiveUpAndResumeOrReturn();
                 return;
             }
 
