@@ -831,6 +831,16 @@ namespace RobEveryone.Core
                 pendingQuotaCheck.AddRange(PlayerInventory.AllPlayers);
             }
 
+            // Issue #61: ShopShelfItem.unlockBatch already gates new
+            // sabotage tools per batch, but a session ending here (the
+            // exact moment retention-research.md found playtesters were
+            // dropping off) never actually saw what's waiting at the next
+            // batch -- surface it explicitly instead of leaving it to be
+            // discovered by returning to the shop. Computed once against
+            // batchNumber + 1 (the increment below hasn't happened yet),
+            // shared across every player's message this round.
+            string nextBatchUnlockLine = isFinalRound ? BuildNextBatchUnlockLine(batchNumber + 1) : null;
+
             foreach (PlayerInventory player in PlayerInventory.AllPlayers)
             {
                 lastResults.TryGetValue(player, out RoundResult result);
@@ -854,6 +864,11 @@ namespace RobEveryone.Core
                 string message = wasCaught
                     ? "Caught by the police!"
                     : $"Batch progress: ${player.Cash} cash + ${player.TotalValue} inventory / ${currentQuota}";
+
+                // Shown regardless of this round's own outcome -- the
+                // point is surfacing what's coming, not rewarding/
+                // punishing this particular result.
+                if (!string.IsNullOrEmpty(nextBatchUnlockLine)) message += $"\n\n{nextBatchUnlockLine}";
 
                 NetworkIdentity identity = player.GetComponent<NetworkIdentity>();
                 if (identity != null && identity.connectionToClient != null)
@@ -893,6 +908,29 @@ namespace RobEveryone.Core
             }
 
             RobEveryoneNetworkManager.singleton.ServerChangeScene(lobbySceneName);
+        }
+
+        // Issue #61. ShopShelfItem.AllShelves is self-registered by
+        // whichever machine is the server/host (see that class's own
+        // comment) -- reads whatever the *last* Lobby load populated it
+        // with, which is fine here since this only ever runs at a batch
+        // boundary, and Lobby always finishes a full load-and-register
+        // pass before the gameplay scene (and therefore this method) can
+        // run again. Distinct() isn't available without System.Linq, so a
+        // HashSet does the same de-duping job for the (rare, cosmetic-
+        // recolor-style) case of two shelves selling the same item at the
+        // same unlock batch.
+        [Server]
+        private static string BuildNextBatchUnlockLine(int nextBatch)
+        {
+            HashSet<string> names = new();
+            foreach (ShopShelfItem shelf in ShopShelfItem.AllShelves)
+            {
+                if (shelf == null || shelf.UnlockBatch != nextBatch) continue;
+                if (!string.IsNullOrEmpty(shelf.ItemName)) names.Add(shelf.ItemName);
+            }
+
+            return names.Count == 0 ? null : $"Batch {nextBatch} unlocks: {string.Join(", ", names)}";
         }
 
         private void HandleAllPlayersReady()
