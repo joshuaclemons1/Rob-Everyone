@@ -22,10 +22,10 @@ namespace RobEveryone.UI
     // NightModeVisuals/HomeownerAI's own tint: every client independently
     // reacts off the already-synced GameFlowManager state and its own
     // local copy of the Lobby scene, once that scene has actually
-    // finished loading. That's what fixes the original bug's root cause
-    // too -- by the time this runs, BatchNumber is guaranteed synced (no
-    // race) and every ShopShelfItem in this Lobby has already run its own
-    // Awake(), so there's nothing left to be empty or stale.
+    // finished loading. That fixes the *original* bug's root cause (every
+    // ShopShelfItem in this Lobby has already run its own Awake() by the
+    // time this can run, so there's nothing left to be empty), but not by
+    // itself a second, separate race -- see OnEnable's own comment.
     //
     // Fires on exactly one Lobby visit per batch: roundInBatch resets to
     // 1 in the same moment batchNumber increments
@@ -58,16 +58,21 @@ namespace RobEveryone.UI
         private Camera previewCamera;
         private RenderTexture renderTexture;
 
+        // Guards TryShow below against deciding twice for the same Lobby
+        // load -- see OnEnable's own comment for why a single plain
+        // Start()-time read isn't safe here.
+        private bool hasChecked;
+
         private void Awake()
         {
             // This component's own GameObject must stay active at all
             // times -- only `panel` (the actual visible content) gets
-            // toggled by Start()/ShowSequence below, same convention as
+            // toggled by OnEnable/ShowSequence below, same convention as
             // LoadingScreenUI's own doc comment establishes for exactly
             // this problem. If `panel` is set to this same GameObject,
-            // the panel.SetActive(false) call at the top of Start()
+            // the panel.SetActive(false) call at the top of OnEnable
             // disables the very object this script lives on, which
-            // silently kills the StartCoroutine call a few lines later
+            // silently kills the StartCoroutine call in TryShow below
             // (Unity won't run a coroutine on an inactive GameObject) --
             // confirmed bug: the popup never appeared at all, regardless
             // of whether anything had actually unlocked. Put this script
@@ -81,11 +86,45 @@ namespace RobEveryone.UI
             }
         }
 
-        private void Start()
+        // Issue #61 follow-up: a plain one-shot Start() read of
+        // GameFlowManager's synced fields can race GameFlowManager's own
+        // spawn/sync timing on a joining/scene-loading client -- the
+        // *exact* bug NightModeVisuals already hit and fixed once before
+        // (issue #12: GameFlowManager is a scene-placed NetworkIdentity
+        // that starts disabled until Mirror's spawn batch reaches this
+        // connection, which can land *after* this client's own local
+        // scene load finishes -- a one-shot read can latch a stale
+        // default with nothing to ever correct it). Reuses the same fix:
+        // subscribe to the static OnTimeOfDayChanged event (fires once
+        // more, with the real value, the moment GameFlowManager's own
+        // sync actually lands, self-correcting an earlier guess) instead
+        // of trusting Start() alone.
+        private void OnEnable()
         {
             if (panel != null) panel.SetActive(false);
+            GameFlowManager.OnTimeOfDayChanged += TryShow;
+            TryShow(); // best-effort immediately; corrected later if this guessed wrong
+        }
 
+        private void OnDisable()
+        {
+            GameFlowManager.OnTimeOfDayChanged -= TryShow;
+        }
+
+        private void TryShow()
+        {
+            // Only ever decide once per Lobby load -- OnTimeOfDayChanged
+            // firing a second time (the real, corrected value arriving)
+            // after an already-correct immediate guess shouldn't re-show
+            // the same popup a second time.
+            if (hasChecked) return;
+            // GameFlowManager.Instance not ready yet is NOT a real "no"
+            // -- leave hasChecked false so a later, real firing of the
+            // event still gets a chance to decide properly.
             if (GameFlowManager.Instance == null) return;
+
+            hasChecked = true;
+
             if (GameFlowManager.Instance.RoundInBatch != 1) return;
             if (GameFlowManager.Instance.BatchNumber <= 1) return;
 
