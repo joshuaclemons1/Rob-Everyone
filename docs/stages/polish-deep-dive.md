@@ -139,8 +139,10 @@ expensive; they're graphically *deliberate*).
    a decal material, spawned/faded at wheel-contact points for
    `CarDriver`) is the standard, cheap way to do this — small, fades
    over time, no new geometry. Same technique generalizes to scorch
-   marks (Dynamite), footprints, blood/impact marks — one system,
-   several uses.
+   marks (Dynamite), footprints, blood/impact marks, and ground-seam
+   blending (#72 — the same Decal Renderer Feature this needs also
+   covers blending grass into dirt/sidewalk at every hard seam, so the
+   two are worth building together) — one system, several uses.
 3. **Weather/atmosphere variety** (#62) — this is the same system as the
    *gameplay* fix above (Time-of-day/weather rounds), just also
    counted here because it's a major graphics win in its own right:
