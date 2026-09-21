@@ -343,9 +343,17 @@ namespace RobEveryone.AI
             agent.speed = EffectiveSpeed(patrolSpeed);
             agent.SetDestination(dispatchSpawnPosition);
             returningStartedAt = Time.time;
+            // TEMPORARY (issue #71 debugging): the 20s timeout didn't
+            // fire for a real playtest -- logging continuously through
+            // the whole Returning duration instead of a one-shot
+            // snapshot, since the previous round's single-frame log
+            // can't tell us whether the timeout math itself ever
+            // actually runs.
+            nextReturningLogAt = Time.time;
         }
 
         private float returningStartedAt;
+        private float nextReturningLogAt; // TEMPORARY (issue #71 debugging)
 
         private void UpdateReturning()
         {
@@ -358,8 +366,22 @@ namespace RobEveryone.AI
                 return;
             }
 
-            if (Time.time - returningStartedAt >= returningTimeout)
+            float elapsed = Time.time - returningStartedAt;
+
+            // TEMPORARY (issue #71 debugging) -- throttled to once every
+            // 3s so a minute-long stuck officer doesn't spam the console.
+            if (Time.time >= nextReturningLogAt)
             {
+                nextReturningLogAt = Time.time + 3f;
+                Debug.Log($"[Issue71] {name} (netId={netId}) UpdateReturning: elapsed={elapsed:F1}/{returningTimeout}, " +
+                    $"pathPending={agent.pathPending}, pathStatus={agent.pathStatus}, remainingDistance={agent.remainingDistance}, " +
+                    $"isOnNavMesh={agent.isOnNavMesh}, State={State}");
+            }
+
+            if (elapsed >= returningTimeout)
+            {
+                // TEMPORARY (issue #71 debugging).
+                Debug.Log($"[Issue71] {name} (netId={netId}) UpdateReturning: TIMEOUT REACHED, destroying self");
                 NetworkServer.Destroy(gameObject);
                 return;
             }
