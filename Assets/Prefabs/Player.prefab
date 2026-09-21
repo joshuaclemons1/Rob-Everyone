@@ -139,7 +139,7 @@ MonoBehaviour:
     m_Bits: 1
   m_VolumeTrigger: {fileID: 0}
   m_VolumeFrameworkUpdateModeOption: 2
-  m_RenderPostProcessing: 0
+  m_RenderPostProcessing: 1
   m_Antialiasing: 0
   m_AntialiasingQuality: 2
   m_StopNaN: 0
@@ -276,7 +276,7 @@ MonoBehaviour:
     m_Bits: 1
   m_VolumeTrigger: {fileID: 0}
   m_VolumeFrameworkUpdateModeOption: 2
-  m_RenderPostProcessing: 0
+  m_RenderPostProcessing: 1
   m_Antialiasing: 0
   m_AntialiasingQuality: 2
   m_StopNaN: 0
@@ -530,6 +530,7 @@ MonoBehaviour:
   jumpClip: {fileID: 140615187318258251, guid: 8ee889166b449410585929e6f1375a24, type: 3}
   jumpAnticipationFraction: 0
   actionBlendSpeed: 8
+  movingJumpSpeedThreshold: 0.1
 --- !u!114 &1292215316417540458
 MonoBehaviour:
   m_ObjectHideFlags: 0
