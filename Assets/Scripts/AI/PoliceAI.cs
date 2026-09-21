@@ -309,6 +309,12 @@ namespace RobEveryone.AI
         // permanently occupying a slot against PoliceDispatcher's cap.
         private void GiveUpAndResumeOrReturn()
         {
+            // TEMPORARY (issue #71 debugging): the fix so far only
+            // resolved this for one of two officers in a real playtest --
+            // logging exactly what each officer actually does here rather
+            // than guessing a third time.
+            Debug.Log($"[Issue71] {name} (netId={netId}) GiveUpAndResumeOrReturn: isDispatched={isDispatched}");
+
             if (isDispatched)
             {
                 ReturnToSpawn();
@@ -331,8 +337,17 @@ namespace RobEveryone.AI
         {
             State = PoliceState.Returning;
             agent.speed = EffectiveSpeed(patrolSpeed);
-            agent.SetDestination(dispatchSpawnPosition);
+            bool destinationSet = agent.SetDestination(dispatchSpawnPosition);
+            // TEMPORARY (issue #71 debugging).
+            Debug.Log($"[Issue71] {name} (netId={netId}) ReturnToSpawn: target={dispatchSpawnPosition}, " +
+                $"agentPosition={transform.position}, isOnNavMesh={agent.isOnNavMesh}, SetDestination returned={destinationSet}");
+            loggedReturningSnapshot = false;
         }
+
+        // TEMPORARY (issue #71 debugging) -- throttles UpdateReturning's
+        // own snapshot log to once per Returning trip instead of every
+        // frame it's stuck.
+        private bool loggedReturningSnapshot;
 
         private void UpdateReturning()
         {
@@ -346,6 +361,16 @@ namespace RobEveryone.AI
             }
 
             if (agent.pathPending) return;
+
+            if (!loggedReturningSnapshot)
+            {
+                loggedReturningSnapshot = true;
+                // TEMPORARY (issue #71 debugging).
+                Debug.Log($"[Issue71] {name} (netId={netId}) UpdateReturning snapshot: " +
+                    $"pathStatus={agent.pathStatus}, remainingDistance={agent.remainingDistance}, " +
+                    $"stoppingDistance={agent.stoppingDistance}, isOnNavMesh={agent.isOnNavMesh}, " +
+                    $"hasPath={agent.hasPath}, velocity={agent.velocity}");
+            }
 
             // Defensive: a dispatch spawn point that isn't actually
             // reachable on the baked NavMesh (off-mesh, inside geometry,
@@ -362,6 +387,8 @@ namespace RobEveryone.AI
             bool pathFailed = agent.pathStatus != NavMeshPathStatus.PathComplete;
             if (arrived || pathFailed)
             {
+                // TEMPORARY (issue #71 debugging).
+                Debug.Log($"[Issue71] {name} (netId={netId}) UpdateReturning: destroying self (arrived={arrived}, pathFailed={pathFailed})");
                 NetworkServer.Destroy(gameObject);
             }
         }
