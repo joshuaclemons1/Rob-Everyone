@@ -27,13 +27,15 @@ namespace RobEveryone.UI
     // time this can run, so there's nothing left to be empty), but not by
     // itself a second, separate race -- see OnEnable's own comment.
     //
-    // Fires on exactly one Lobby visit per batch: roundInBatch resets to
-    // 1 in the same moment batchNumber increments
-    // (GameFlowManager.HandleRoundEnded), so "RoundInBatch == 1 &&
-    // BatchNumber > 1" identifies that one specific window on its own,
-    // without needing any extra state remembered across Lobby reloads
-    // (BatchNumber <= 1 also skips the very first-ever Lobby, where
-    // nothing has actually "just" unlocked).
+    // Fires on exactly one Lobby visit per batch, per direct request:
+    // the Lobby that *precedes* a batch's own final/Night round, not the
+    // one after it -- players get a shot at the next tier before their
+    // toughest round, not only after they've already gotten through it.
+    // RoundInBatch == 3 identifies that window on its own (see
+    // GameFlowManager.EffectiveShopBatch's own comment for the full
+    // reasoning) -- ShopShelfItem's own Unlocked check reads the same
+    // EffectiveShopBatch, so the shelf and this popup always agree on
+    // what's newly available.
     public class BatchUnlockPopupUI : MonoBehaviour
     {
         private const string PreviewLayerName = "ItemPreview";
@@ -125,28 +127,27 @@ namespace RobEveryone.UI
 
             hasChecked = true;
 
-            if (GameFlowManager.Instance.RoundInBatch != 1) return;
-            if (GameFlowManager.Instance.BatchNumber <= 1) return;
+            if (GameFlowManager.Instance.RoundInBatch != 3) return;
 
-            List<ItemDefinition> newlyUnlocked = CollectNewlyUnlockedItems(GameFlowManager.Instance.BatchNumber);
+            List<ItemDefinition> newlyUnlocked = CollectNewlyUnlockedItems(GameFlowManager.Instance.EffectiveShopBatch);
             if (newlyUnlocked.Count == 0) return;
 
             BuildPreviewStage();
             StartCoroutine(ShowSequence(newlyUnlocked));
         }
 
-        // Every ShopShelfItem gating on this exact batch, de-duped by
-        // ItemDefinition (not just name) since two shelves could
+        // Every ShopShelfItem gating on this exact effective batch, de-
+        // duped by ItemDefinition (not just name) since two shelves could
         // plausibly sell the same item -- HashSet<ItemDefinition> is a
         // reference-identity comparison, which is exactly right for a
         // ScriptableObject asset.
-        private static List<ItemDefinition> CollectNewlyUnlockedItems(int batchNumber)
+        private static List<ItemDefinition> CollectNewlyUnlockedItems(int effectiveBatch)
         {
             HashSet<ItemDefinition> seen = new();
             List<ItemDefinition> result = new();
             foreach (ShopShelfItem shelf in FindObjectsByType<ShopShelfItem>())
             {
-                if (shelf.UnlockBatch != batchNumber || shelf.Item == null) continue;
+                if (shelf.UnlockBatch != effectiveBatch || shelf.Item == null) continue;
                 if (seen.Add(shelf.Item)) result.Add(shelf.Item);
             }
             return result;

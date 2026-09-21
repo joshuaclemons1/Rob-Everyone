@@ -33,10 +33,18 @@ namespace RobEveryone.Shop
         public int UnlockBatch => unlockBatch;
         public ItemDefinition Item => item;
 
+        // Reads EffectiveShopBatch, not BatchNumber directly -- unlocks
+        // starting the Lobby before a batch's own Night round, not the
+        // one after it (see EffectiveShopBatch's own comment).
         private bool Unlocked =>
-            GameFlowManager.Instance != null && GameFlowManager.Instance.BatchNumber >= unlockBatch;
+            GameFlowManager.Instance != null && GameFlowManager.Instance.EffectiveShopBatch >= unlockBatch;
 
-        // Reuses the same curve quota itself grows on (GameFlowManager's
+        // Deliberately still keyed to the literal BatchNumber, not
+        // EffectiveShopBatch -- an item bought during its early-unlock
+        // preview window (the Lobby before the current batch's Night
+        // round) costs that *current* batch's price, not the higher
+        // price it'll carry once the batch actually turns over. Reuses
+        // the same curve quota itself grows on (GameFlowManager's
         // quotaGrowthMultiplier) rather than a second, separately-tuned
         // price curve -- batch 1 = base price, batch 2 = x1.5, etc.
         public int CurrentPrice

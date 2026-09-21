@@ -68,6 +68,21 @@ namespace RobEveryone.Core
         public int BatchNumber => batchNumber;
         public int RoundInBatch => roundInBatch;
 
+        // Issue #61, per direct request: the shop should unlock a
+        // batch's items starting the Lobby that *precedes* that batch's
+        // own final/Night round, not the Lobby that follows it -- giving
+        // players a shot at the next tier's gear before their toughest
+        // round, instead of only after they've already gotten through
+        // it. roundInBatch reaching 3 means the batch's final round is
+        // upcoming (or currently being played); from that point through
+        // the rest of the batch, shop-unlock checks should treat the
+        // batch as one higher than BatchNumber's own literal,
+        // not-yet-incremented value. Scoped to shop-unlock gating only
+        // (ShopShelfItem/BatchUnlockPopupUI) -- BatchNumber itself still
+        // means exactly what it always has everywhere else (quota
+        // tracking, Discord Rich Presence, HUD text).
+        public int EffectiveShopBatch => batchNumber + (roundInBatch >= 3 ? 1 : 0);
+
         // Static, not instance-bound -- a subscriber (NightModeVisuals)
         // needs to hook this up the instant its own scene loads, which can
         // easily race GameFlowManager.Instance itself still being null on
