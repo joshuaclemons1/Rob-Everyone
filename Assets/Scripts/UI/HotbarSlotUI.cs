@@ -303,15 +303,24 @@ namespace RobEveryone.UI
         // interaction logic) at all -- strip every Mirror component
         // immediately so it can't. NetworkBehaviours first, since they
         // depend on the NetworkIdentity still being present.
+        // DestroyImmediate, not Destroy -- Destroy only marks a component
+        // for removal at the *end of the current frame*, which can still
+        // leave it present when Mirror's own scene-consistency check
+        // runs. Matches HeldItemDisplay.StripInteractiveComponents's own
+        // already-correct precedent for this exact same risk (it always
+        // used DestroyImmediate here) -- this component didn't, at
+        // first, which is the likely reason the fix didn't fully hold
+        // (confirmed recurrence: Taser, shown in the hotbar, right after
+        // this fix had already landed for AlarmClock's own popup path).
         private static void StripNetworkComponents(GameObject root)
         {
             foreach (NetworkBehaviour behaviour in root.GetComponentsInChildren<NetworkBehaviour>(true))
             {
-                Destroy(behaviour);
+                DestroyImmediate(behaviour);
             }
             foreach (NetworkIdentity identity in root.GetComponentsInChildren<NetworkIdentity>(true))
             {
-                Destroy(identity);
+                DestroyImmediate(identity);
             }
         }
 
