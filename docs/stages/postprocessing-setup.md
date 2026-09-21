@@ -231,62 +231,48 @@ changed, double check both the component's `active` box *and* each
 field's own override checkbox are ticked (the two-checkbox trap from
 the primer above).
 
-## Stage 2 — give MainMenu and Lobby their own profiles
+## Stage 2 — make SampleScene fall through to the same default
 
-Stage 1 already makes both scenes look better via the shared default,
-but a shared file means MainMenu and Lobby can never be tuned
-independently later (e.g. Lobby's interior mirror room from #52 may
-want different values than the outdoor menu flythrough). Give each its
-own profile now, seeded from Stage 1's values, so they're free to
-diverge later.
+Simplified per a direct request: one shared profile everywhere instead
+of Stage 2/3's original per-scene split (duplicate profiles for
+MainMenu/Lobby, rounding out SampleScene's own separate file). That
+original plan is still a reasonable thing to revisit later if a scene
+ever needs its own distinct look (e.g. Lobby's interior mirror room
+from #52 wanting different values than an outdoor scene) — nothing
+below forecloses it, it just isn't needed right now.
 
-1. Duplicate `Assets/Settings/SampleSceneProfile.asset` (Ctrl+D in the
-   Project window) twice; rename the copies `MainMenuProfile.asset`
-   and `LobbyProfile.asset`.
-2. Open each and set its values to match whichever preset you chose in
-   Stage 1 (or intentionally diverge — that's the point of giving them
-   their own file).
-3. In `MainMenu.unity`: add an empty GameObject, name it `Global
-   Volume` (matching the existing naming convention in `SampleScene`),
-   add a **Volume** component to it, check **Is Global**, and drag
-   `MainMenuProfile.asset` into its **Profile** field.
-4. Repeat in `Lobby.unity` with `LobbyProfile.asset`.
+MainMenu and Lobby already fall through to `DefaultVolumeProfile.asset`
+automatically (Stage 1) since neither has a Volume of its own.
+`SampleScene.unity` is the one holdout — it has its own `Global
+Volume` GameObject pointing at `SampleSceneProfile.asset`, which
+overrides the project default and stops it from seeing Stage 1's
+values at all.
 
-🔴 **Rest point**: Play Mode both scenes again. MainMenu's own flythrough
-background is the `Lobby` scene loaded additively by
-`MenuBackgroundBuilder` — worth double-checking whether that additive
-load should pick up `LobbyProfile.asset` (the scene's own Volume) or
-whether you'd rather it use `MainMenuProfile.asset` for a fully
-separate look; either is fine, just be aware which one you're actually
-seeing. Also do a real multiplayer smoke test of `Lobby.unity` itself
-(not just the menu background), since it's a real gameplay scene with
-its own player-facing moments (#52's customization room).
-
-## Stage 3 — round out SampleScene's existing profile
-
-`SampleSceneProfile.asset` already has Bloom/Tonemapping/Vignette —
-the real gap in it is **no Color Adjustments at all**, and its Bloom/
-Vignette values are on the conservative side.
-
-1. Open `Assets/Settings/SampleSceneProfile.asset`.
-2. Right-click in empty space in the Inspector → **Add Override** →
-   find **Color Adjustments** under the Post-processing category, add
-   it.
-3. Fill in the Color Adjustments row from whichever preset you're
-   standardizing on.
-4. Bump Bloom's `Intensity` and Vignette's `Intensity` from their
-   current mild values (`0.25`/`0.2`) toward the preset's numbers.
+1. Open `SampleScene.unity` and find the `Global Volume` GameObject in
+   the Hierarchy (search "Global Volume" in the scene search bar if
+   it's not obvious).
+2. On its **Volume** component, clear the **Profile** field (or just
+   delete the `Global Volume` GameObject entirely — either works, since
+   an empty/missing profile and no Volume component both fall through
+   to the project default the same way; deleting it is the cleaner,
+   more consistent choice since it then matches MainMenu/Lobby exactly).
+3. `Assets/Settings/SampleSceneProfile.asset` becomes unused after
+   this — leaving it in place rather than deleting it, in case a scene
+   wants its own distinct profile again later (same non-destructive
+   instinct as #59's approach to layout experiments).
 
 🔴 **Rest point**: Play Mode `SampleScene.unity`, walk through a full
-house-robbery loop. Check it still reads clearly at night if a
-night-round is active (`NightModeVisuals`) — a vignette/bloom tuned
-for daytime can look wrong or hurt visibility once it's dark; if so,
-it's fine for the numbers to differ, this file only needs to cover the
-default daytime case for now.
+house-robbery loop — it should now look identical to MainMenu/Lobby's
+tuning from Stage 1, all three scenes reading Preset D from the same
+file. Check it still reads clearly at night if a night-round is active
+(`NightModeVisuals`) — a look tuned for daytime can hurt visibility
+once it's dark; if so, that's a real reason to give `SampleScene` its
+own profile back later (see the note above), not something to fix by
+weakening the daytime look.
 
-## Stage 4 — optional extra touches, once the above feels right
+## Stage 3 — optional extra touches, once the above feels right
 
-Only worth doing after Stages 1-3 are confirmed and you have a sense
+Only worth doing after Stages 1-2 are confirmed and you have a sense
 of whether the look needs more:
 
 - **Film Grain** — a very subtle amount (`Intensity` around `0.1-0.15`,
@@ -303,19 +289,21 @@ of whether the look needs more:
 ## Where to look
 
 - `Assets/Settings/DefaultVolumeProfile.asset` — the project-wide
-  fallback, Stage 1.
-- `Assets/Settings/SampleSceneProfile.asset` — SampleScene's existing
-  real profile, Stage 3.
-- `MainMenuProfile.asset` / `LobbyProfile.asset` (new, Stage 2).
+  fallback, Stage 1, now the single shared profile for all three
+  scenes as of Stage 2.
+- `Assets/Settings/SampleSceneProfile.asset` — SampleScene's old
+  per-scene profile, now unused as of Stage 2 (left in place, not
+  deleted, in case a scene wants its own look again later).
 - `Assets/Scenes/MainMenu.unity`, `Assets/Scenes/Lobby.unity`,
-  `Assets/Scenes/SampleScene.unity` — where each scene's `Global
-  Volume` GameObject lives (or needs adding).
+  `Assets/Scenes/SampleScene.unity` — MainMenu/Lobby have no Volume of
+  their own (by design); SampleScene's own `Global Volume` GameObject
+  is what Stage 2 clears/removes.
 - `Assets/Settings/PC_Renderer.asset` — SSAO's existing settings,
   already fine, reference only.
 - `Assets/Scripts/UI/MenuBackgroundBuilder.cs` — the #51 code that
-  additively loads `Lobby.unity` behind the Main Menu; worth knowing
-  about for the Stage 2 rest point's "which profile is the flythrough
-  actually seeing" question.
+  additively loads `Lobby.unity` behind the Main Menu; both scenes
+  read the same shared default now, so no divergence to worry about
+  there.
 - [polish-deep-dive.md](polish-deep-dive.md) — the research this issue
   came from.
 - Issue [#64](https://github.com/joshuaclemons1/Rob-Everyone/issues/64).
