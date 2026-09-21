@@ -83,7 +83,10 @@ in `Lobby.unity`, with rest points), [sfx-plan.md](stages/sfx-plan.md) (issues #
 exists vs. the real gaps, sabotage item use sounds first), and
 [retention-research.md](stages/retention-research.md) (why playtest
 sessions stall after the first quota batch, researched directly
-against Super Battle Golf and Gamble With Your Friends).
+against Super Battle Golf and Gamble With Your Friends), and
+[polish-deep-dive.md](stages/polish-deep-dive.md) (a second, deeper
+research pass covering both gameplay depth and graphics/visual
+fidelity, with a prioritized actionable list for each).
 Style/asset reference (palette, sourced packs, remaining art to-do) is in
 [art-info.md](art-info.md); UI/menu element spec is in
 [ui-design.md](stages/ui-design.md); main menu build docs are
