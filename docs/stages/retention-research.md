@@ -89,7 +89,7 @@ concrete, actionable changes below.
 
 ## Direct recommendations, prioritized
 
-### 1. Make sabotage an explicit comeback tool, not just griefing
+### 1. Make sabotage an explicit comeback tool, not just griefing (#60)
 
 Right now, using a sabotage item is a pure Cash cost with only an
 *indirect* benefit (slowing a rival down) — nothing like Super Battle
@@ -101,7 +101,7 @@ change could do a lot to make batch 2+ feel like "now I get to use the
 tools I bought to actually catch up" instead of "now I have to hit the
 same higher number again."
 
-### 2. Give batches structural variety, not just a bigger number
+### 2. Give batches structural variety, not just a bigger number (#61, #62)
 
 This is the core of the diagnosis above. A few concrete levers already
 exist or are already planned:
@@ -120,12 +120,12 @@ exist or are already planned:
   what's waiting at batch 2, so the hook isn't landing. Worth surfacing
   the next batch's unlock at the end-of-round-3 screen explicitly
   ("Batch 2 unlocks: Bat, Alarm Clock") rather than leaving it to be
-  discovered by returning to the shop.
+  discovered by returning to the shop. (#61)
 - Longer-term, a rotating modifier per batch (night round already
   exists for round 3 specifically — worth asking whether that pattern
-  could extend earlier/further) is the same idea taken further.
+  could extend earlier/further) is the same idea taken further. (#62)
 
-### 3. Reconsider quota growth as the *only* difficulty lever
+### 3. Reconsider quota growth as the *only* difficulty lever (#63)
 
 1.5x compounding every batch is steep on its own, and it's the exact
 mechanic named as a top complaint in a game this project is directly

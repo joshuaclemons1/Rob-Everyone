@@ -124,7 +124,7 @@ first, matching the reference games' own "stylized, not photorealistic,
 but *considered*" formula (none of these games are graphically
 expensive; they're graphically *deliberate*).
 
-1. **A real post-processing pass** — likely the single cheapest lever
+1. **A real post-processing pass** (#64) — likely the single cheapest lever
    available. If `DefaultVolumeProfile`/the per-scene profiles turn out
    to be untuned defaults, even a modest pass (color grading for a
    consistent daytime "look," a touch of bloom on emissive/light
@@ -133,34 +133,34 @@ expensive; they're graphically *deliberate*).
    is built exactly for this. Directly addresses the "pre-build/alpha
    feel" complaint on its own more than almost anything else on this
    list.
-2. **Tire marks / skid decals on the roads** — the user's own example,
+2. **Tire marks / skid decals on the roads** (#65) — the user's own example,
    confirmed as a real gap. URP's Decal Projector (a Renderer Feature +
    a decal material, spawned/faded at wheel-contact points for
    `CarDriver`) is the standard, cheap way to do this — small, fades
    over time, no new geometry. Same technique generalizes to scorch
    marks (Dynamite), footprints, blood/impact marks — one system,
    several uses.
-3. **Weather/atmosphere variety** — this is the same system as the
+3. **Weather/atmosphere variety** (#62) — this is the same system as the
    *gameplay* fix above (Time-of-day/weather rounds), just also
    counted here because it's a major graphics win in its own right:
    fog, overcast lighting, a dusk/night pass are all straightforward
    URP lighting/skybox swaps (the project already has Kenney's
    day/night skyboxes imported and `NightModeVisuals` built for a
    night round) — this is genuinely two birds with one system.
-4. **Small ambient-life details** — distant traffic sound/movement,
+4. **Small ambient-life details** (#27) — distant traffic sound/movement,
    wind-blown debris or leaves, birds, a subtly animated flag/sign —
    cheap per-item, and this exact category is what issue #27
    (environmental detail pass) and #51's own background-flythrough
    work were already gesturing toward. Doesn't need to be much; these
    reference games all lean on *a few* well-chosen ambient touches
    rather than dense systems.
-5. **Impact/action VFX density** — dust kicked up while sprinting, a
+5. **Impact/action VFX density** (#66) — dust kicked up while sprinting, a
    spark/flash on a landed sabotage hit, a cash-burst or confetti
    moment on hitting quota (ties directly to the "climactic payoff"
    gameplay finding above, and to the SFX plan's sabotage-use gap —
    these should probably be built together, sound and VFX layered onto
    the same use-moment in `SabotageUseController`).
-6. **Real 3D grass** — stays lower priority *on purpose*, not
+6. **Real 3D grass** (#67) — stays lower priority *on purpose*, not
    forgotten. This research doesn't overturn the project's own
    original reasoning for deferring it (real technical undertaking,
    LOD/perf tuning across the whole map, a 2-person art team) — it
@@ -172,21 +172,41 @@ expensive; they're graphically *deliberate*).
 
 ## Suggested order across both lists
 
-1. Post-processing pass (cheapest, no new assets, biggest single
-   "stop looking pre-build" lever).
-2. Weather/time-of-day variety — the one item that's simultaneously
-   the graphics win in this doc *and* the direct fix for the
-   retention-research.md drop-off finding. Highest combined value on
-   this whole list.
-3. SFX sabotage-use sounds + impact VFX, built together (see
-   [sfx-plan.md](sfx-plan.md)).
-4. Tire marks / decal system.
-5. Surface the next batch's unlock explicitly at end-of-round-3 (from
-   retention-research.md) + a real payoff moment (VFX/audio) on hitting
-   quota.
+1. Post-processing pass (#64) — cheapest, no new assets, biggest single
+   "stop looking pre-build" lever.
+2. Weather/time-of-day variety (#62) — the one item that's
+   simultaneously the graphics win in this doc *and* the direct fix
+   for the retention-research.md drop-off finding. Highest combined
+   value on this whole list.
+3. SFX sabotage-use sounds (#22) + impact VFX (#66), built together
+   (see [sfx-plan.md](sfx-plan.md)).
+4. Tire marks / decal system (#65).
+5. Surface the next batch's unlock explicitly at end-of-round-3 (#61,
+   from retention-research.md) + a real payoff moment (VFX/audio) on
+   hitting quota (#66).
 6. Ambient-life detail pass (#27).
-7. Real 3D grass, once the above has landed and there's a sense of
-   remaining headroom.
+7. Real 3D grass (#67), once the above has landed and there's a sense
+   of remaining headroom.
+
+## Filed issues
+
+All actionable items from this doc and retention-research.md were
+filed as tracked issues:
+
+- #60 — sabotage comeback reward
+- #61 — surface next batch's unlock
+- #62 — weather/time-of-day variety per round
+- #63 — reconsider quota growth as the only difficulty lever
+- #64 — post-processing pass
+- #65 — tire-mark/decal system
+- #66 — impact/action VFX pass + quota payoff moment
+- #67 — real 3D grass
+
+A few items overlapped with issues already open and were added as
+cross-reference comments there instead of new issues: #59 (alternate
+map layout, reconsidered as a rotation mechanic), #27 (ambient-life
+detail specifics), #26 (HUD result banner, feedback-clarity tie-in),
+#22 (sabotage SFX, paired with #66's VFX half).
 
 ## Where to look
 
