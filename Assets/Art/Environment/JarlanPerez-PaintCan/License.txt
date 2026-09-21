@@ -1,0 +1,18 @@
+Paint Can
+
+Author: Jarlan Perez
+Source: https://poly.pizza/m/9pyBQ8e4tSy
+Published: June 2, 2017
+
+License: Creative Commons Attribution 3.0 (CC-BY 3.0)
+https://creativecommons.org/licenses/by/3.0/
+
+NOT CC0 -- unlike every other sourced asset in this project, this one
+requires actual attribution credit somewhere before shipping (the
+in-game credits screen, per docs/art-info.md's own convention for the
+other CC-BY assets already in this project -- see "Jail" by Poly by
+Google and the TampaJoey Chain Link Fence Pack for the existing
+precedent).
+
+Suggested credit line: "Paint Can" by Jarlan Perez, licensed under
+CC-BY 3.0.
