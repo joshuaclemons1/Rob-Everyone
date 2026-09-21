@@ -1,4 +1,5 @@
 using System.Collections;
+using Mirror;
 using RobEveryone.Inventory;
 using RobEveryone.Items;
 using RobEveryone.Sabotage;
@@ -235,6 +236,7 @@ namespace RobEveryone.UI
             modelInstance.transform.localPosition = Vector3.zero;
             modelInstance.transform.localRotation = Quaternion.identity;
             SetLayerRecursively(modelInstance, modelAnchor.gameObject.layer);
+            StripNetworkComponents(modelInstance);
 
             Bounds bounds = CalculateBounds(modelInstance);
             Vector3 recenterOffset = modelPivot.position - bounds.center;
@@ -281,6 +283,35 @@ namespace RobEveryone.UI
             foreach (Transform child in root.transform)
             {
                 SetLayerRecursively(child.gameObject, layer);
+            }
+        }
+
+        // Issue found while chasing #61: some items' WorldModelPrefab
+        // (AlarmClock at least, likely others -- anything also used as a
+        // real networked world pickup, e.g. via PickupItem) carries a
+        // live NetworkIdentity plus NetworkBehaviour components, since
+        // that same prefab legitimately needs them for its normal
+        // spawned/dropped-loot use. A bare Instantiate() here (not
+        // NetworkServer.Spawn) leaves them orphaned -- neither a valid
+        // scene object (no sceneId) nor a valid spawned one (no assetId/
+        // netId) -- which Mirror's own scene-consistency check can trip
+        // over the next time the scene this preview lives in loads/
+        // reloads, kicking the Editor out of Play Mode with "needs to be
+        // opened and resaved, because the scene object ... has no valid
+        // sceneId yet." This preview clone is purely visual and never
+        // should have participated in networking (or PickupItem's own
+        // interaction logic) at all -- strip every Mirror component
+        // immediately so it can't. NetworkBehaviours first, since they
+        // depend on the NetworkIdentity still being present.
+        private static void StripNetworkComponents(GameObject root)
+        {
+            foreach (NetworkBehaviour behaviour in root.GetComponentsInChildren<NetworkBehaviour>(true))
+            {
+                Destroy(behaviour);
+            }
+            foreach (NetworkIdentity identity in root.GetComponentsInChildren<NetworkIdentity>(true))
+            {
+                Destroy(identity);
             }
         }
 
