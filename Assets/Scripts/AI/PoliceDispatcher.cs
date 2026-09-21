@@ -60,12 +60,6 @@ namespace RobEveryone.AI
             // already doing instead of all piling onto this one alert.
             PoliceAI closest = FindClosestAvailableOfficer(position);
             closest?.RespondTo(position, blamed);
-            // TEMPORARY (issue #71 debugging): which officer actually
-            // handled this alert -- redirected (existing) or freshly
-            // spawned -- to correlate against PoliceAI's own [Issue71]
-            // logs for whichever one ends up stuck.
-            Debug.Log($"[Issue71] HandleAlertRaised: redirected existing officer={(closest != null ? closest.name + " netId=" + closest.netId : "none")}, " +
-                $"activeOfficers.Count={activeOfficers.Count}, cap={ComputeCap()}");
 
             if (activeOfficers.Count >= ComputeCap()) return; // at capacity -- the redirect above still happened, just no new officer
             if (policePrefab == null) return;
@@ -84,8 +78,6 @@ namespace RobEveryone.AI
             // officer existed to hear it -- send it straight at what it
             // missed instead of waiting for the next one.
             officer.RespondTo(position, blamed);
-            // TEMPORARY (issue #71 debugging).
-            Debug.Log($"[Issue71] HandleAlertRaised: spawned new officer={officer.name} netId={officer.netId} at spawn={spawn.position}");
         }
 
         // Patrol-state only -- Respond/Searching/Chase/Returning all mean

@@ -59,6 +59,16 @@ namespace RobEveryone.AI
         [SerializeField] private float catchDistance = 2.2f;
         [SerializeField] private float loseInterestTime = 4f;
 
+        // Issue #71: a dispatched officer's walk home can hit a genuine
+        // NavMeshAgent quirk on a long trip where remainingDistance
+        // reports Infinity indefinitely despite a healthy pathStatus and
+        // isOnNavMesh -- see UpdateReturning's own comment. A flat time
+        // budget guarantees this can't get stuck forever regardless of
+        // why, same "don't fully trust the system, verify with a
+        // timeout" approach GameFlowManager.TeleportPlayerTo already
+        // uses for a similarly hard-to-fully-explain case.
+        [SerializeField] private float returningTimeout = 20f;
+
         [SerializeField] private float searchDuration = 3f;
         [SerializeField] private float searchSweepAngle = 45f;
         [SerializeField] private float searchSweepFrequency = 2f;
@@ -309,12 +319,6 @@ namespace RobEveryone.AI
         // permanently occupying a slot against PoliceDispatcher's cap.
         private void GiveUpAndResumeOrReturn()
         {
-            // TEMPORARY (issue #71 debugging): the fix so far only
-            // resolved this for one of two officers in a real playtest --
-            // logging exactly what each officer actually does here rather
-            // than guessing a third time.
-            Debug.Log($"[Issue71] {name} (netId={netId}) GiveUpAndResumeOrReturn: isDispatched={isDispatched}");
-
             if (isDispatched)
             {
                 ReturnToSpawn();
@@ -337,17 +341,11 @@ namespace RobEveryone.AI
         {
             State = PoliceState.Returning;
             agent.speed = EffectiveSpeed(patrolSpeed);
-            bool destinationSet = agent.SetDestination(dispatchSpawnPosition);
-            // TEMPORARY (issue #71 debugging).
-            Debug.Log($"[Issue71] {name} (netId={netId}) ReturnToSpawn: target={dispatchSpawnPosition}, " +
-                $"agentPosition={transform.position}, isOnNavMesh={agent.isOnNavMesh}, SetDestination returned={destinationSet}");
-            loggedReturningSnapshot = false;
+            agent.SetDestination(dispatchSpawnPosition);
+            returningStartedAt = Time.time;
         }
 
-        // TEMPORARY (issue #71 debugging) -- throttles UpdateReturning's
-        // own snapshot log to once per Returning trip instead of every
-        // frame it's stuck.
-        private bool loggedReturningSnapshot;
+        private float returningStartedAt;
 
         private void UpdateReturning()
         {
@@ -360,17 +358,13 @@ namespace RobEveryone.AI
                 return;
             }
 
-            if (agent.pathPending) return;
-
-            if (!loggedReturningSnapshot)
+            if (Time.time - returningStartedAt >= returningTimeout)
             {
-                loggedReturningSnapshot = true;
-                // TEMPORARY (issue #71 debugging).
-                Debug.Log($"[Issue71] {name} (netId={netId}) UpdateReturning snapshot: " +
-                    $"pathStatus={agent.pathStatus}, remainingDistance={agent.remainingDistance}, " +
-                    $"stoppingDistance={agent.stoppingDistance}, isOnNavMesh={agent.isOnNavMesh}, " +
-                    $"hasPath={agent.hasPath}, velocity={agent.velocity}");
+                NetworkServer.Destroy(gameObject);
+                return;
             }
+
+            if (agent.pathPending) return;
 
             // Defensive: a dispatch spawn point that isn't actually
             // reachable on the baked NavMesh (off-mesh, inside geometry,
@@ -378,17 +372,18 @@ namespace RobEveryone.AI
             // etc.) makes SetDestination fail silently -- no exception,
             // just an invalid/partial path with remainingDistance stuck
             // reporting Infinity, so the plain "did we arrive" check below
-            // would never pass on its own. A plausible second explanation
-            // for the same reported symptom (a dispatched officer frozen
-            // in place, never despawning) alongside GiveUpAndResumeOrReturn's
-            // own confirmed gap above -- treat a failed path the same as
-            // arriving so this can't get stuck forever either way.
+            // would never pass on its own. Real playtest logging (issue
+            // #71) also caught this happening even with SetDestination
+            // returning true, isOnNavMesh true, and pathStatus reporting
+            // PathComplete -- a genuine NavMeshAgent quirk on a long trip
+            // that neither this check nor the arrival check below was
+            // ever going to catch on their own, since Unity itself was
+            // reporting the path as healthy. returningTimeout above is
+            // the real backstop for that case.
             bool arrived = agent.remainingDistance <= agent.stoppingDistance;
             bool pathFailed = agent.pathStatus != NavMeshPathStatus.PathComplete;
             if (arrived || pathFailed)
             {
-                // TEMPORARY (issue #71 debugging).
-                Debug.Log($"[Issue71] {name} (netId={netId}) UpdateReturning: destroying self (arrived={arrived}, pathFailed={pathFailed})");
                 NetworkServer.Destroy(gameObject);
             }
         }
