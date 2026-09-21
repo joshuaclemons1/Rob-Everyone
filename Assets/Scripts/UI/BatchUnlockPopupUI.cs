@@ -58,6 +58,29 @@ namespace RobEveryone.UI
         private Camera previewCamera;
         private RenderTexture renderTexture;
 
+        private void Awake()
+        {
+            // This component's own GameObject must stay active at all
+            // times -- only `panel` (the actual visible content) gets
+            // toggled by Start()/ShowSequence below, same convention as
+            // LoadingScreenUI's own doc comment establishes for exactly
+            // this problem. If `panel` is set to this same GameObject,
+            // the panel.SetActive(false) call at the top of Start()
+            // disables the very object this script lives on, which
+            // silently kills the StartCoroutine call a few lines later
+            // (Unity won't run a coroutine on an inactive GameObject) --
+            // confirmed bug: the popup never appeared at all, regardless
+            // of whether anything had actually unlocked. Put this script
+            // on an always-active parent/manager object and point `panel`
+            // at a separate child instead.
+            if (panel == gameObject)
+            {
+                Debug.LogError("BatchUnlockPopupUI: Panel is set to this component's own GameObject -- " +
+                    "disabling it disables this script too, so the popup can never show. Move this component " +
+                    "to a separate always-active object and point Panel at the actual content child instead.", this);
+            }
+        }
+
         private void Start()
         {
             if (panel != null) panel.SetActive(false);

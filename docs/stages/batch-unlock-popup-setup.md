@@ -38,16 +38,44 @@ Nothing to fix there; just a mislabeling of which Lobby is which.
 `BatchUnlockPopupUI` is built to show in that second one — see its own
 `RoundInBatch == 1 && BatchNumber > 1` check.
 
+## Correction: why the popup never showed
+
+If you built this from the version of this doc that said to put
+`BatchUnlockPopupUI` directly on the panel GameObject — that was wrong,
+and it's a real bug in how the original doc was written, not a mistake
+on your end. `Start()` calls `panel.SetActive(false)` as its very first
+line; if `panel` is the *same* GameObject the script itself lives on,
+that call disables the object the script is running on, which silently
+kills the `StartCoroutine` call a few lines later — Unity won't run a
+coroutine on an inactive GameObject. The popup's unlock check never
+even gets a chance to matter; it fails before that, every time,
+regardless of whether anything had actually unlocked.
+
+This is exactly the problem `LoadingScreenUI` already solved correctly
+elsewhere in this project (see its own doc comment) — its script's
+GameObject "stays enabled at all times... only `panel` (the actual
+visible content) gets toggled." The steps below now follow that same
+split: the script lives on its own always-active object, `Panel` points
+at a *separate* child. The component now also logs a loud error on
+Awake if you accidentally wire `Panel` back to its own GameObject, so
+this can't silently recur.
+
 ## Build the Canvas hierarchy
 
 1. In `Lobby.unity`, create a new Canvas (or add to an existing
    full-screen UI Canvas already in the scene) — `Screen Space -
    Overlay` is fine, this doesn't need to render in-world.
-2. Under it, add a `Panel` GameObject (`BatchUnlockPopup`), stretched to
-   fill the screen, with a semi-transparent dark background image (an
-   `Image` component, alpha around `0.6-0.75`) so the spinning item
-   reads clearly against it.
-3. Inside the panel:
+2. Under it, add an empty GameObject called `BatchUnlockManager` —
+   this is what carries the `BatchUnlockPopupUI` component itself, and
+   it must stay active the whole time the Lobby is loaded (don't ever
+   set this one inactive).
+3. Under `BatchUnlockManager`, add a *separate* child GameObject called
+   `Panel`, stretched to fill the screen, with a semi-transparent dark
+   background image (an `Image` component, alpha around `0.6-0.75`) so
+   the spinning item reads clearly against it. This is the one that
+   gets shown/hidden — safe to do, since it's not the object the script
+   lives on.
+4. Inside `Panel`:
    - A `TextMeshPro - Text (UI)` for the title, large, centered near
      the top third of the screen. Not bound to any text in the
      Inspector — `BatchUnlockPopupUI` sets it to `"Item Unlocked"` at
@@ -57,20 +85,22 @@ Nothing to fix there; just a mislabeling of which Lobby is which.
      `modelImage` renders the spinning model onto.
    - A second `TextMeshPro - Text (UI)` below the RawImage for the
      item's name (e.g. "Bat", "Alarm Clock").
-4. Add the `BatchUnlockPopupUI` component to the `BatchUnlockPopup`
-   panel GameObject itself (or a manager object elsewhere in the scene
-   — doesn't need to be on the panel, just needs a reference to it).
-5. Wire the Inspector fields:
-   - `Panel` → the `BatchUnlockPopup` GameObject itself.
+5. Add the `BatchUnlockPopupUI` component to `BatchUnlockManager` (the
+   parent from step 2 — **not** `Panel`).
+6. Wire the Inspector fields on `BatchUnlockManager`:
+   - `Panel` → the `Panel` child GameObject from step 3.
    - `Title Text` → the first TMP text.
    - `Item Name Text` → the second TMP text.
    - `Model Image` → the RawImage.
    - Leave `Preview Padding` / `Spin Speed` / `Seconds Per Item` at
      their defaults to start (`1.3`, `40°/sec`, `3s`) — tune by eye
      once you can see it running.
-6. Make sure the panel starts inactive in the scene (or just trust
-   `Start()` — it calls `panel.SetActive(false)` immediately, then only
-   activates it if there's actually something new to show).
+7. Leave both `BatchUnlockManager` and `Panel` active in the Editor —
+   `Start()` hides `Panel` itself at runtime the instant it determines
+   nothing needs to show, so there's nothing to pre-hide by hand. If
+   you see the red error from step 5's warning check in the Console the
+   moment you enter Play Mode, `Panel` is still pointed at the wrong
+   object — fix that before testing further.
 
 🔴 **Rest point**: play through to the Lobby right after a batch's
 final (night) round ends — the one your earlier test correctly found
@@ -79,6 +109,20 @@ a large spinning model for each newly-unlocked item, a few seconds
 each, then nothing (panel hides itself). The Lobby *before* that (the
 Night-skybox one) should show nothing, since `BatchNumber` hasn't
 incremented yet there.
+
+## If the shelf itself is still delayed a full extra round
+
+Worth double-checking one thing before assuming there's still a real
+unlock-timing bug on top of the popup one: in the Lobby right after the
+night round ends, what does the **skybox** actually look like —
+Morning, or still Night? That Lobby should show the *Morning* skybox
+(it's previewing the new batch's first round) and the shelf should
+already be unlocked there. If it's showing Morning and still Locked,
+that's a real, separate bug worth reporting with that detail (which
+skybox, what the shelf said) — the popup fix above doesn't change the
+shelf's own `Unlocked` check at all, so it's worth re-testing that part
+fresh now that the popup can actually confirm visually which Lobby
+you're in.
 
 ## Where to look
 
