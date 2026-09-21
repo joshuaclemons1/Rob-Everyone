@@ -607,7 +607,20 @@ MonoBehaviour:
   roundManager: {fileID: 0}
   animator: {fileID: 1252491562911674551}
   animatorSpeedParam: Speed
-  patrolPoints: []
+  patrolPoints:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
   patrolSpeed: 3.5
   chaseSpeed: 6
   viewDistance: 12

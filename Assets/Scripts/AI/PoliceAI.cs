@@ -148,7 +148,7 @@ namespace RobEveryone.AI
             if (roundManager == null) roundManager = FindAnyObjectByType<RoundManager>();
 
             agent.speed = EffectiveSpeed(patrolSpeed);
-            if (patrolPoints.Count > 0)
+            if (patrolPoints.Count > 0 && patrolPoints[0] != null)
             {
                 agent.SetDestination(patrolPoints[0].position);
             }
@@ -231,14 +231,6 @@ namespace RobEveryone.AI
             agent.SetDestination(lastKnownPosition);
         }
 
-        // TEMPORARY (issue #71 debugging) -- throttles UpdatePatrol's own
-        // diagnostic log to once every 3s, same convention as
-        // UpdateReturning used last round. Testing a direct report that
-        // it's specifically a *redirected* (isDispatched=False) officer
-        // that gets stuck, not a freshly-dispatched one -- UpdatePatrol
-        // currently has zero logging at all to confirm or rule that out.
-        private float nextPatrolLogAt;
-
         private void UpdatePatrol()
         {
             Transform seen = FindVisiblePlayer();
@@ -248,36 +240,65 @@ namespace RobEveryone.AI
                 return;
             }
 
-            if (Time.time >= nextPatrolLogAt)
-            {
-                nextPatrolLogAt = Time.time + 3f;
-                Debug.Log($"[Issue71] {name} (netId={netId}) UpdatePatrol: isDispatched={isDispatched}, " +
-                    $"patrolPoints.Count={patrolPoints.Count}, patrolIndex={patrolIndex}, pathPending={agent.pathPending}, " +
-                    $"pathStatus={agent.pathStatus}, remainingDistance={agent.remainingDistance}, isOnNavMesh={agent.isOnNavMesh}, " +
-                    $"hasPath={agent.hasPath}, velocity={agent.velocity}");
-            }
-
-            if (patrolPoints.Count == 0) return;
+            if (!HasAnyPatrolPoint()) return;
 
             if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
             {
-                agent.SetDestination(PickNextPatrolPoint().position);
+                Transform next = PickNextPatrolPoint();
+                if (next != null) agent.SetDestination(next.position);
             }
+        }
+
+        // Issue #71: patrolPoints.Count alone isn't enough to know
+        // whether an officer actually has anywhere to patrol to. The
+        // base Police.prefab deliberately ships with 13 placeholder
+        // slots, every one left unassigned ({fileID: 0}) -- a
+        // freshly-dispatched instance (PoliceDispatcher.Instantiate) has
+        // no patrol points of its own and isn't meant to try patrolling
+        // at all, only to return to spawn once it gives up (see
+        // GiveUpAndResumeOrReturn). A hand-placed officer's own scene-
+        // level PrefabInstance overrides fill those same 13 slots with
+        // real Transforms. Confirmed bug (a genuine regression from
+        // issue #70's own fix): shrinking the *base* prefab's array to a
+        // true empty list broke those scene-level overrides entirely --
+        // Unity's Array.data[N] overrides can't attach to indices that
+        // no longer exist in the base array, so every hand-placed
+        // officer's patrolPoints read back as empty at runtime too.
+        // Restored the base prefab's 13 placeholder slots and fixed the
+        // code to check for an actually-assigned entry instead, so both
+        // shapes (empty list, or a list of all-null placeholders) mean
+        // "no patrol points" without needing the base array's length to
+        // be zero.
+        private bool HasAnyPatrolPoint()
+        {
+            foreach (Transform point in patrolPoints)
+            {
+                if (point != null) return true;
+            }
+            return false;
         }
 
         // Random instead of sequential -- a fixed cycle order made patrol
         // routes fully predictable, easy to memorize and route around.
         // Excludes whatever patrolIndex currently is so it never
-        // "re-picks" the point it's already standing at.
+        // "re-picks" the point it's already standing at. Skips null
+        // entries (see HasAnyPatrolPoint's own comment) -- bounded
+        // attempt count rather than an unbounded loop, purely as
+        // insurance against every remaining candidate happening to be
+        // null.
         private Transform PickNextPatrolPoint()
         {
             if (patrolPoints.Count == 1) return patrolPoints[0];
 
-            int next;
-            do
+            int next = patrolIndex;
+            for (int attempt = 0; attempt < patrolPoints.Count * 2; attempt++)
             {
-                next = Random.Range(0, patrolPoints.Count);
-            } while (next == patrolIndex);
+                int candidate = Random.Range(0, patrolPoints.Count);
+                if (candidate == patrolIndex || patrolPoints[candidate] == null) continue;
+
+                next = candidate;
+                break;
+            }
 
             patrolIndex = next;
             return patrolPoints[patrolIndex];
@@ -348,7 +369,7 @@ namespace RobEveryone.AI
 
             agent.speed = EffectiveSpeed(patrolSpeed);
             State = PoliceState.Patrol;
-            if (patrolPoints.Count > 0)
+            if (patrolPoints.Count > 0 && patrolPoints[patrolIndex] != null)
             {
                 agent.SetDestination(patrolPoints[patrolIndex].position);
             }
