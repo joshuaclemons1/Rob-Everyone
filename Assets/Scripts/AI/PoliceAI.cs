@@ -59,15 +59,19 @@ namespace RobEveryone.AI
         [SerializeField] private float catchDistance = 2.2f;
         [SerializeField] private float loseInterestTime = 4f;
 
-        // Issue #71: a dispatched officer's walk home can hit a genuine
-        // NavMeshAgent quirk on a long trip where remainingDistance
-        // reports Infinity indefinitely despite a healthy pathStatus and
-        // isOnNavMesh -- see UpdateReturning's own comment. A flat time
-        // budget guarantees this can't get stuck forever regardless of
-        // why, same "don't fully trust the system, verify with a
-        // timeout" approach GameFlowManager.TeleportPlayerTo already
-        // uses for a similarly hard-to-fully-explain case.
-        [SerializeField] private float returningTimeout = 20f;
+        // Issue #71: a dispatched officer's walk home is a real backstop
+        // against a genuine NavMeshAgent quirk (see UpdateReturning's own
+        // comment) -- same "don't fully trust the system, verify with a
+        // timeout" approach GameFlowManager.TeleportPlayerTo already uses
+        // for a similarly hard-to-fully-explain case. A single flat
+        // constant doesn't work, though -- real playtest logging showed
+        // a genuinely-still-walking officer (remainingDistance counting
+        // down normally, ~81 units out) getting killed early by a flat
+        // 20s budget that was simply too short for the distance. The
+        // per-trip budget is computed from the actual distance instead
+        // (ReturnToSpawn) -- these two just tune that computation.
+        [SerializeField] private float returningTimeoutSafetyMultiplier = 2f;
+        [SerializeField] private float returningTimeoutMinimum = 15f;
 
         [SerializeField] private float searchDuration = 3f;
         [SerializeField] private float searchSweepAngle = 45f;
@@ -227,6 +231,14 @@ namespace RobEveryone.AI
             agent.SetDestination(lastKnownPosition);
         }
 
+        // TEMPORARY (issue #71 debugging) -- throttles UpdatePatrol's own
+        // diagnostic log to once every 3s, same convention as
+        // UpdateReturning used last round. Testing a direct report that
+        // it's specifically a *redirected* (isDispatched=False) officer
+        // that gets stuck, not a freshly-dispatched one -- UpdatePatrol
+        // currently has zero logging at all to confirm or rule that out.
+        private float nextPatrolLogAt;
+
         private void UpdatePatrol()
         {
             Transform seen = FindVisiblePlayer();
@@ -234,6 +246,15 @@ namespace RobEveryone.AI
             {
                 EnterChase(seen);
                 return;
+            }
+
+            if (Time.time >= nextPatrolLogAt)
+            {
+                nextPatrolLogAt = Time.time + 3f;
+                Debug.Log($"[Issue71] {name} (netId={netId}) UpdatePatrol: isDispatched={isDispatched}, " +
+                    $"patrolPoints.Count={patrolPoints.Count}, patrolIndex={patrolIndex}, pathPending={agent.pathPending}, " +
+                    $"pathStatus={agent.pathStatus}, remainingDistance={agent.remainingDistance}, isOnNavMesh={agent.isOnNavMesh}, " +
+                    $"hasPath={agent.hasPath}, velocity={agent.velocity}");
             }
 
             if (patrolPoints.Count == 0) return;
@@ -343,17 +364,21 @@ namespace RobEveryone.AI
             agent.speed = EffectiveSpeed(patrolSpeed);
             agent.SetDestination(dispatchSpawnPosition);
             returningStartedAt = Time.time;
-            // TEMPORARY (issue #71 debugging): the 20s timeout didn't
-            // fire for a real playtest -- logging continuously through
-            // the whole Returning duration instead of a one-shot
-            // snapshot, since the previous round's single-frame log
-            // can't tell us whether the timeout math itself ever
-            // actually runs.
-            nextReturningLogAt = Time.time;
+
+            // Confirmed via real playtest logging: a flat timeout killed
+            // an officer that was genuinely still walking home correctly
+            // (remainingDistance counting down normally) just because the
+            // trip was long. Scale the budget to the actual distance
+            // instead of guessing one constant that's simultaneously too
+            // short for a far spawn point and needlessly long for a
+            // close one.
+            float distance = Vector3.Distance(transform.position, dispatchSpawnPosition);
+            float expectedTravelTime = distance / Mathf.Max(EffectiveSpeed(patrolSpeed), 0.1f);
+            returningTimeoutThisTrip = Mathf.Max(returningTimeoutMinimum, expectedTravelTime * returningTimeoutSafetyMultiplier);
         }
 
         private float returningStartedAt;
-        private float nextReturningLogAt; // TEMPORARY (issue #71 debugging)
+        private float returningTimeoutThisTrip;
 
         private void UpdateReturning()
         {
@@ -366,22 +391,8 @@ namespace RobEveryone.AI
                 return;
             }
 
-            float elapsed = Time.time - returningStartedAt;
-
-            // TEMPORARY (issue #71 debugging) -- throttled to once every
-            // 3s so a minute-long stuck officer doesn't spam the console.
-            if (Time.time >= nextReturningLogAt)
+            if (Time.time - returningStartedAt >= returningTimeoutThisTrip)
             {
-                nextReturningLogAt = Time.time + 3f;
-                Debug.Log($"[Issue71] {name} (netId={netId}) UpdateReturning: elapsed={elapsed:F1}/{returningTimeout}, " +
-                    $"pathPending={agent.pathPending}, pathStatus={agent.pathStatus}, remainingDistance={agent.remainingDistance}, " +
-                    $"isOnNavMesh={agent.isOnNavMesh}, State={State}");
-            }
-
-            if (elapsed >= returningTimeout)
-            {
-                // TEMPORARY (issue #71 debugging).
-                Debug.Log($"[Issue71] {name} (netId={netId}) UpdateReturning: TIMEOUT REACHED, destroying self");
                 NetworkServer.Destroy(gameObject);
                 return;
             }
@@ -400,8 +411,8 @@ namespace RobEveryone.AI
             // PathComplete -- a genuine NavMeshAgent quirk on a long trip
             // that neither this check nor the arrival check below was
             // ever going to catch on their own, since Unity itself was
-            // reporting the path as healthy. returningTimeout above is
-            // the real backstop for that case.
+            // reporting the path as healthy. returningTimeoutThisTrip
+            // above is the real backstop for that case.
             bool arrived = agent.remainingDistance <= agent.stoppingDistance;
             bool pathFailed = agent.pathStatus != NavMeshPathStatus.PathComplete;
             if (arrived || pathFailed)
