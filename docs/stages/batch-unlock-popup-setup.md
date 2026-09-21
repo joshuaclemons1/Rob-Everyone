@@ -93,8 +93,8 @@ can't silently recur.
 
 ## Design history (for context, not needed to follow the steps above)
 
-This feature went through three real, confirmed bugs during
-development, each fixed in turn:
+This feature went through six real, confirmed bugs during development
+(one design correction, not a bug), each fixed in turn:
 
 1. **First attempt**: tried appending "Batch N unlocks: X, Y" text onto
    the loading-screen message shown as a round ends. Never actually
@@ -119,6 +119,36 @@ development, each fixed in turn:
    after a batch's Night round; the "Current behavior" section above
    reflects the corrected, intended design (unlocks before the Night
    round instead), via `GameFlowManager.EffectiveShopBatch`.
+5. **Orphaned NetworkIdentity**: entering Play Mode (or the Editor
+   validating the scene) could suddenly fail with "Scene ... needs to
+   be opened and resaved, because the scene object X(Clone) has no
+   valid sceneId yet." Some items' `WorldModelPrefab` is the exact same
+   prefab used for their real networked world-pickup form (a live
+   `NetworkIdentity` + `PickupItem`) — a bare `Instantiate()` for this
+   popup's spinning preview left that `NetworkIdentity` orphaned, which
+   Mirror's own scene-consistency check trips over the next time the
+   Lobby reloads. Fixed by stripping every Mirror component off the
+   preview clone immediately after creating it — the identical latent
+   bug was also found and fixed in `HotbarSlotUI` at the same time.
+6. **Destroy timing**: the fix above didn't fully hold at first — the
+   same error recurred for a *different* item shortly after. `Destroy()`
+   only marks a component for removal at the end of the current frame,
+   not immediately; switched to `DestroyImmediate()` (matching
+   `HeldItemDisplay`'s own already-correct precedent for this exact
+   risk elsewhere in the project).
+7. **Racing the loading screen**: even with everything above fixed, a
+   two-item unlock only ever showed one of the two on screen — which
+   one varied run to run, with no error. Confirmed via temporary debug
+   logging that this popup's own item sequencing was already completely
+   correct every time; the real cause was `LoadingScreenUI`, a full-
+   screen cover that deliberately stays up for its own fixed
+   `minimumDisplayDuration` (5s) regardless of how fast the scene
+   actually loaded, so a fast Lobby load doesn't flash its own message
+   too briefly to read. This popup's reveal started the instant the
+   Lobby loaded, which could easily be *before* that cover had actually
+   gone away — racing it blind. Fixed by waiting for
+   `LoadingScreenUI.IsShowing` to go false before starting this popup's
+   own reveal.
 
 ## Where to look
 
@@ -134,4 +164,9 @@ development, each fixed in turn:
 - `Assets/Scripts/World/NightModeVisuals.cs` — the Night/Morning
   skybox timing this whole feature is keyed off of, and issue #12's own
   sync-race fix this popup's own fix reused.
+- `Assets/Scripts/UI/LoadingScreenUI.cs` — `IsShowing`, what this popup
+  waits on before starting its own reveal (bug #7 above).
+- `Assets/Scripts/Player/HeldItemDisplay.cs` —
+  `StripInteractiveComponents`'s own already-correct precedent for
+  bugs #5/#6 above.
 - Issue [#61](https://github.com/joshuaclemons1/Rob-Everyone/issues/61).
