@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Mirror;
+using RobEveryone.AI;
 using RobEveryone.Core;
 using RobEveryone.Inventory;
 using UnityEngine;
@@ -182,6 +183,21 @@ namespace RobEveryone.Round
             // in the release branch) also protects the jail path against
             // the same two-officers-same-frame edge case.
             player.StartCatchCooldown();
+
+            // Issue #77 follow-up (real playtest): every officer actually
+            // chasing this player right now -- not just whoever landed
+            // this particular catch -- breaks off and heads back to
+            // patrol (or home, if dispatched) immediately, rather than
+            // standing on top of a released player for the whole cooldown
+            // window. A no-op for any officer not currently chasing them.
+            foreach (PoliceAI officer in PoliceAI.AllOfficers)
+            {
+                // Defensive, same as PoliceDispatcher's own use of this
+                // kind of list -- a dispatched officer can NetworkServer.
+                // Destroy itself (UpdateReturning) before its own
+                // OnStopServer unregister has actually run this frame.
+                if (officer != null) officer.AbandonChaseIfTargeting(player.transform);
+            }
 
             // Issue #77: caught with nothing to actually arrest them over
             // (no real stolen loot -- sabotage tools and the Prison Wallet

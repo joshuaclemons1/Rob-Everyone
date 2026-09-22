@@ -99,6 +99,14 @@ namespace RobEveryone.AI
         // multiple players it's no longer a fixed single target.
         private Transform chaseTarget;
 
+        // Issue #77 follow-up: every officer currently in the scene,
+        // server-side only -- same AllPlayers pattern PlayerInventory
+        // already uses. RoundManager.NotifyPlayerCaught reads this to
+        // broadcast AbandonChaseIfTargeting to whichever officer(s) are
+        // actually chasing whoever just got caught (search-released or
+        // jailed), not just whichever one happened to land the catch.
+        public static readonly List<PoliceAI> AllOfficers = new();
+
         // [field: SyncVar], not [SyncVar] directly -- SyncVar only
         // applies to an actual field, and on an auto-property the
         // `field:` target attaches it to the compiler-generated backing
@@ -147,11 +155,18 @@ namespace RobEveryone.AI
         {
             if (roundManager == null) roundManager = FindAnyObjectByType<RoundManager>();
 
+            AllOfficers.Add(this);
+
             agent.speed = EffectiveSpeed(patrolSpeed);
             if (patrolPoints.Count > 0 && patrolPoints[0] != null)
             {
                 agent.SetDestination(patrolPoints[0].position);
             }
+        }
+
+        public override void OnStopServer()
+        {
+            AllOfficers.Remove(this);
         }
 
         private void Update()
@@ -601,6 +616,20 @@ namespace RobEveryone.AI
         {
             if (target == null || eye == null) return false;
 
+            // Issue #77 follow-up: a player mid-catch-cooldown is fully
+            // invisible to every officer, not just whichever one actually
+            // caught them -- AbandonChaseIfTargeting (broadcast from
+            // RoundManager.NotifyPlayerCaught) is what breaks off an
+            // *already*-chasing officer, but without this, any *other*
+            // officer who simply walks within view during the cooldown
+            // window would spot and start a brand new chase on them,
+            // undoing the whole point of the window. Every caller of
+            // CanSee (FindVisiblePlayer included) is always given a real
+            // player's own Transform, so this is safe to check here
+            // rather than duplicating it at every call site.
+            PlayerInventory targetInventory = target.GetComponentInParent<PlayerInventory>();
+            if (targetInventory != null && targetInventory.IsCatchCooldownActive) return false;
+
             Vector3 toPlayer = target.position - eye.position;
             float distance = toPlayer.magnitude;
             float effectiveViewDistance = IsNight ? viewDistance * nightViewDistanceMultiplier : viewDistance;
@@ -640,9 +669,41 @@ namespace RobEveryone.AI
                 roundManager.NotifyPlayerCaught(caught);
             }
 
+            // Issue #77 follow-up: NotifyPlayerCaught above already
+            // broadcasts AbandonChaseIfTargeting to every officer whose
+            // chaseTarget is this same player -- this officer included,
+            // since chaseTarget is still set to `target` at the moment
+            // that call runs. Deliberately not ALSO resetting
+            // chaseTarget/State/agent's path here anymore: doing both
+            // used to race, with this method's own trailing reset always
+            // stomping straight back over whatever the broadcast had just
+            // set (e.g. a dispatched officer's proper "head home"
+            // Returning state getting silently overwritten back to plain
+            // Respond a moment later).
+        }
+
+        // Issue #77 follow-up (real playtest): a player who just got
+        // caught -- search-released or jailed -- needs every officer
+        // actually chasing them to break off and head back to patrol
+        // (or home, if dispatched) right away, not just whichever one
+        // happened to land the catch. Without this, a second officer
+        // converging on the same target kept right on chasing/standing
+        // on top of a released player for the whole cooldown window
+        // instead of giving them room to get away. Called from
+        // RoundManager.NotifyPlayerCaught for every active officer; a
+        // no-op for any officer not currently chasing this exact target.
+        // Reuses GiveUpAndResumeOrReturn -- the same "resume a real
+        // patrol route, or head home and despawn if dispatched" path a
+        // natural lost-interest/search-timeout already uses, so a forced
+        // abandon here looks identical to an organic one.
+        [Server]
+        public void AbandonChaseIfTargeting(Transform target)
+        {
+            if (chaseTarget == null || chaseTarget != target) return;
+
             chaseTarget = null;
-            State = PoliceState.Respond;
             agent.ResetPath();
+            GiveUpAndResumeOrReturn();
         }
 
         // Draws the vision cone in red so it's visually distinct from a
