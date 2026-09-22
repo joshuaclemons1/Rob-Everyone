@@ -59,6 +59,20 @@ namespace RobEveryone.AI
         [SerializeField] private float catchDistance = 2.2f;
         [SerializeField] private float loseInterestTime = 4f;
 
+        // Issue #71: a dispatched officer's walk home is a real backstop
+        // against a genuine NavMeshAgent quirk (see UpdateReturning's own
+        // comment) -- same "don't fully trust the system, verify with a
+        // timeout" approach GameFlowManager.TeleportPlayerTo already uses
+        // for a similarly hard-to-fully-explain case. A single flat
+        // constant doesn't work, though -- real playtest logging showed
+        // a genuinely-still-walking officer (remainingDistance counting
+        // down normally, ~81 units out) getting killed early by a flat
+        // 20s budget that was simply too short for the distance. The
+        // per-trip budget is computed from the actual distance instead
+        // (ReturnToSpawn) -- these two just tune that computation.
+        [SerializeField] private float returningTimeoutSafetyMultiplier = 2f;
+        [SerializeField] private float returningTimeoutMinimum = 15f;
+
         [SerializeField] private float searchDuration = 3f;
         [SerializeField] private float searchSweepAngle = 45f;
         [SerializeField] private float searchSweepFrequency = 2f;
@@ -84,6 +98,14 @@ namespace RobEveryone.AI
         // each time a chase starts (EnterChase/RespondTo), since with
         // multiple players it's no longer a fixed single target.
         private Transform chaseTarget;
+
+        // Issue #77 follow-up: every officer currently in the scene,
+        // server-side only -- same AllPlayers pattern PlayerInventory
+        // already uses. RoundManager.NotifyPlayerCaught reads this to
+        // broadcast AbandonChaseIfTargeting to whichever officer(s) are
+        // actually chasing whoever just got caught (search-released or
+        // jailed), not just whichever one happened to land the catch.
+        public static readonly List<PoliceAI> AllOfficers = new();
 
         // [field: SyncVar], not [SyncVar] directly -- SyncVar only
         // applies to an actual field, and on an auto-property the
@@ -131,13 +153,20 @@ namespace RobEveryone.AI
         // exist at edit time.
         public override void OnStartServer()
         {
-            if (roundManager == null) roundManager = FindFirstObjectByType<RoundManager>();
+            if (roundManager == null) roundManager = FindAnyObjectByType<RoundManager>();
+
+            AllOfficers.Add(this);
 
             agent.speed = EffectiveSpeed(patrolSpeed);
-            if (patrolPoints.Count > 0)
+            if (patrolPoints.Count > 0 && patrolPoints[0] != null)
             {
                 agent.SetDestination(patrolPoints[0].position);
             }
+        }
+
+        public override void OnStopServer()
+        {
+            AllOfficers.Remove(this);
         }
 
         private void Update()
@@ -226,27 +255,65 @@ namespace RobEveryone.AI
                 return;
             }
 
-            if (patrolPoints.Count == 0) return;
+            if (!HasAnyPatrolPoint()) return;
 
             if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
             {
-                agent.SetDestination(PickNextPatrolPoint().position);
+                Transform next = PickNextPatrolPoint();
+                if (next != null) agent.SetDestination(next.position);
             }
+        }
+
+        // Issue #71: patrolPoints.Count alone isn't enough to know
+        // whether an officer actually has anywhere to patrol to. The
+        // base Police.prefab deliberately ships with 13 placeholder
+        // slots, every one left unassigned ({fileID: 0}) -- a
+        // freshly-dispatched instance (PoliceDispatcher.Instantiate) has
+        // no patrol points of its own and isn't meant to try patrolling
+        // at all, only to return to spawn once it gives up (see
+        // GiveUpAndResumeOrReturn). A hand-placed officer's own scene-
+        // level PrefabInstance overrides fill those same 13 slots with
+        // real Transforms. Confirmed bug (a genuine regression from
+        // issue #70's own fix): shrinking the *base* prefab's array to a
+        // true empty list broke those scene-level overrides entirely --
+        // Unity's Array.data[N] overrides can't attach to indices that
+        // no longer exist in the base array, so every hand-placed
+        // officer's patrolPoints read back as empty at runtime too.
+        // Restored the base prefab's 13 placeholder slots and fixed the
+        // code to check for an actually-assigned entry instead, so both
+        // shapes (empty list, or a list of all-null placeholders) mean
+        // "no patrol points" without needing the base array's length to
+        // be zero.
+        private bool HasAnyPatrolPoint()
+        {
+            foreach (Transform point in patrolPoints)
+            {
+                if (point != null) return true;
+            }
+            return false;
         }
 
         // Random instead of sequential -- a fixed cycle order made patrol
         // routes fully predictable, easy to memorize and route around.
         // Excludes whatever patrolIndex currently is so it never
-        // "re-picks" the point it's already standing at.
+        // "re-picks" the point it's already standing at. Skips null
+        // entries (see HasAnyPatrolPoint's own comment) -- bounded
+        // attempt count rather than an unbounded loop, purely as
+        // insurance against every remaining candidate happening to be
+        // null.
         private Transform PickNextPatrolPoint()
         {
             if (patrolPoints.Count == 1) return patrolPoints[0];
 
-            int next;
-            do
+            int next = patrolIndex;
+            for (int attempt = 0; attempt < patrolPoints.Count * 2; attempt++)
             {
-                next = Random.Range(0, patrolPoints.Count);
-            } while (next == patrolIndex);
+                int candidate = Random.Range(0, patrolPoints.Count);
+                if (candidate == patrolIndex || patrolPoints[candidate] == null) continue;
+
+                next = candidate;
+                break;
+            }
 
             patrolIndex = next;
             return patrolPoints[patrolIndex];
@@ -291,18 +358,35 @@ namespace RobEveryone.AI
             searchTimer -= Time.deltaTime;
             if (searchTimer <= 0f)
             {
-                if (isDispatched)
-                {
-                    ReturnToSpawn();
-                    return;
-                }
+                GiveUpAndResumeOrReturn();
+            }
+        }
 
-                agent.speed = EffectiveSpeed(patrolSpeed);
-                State = PoliceState.Patrol;
-                if (patrolPoints.Count > 0)
-                {
-                    agent.SetDestination(patrolPoints[patrolIndex].position);
-                }
+        // Whatever made an officer give up on a player (a search timing
+        // out, a chase losing its target -- see UpdateChase) funnels
+        // through here: a dispatched officer heads home instead of
+        // resuming patrol, exactly once, from a single shared decision
+        // point. Originally only wired into UpdateSearching's own
+        // timeout, which meant UpdateChase's own "target went null"
+        // branch bypassed it entirely and just set State = Patrol
+        // directly -- confirmed bug: a dispatched officer whose target
+        // disconnected mid-chase landed in Patrol with no patrol points
+        // of its own (the base prefab's are deliberately empty, see
+        // OnStartServer's own comment) and stood frozen forever,
+        // permanently occupying a slot against PoliceDispatcher's cap.
+        private void GiveUpAndResumeOrReturn()
+        {
+            if (isDispatched)
+            {
+                ReturnToSpawn();
+                return;
+            }
+
+            agent.speed = EffectiveSpeed(patrolSpeed);
+            State = PoliceState.Patrol;
+            if (patrolPoints.Count > 0 && patrolPoints[patrolIndex] != null)
+            {
+                agent.SetDestination(patrolPoints[patrolIndex].position);
             }
         }
 
@@ -315,7 +399,22 @@ namespace RobEveryone.AI
             State = PoliceState.Returning;
             agent.speed = EffectiveSpeed(patrolSpeed);
             agent.SetDestination(dispatchSpawnPosition);
+            returningStartedAt = Time.time;
+
+            // Confirmed via real playtest logging: a flat timeout killed
+            // an officer that was genuinely still walking home correctly
+            // (remainingDistance counting down normally) just because the
+            // trip was long. Scale the budget to the actual distance
+            // instead of guessing one constant that's simultaneously too
+            // short for a far spawn point and needlessly long for a
+            // close one.
+            float distance = Vector3.Distance(transform.position, dispatchSpawnPosition);
+            float expectedTravelTime = distance / Mathf.Max(EffectiveSpeed(patrolSpeed), 0.1f);
+            returningTimeoutThisTrip = Mathf.Max(returningTimeoutMinimum, expectedTravelTime * returningTimeoutSafetyMultiplier);
         }
+
+        private float returningStartedAt;
+        private float returningTimeoutThisTrip;
 
         private void UpdateReturning()
         {
@@ -328,7 +427,31 @@ namespace RobEveryone.AI
                 return;
             }
 
-            if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
+            if (Time.time - returningStartedAt >= returningTimeoutThisTrip)
+            {
+                NetworkServer.Destroy(gameObject);
+                return;
+            }
+
+            if (agent.pathPending) return;
+
+            // Defensive: a dispatch spawn point that isn't actually
+            // reachable on the baked NavMesh (off-mesh, inside geometry,
+            // a station point placed before the map's own NavMesh existed,
+            // etc.) makes SetDestination fail silently -- no exception,
+            // just an invalid/partial path with remainingDistance stuck
+            // reporting Infinity, so the plain "did we arrive" check below
+            // would never pass on its own. Real playtest logging (issue
+            // #71) also caught this happening even with SetDestination
+            // returning true, isOnNavMesh true, and pathStatus reporting
+            // PathComplete -- a genuine NavMeshAgent quirk on a long trip
+            // that neither this check nor the arrival check below was
+            // ever going to catch on their own, since Unity itself was
+            // reporting the path as healthy. returningTimeoutThisTrip
+            // above is the real backstop for that case.
+            bool arrived = agent.remainingDistance <= agent.stoppingDistance;
+            bool pathFailed = agent.pathStatus != NavMeshPathStatus.PathComplete;
+            if (arrived || pathFailed)
             {
                 NetworkServer.Destroy(gameObject);
             }
@@ -338,7 +461,7 @@ namespace RobEveryone.AI
         {
             if (chaseTarget == null)
             {
-                State = PoliceState.Patrol;
+                GiveUpAndResumeOrReturn();
                 return;
             }
 
@@ -348,6 +471,54 @@ namespace RobEveryone.AI
             // losing the cone for even one frame left Police facing the
             // wrong way with nothing to correct it.
             agent.SetDestination(chaseTarget.position);
+
+            // Issue #77 follow-up (real playtest): a just-caught player is
+            // fully exempt from being caught again -- by this officer or
+            // any other -- until PlayerInventory.IsCatchCooldownActive
+            // clears. Confirmed real bug without this: a released
+            // (empty-handed) catch resets this officer's own State to
+            // Respond in CatchPlayer below, but nothing about the release
+            // moved the player or made them any less visible, so the very
+            // next frame's FindVisiblePlayer/EnterChase immediately
+            // re-acquires them and re-triggers this same check -- an
+            // infinite catch/release loop. Worse with two officers
+            // converging on the same target at once: each one
+            // independently runs that same loop, and every re-entry into
+            // Chase re-fires RpcChaseStarted's "spotted you" audio (only
+            // suppressed by wasAlreadyChasing when State doesn't actually
+            // flip) -- the reported dueling, spamming "searching noise".
+            // Skipping the catch here instead of just skipping
+            // NotifyPlayerCaught downstream is what actually stops the
+            // loop: State stays in Chase (no flip, no re-fired audio)
+            // rather than bouncing through Respond every single frame.
+            PlayerInventory targetInventory = chaseTarget.GetComponentInParent<PlayerInventory>();
+            if (targetInventory != null && targetInventory.IsCatchCooldownActive)
+            {
+                timeSinceSeenPlayer = 0f;
+                return;
+            }
+
+            // Issue #75/#76: a player who's committed to boarding the exit
+            // van (ExitCarState.IsWaiting flips true the instant they
+            // board, well before the vulnerable window's own
+            // carWaitDuration actually elapses) is safe from a catch
+            // outright -- same intent as the van's own safety window, just
+            // enforced here too, since a straight proximity+geometry check
+            // has zero awareness of it on its own. Confirmed real bug:
+            // Police camping right next to the van could still land a
+            // catch before that window ever got a chance to matter.
+            // Reading it straight from the target rather than caching it
+            // once in EnterChase -- boarding can happen well after a chase
+            // already started. Also closes #76's "caught through the
+            // van's own walls" report, whatever's actually causing a
+            // seated player's model to clip through the geometry in the
+            // first place -- this makes it moot regardless.
+            ExitCarState exitState = chaseTarget.GetComponentInParent<ExitCarState>();
+            if (exitState != null && exitState.IsWaiting)
+            {
+                timeSinceSeenPlayer = 0f;
+                return;
+            }
 
             // Catching is pure proximity, not gated on the vision cone --
             // standing on top of someone is a catch regardless of exactly
@@ -445,6 +616,20 @@ namespace RobEveryone.AI
         {
             if (target == null || eye == null) return false;
 
+            // Issue #77 follow-up: a player mid-catch-cooldown is fully
+            // invisible to every officer, not just whichever one actually
+            // caught them -- AbandonChaseIfTargeting (broadcast from
+            // RoundManager.NotifyPlayerCaught) is what breaks off an
+            // *already*-chasing officer, but without this, any *other*
+            // officer who simply walks within view during the cooldown
+            // window would spot and start a brand new chase on them,
+            // undoing the whole point of the window. Every caller of
+            // CanSee (FindVisiblePlayer included) is always given a real
+            // player's own Transform, so this is safe to check here
+            // rather than duplicating it at every call site.
+            PlayerInventory targetInventory = target.GetComponentInParent<PlayerInventory>();
+            if (targetInventory != null && targetInventory.IsCatchCooldownActive) return false;
+
             Vector3 toPlayer = target.position - eye.position;
             float distance = toPlayer.magnitude;
             float effectiveViewDistance = IsNight ? viewDistance * nightViewDistanceMultiplier : viewDistance;
@@ -484,9 +669,41 @@ namespace RobEveryone.AI
                 roundManager.NotifyPlayerCaught(caught);
             }
 
+            // Issue #77 follow-up: NotifyPlayerCaught above already
+            // broadcasts AbandonChaseIfTargeting to every officer whose
+            // chaseTarget is this same player -- this officer included,
+            // since chaseTarget is still set to `target` at the moment
+            // that call runs. Deliberately not ALSO resetting
+            // chaseTarget/State/agent's path here anymore: doing both
+            // used to race, with this method's own trailing reset always
+            // stomping straight back over whatever the broadcast had just
+            // set (e.g. a dispatched officer's proper "head home"
+            // Returning state getting silently overwritten back to plain
+            // Respond a moment later).
+        }
+
+        // Issue #77 follow-up (real playtest): a player who just got
+        // caught -- search-released or jailed -- needs every officer
+        // actually chasing them to break off and head back to patrol
+        // (or home, if dispatched) right away, not just whichever one
+        // happened to land the catch. Without this, a second officer
+        // converging on the same target kept right on chasing/standing
+        // on top of a released player for the whole cooldown window
+        // instead of giving them room to get away. Called from
+        // RoundManager.NotifyPlayerCaught for every active officer; a
+        // no-op for any officer not currently chasing this exact target.
+        // Reuses GiveUpAndResumeOrReturn -- the same "resume a real
+        // patrol route, or head home and despawn if dispatched" path a
+        // natural lost-interest/search-timeout already uses, so a forced
+        // abandon here looks identical to an organic one.
+        [Server]
+        public void AbandonChaseIfTargeting(Transform target)
+        {
+            if (chaseTarget == null || chaseTarget != target) return;
+
             chaseTarget = null;
-            State = PoliceState.Respond;
             agent.ResetPath();
+            GiveUpAndResumeOrReturn();
         }
 
         // Draws the vision cone in red so it's visually distinct from a

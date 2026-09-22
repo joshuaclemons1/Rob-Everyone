@@ -27,7 +27,7 @@ namespace RobEveryone.Voice
         {
             // The capture component lives once on the local player rig
             // (see Editor wiring in voip-setup.md) -- find it and subscribe.
-            capture = FindFirstObjectByType<SteamVoiceCapture>();
+            capture = FindAnyObjectByType<SteamVoiceCapture>();
             if (capture != null) capture.OnFrame += SendFrame;
         }
 

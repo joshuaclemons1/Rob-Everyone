@@ -88,6 +88,9 @@ instead of real files, run `git lfs install` once, then `git lfs pull`.
 | "Jail" by Poly by Google | Police station jail cell — single low-poly cell model (flat-colored materials, no textures) | `Assets/Art/Environment/PolyByGoogle-Jail/` | [poly.pizza/m/bF8mr05ofaY](https://poly.pizza/m/bF8mr05ofaY) | **CC-BY 3.0 — needs credit in the eventual credits screen**, see the folder's `License.txt` |
 | Concrete030 (ambientCG) | Compound/parking-lot ground material — Color/Normal/Roughness/AO PBR set, 2K | `Assets/Art/Environment/Textures/Concrete030/` | [ambientcg.com/view?id=Concrete030](https://ambientcg.com/view?id=Concrete030) | CC0 |
 | Chain Link Fence Pack (TampaJoey) | Compound perimeter fence — replaces the CityKitSuburban picket fence that didn't read as a security boundary. Real modeled geometry (short wall, curb base, residential variant) with an optional barbed-wire attachment and signs. Superseded the Quaternius "Metal Fence" model (removed — its FBX was missing the alpha-cutout texture the mesh depends on for its chain-link holes, so it rendered as a solid gray plane instead) | `Assets/Art/Environment/TampaJoey-ChainLinkFence/` | [sketchfab.com — Chain Link Fence Pack](https://sketchfab.com/3d-models/chain-link-fence-pack-low-poly-game-ready-777e50cd6e5d4db99d70bf7b20370f7a) | **CC-BY 4.0 — needs credit in the eventual credits screen**, see the folder's `License.txt` |
+| Pedestal (Quaternius) | Issue #52's skin-offer pedestals in the Lobby customization building | `Assets/Art/Environment/Quaternius-Pedestal/` | [poly.pizza/m/wUeoDKnFBF](https://poly.pizza/m/wUeoDKnFBF) | CC0 |
+| Paint Can (Jarlan Perez) | Issue #52's paint cans (color selection) in the Lobby customization building. Flat per-face colored materials, no UV texture — a Splat Pack decal (below) gets stuck on as a separate small quad rather than swapped onto this model's own material | `Assets/Art/Environment/JarlanPerez-PaintCan/` | [poly.pizza/m/9pyBQ8e4tSy](https://poly.pizza/m/9pyBQ8e4tSy) | **CC-BY 3.0 — needs credit in the eventual credits screen**, see the folder's `License.txt` |
+| Kenney Splat Pack | Tintable paint-splash decal on each paint can, indicating its color (per issue #52) | `Assets/Art/Environment/Kenney-SplatPack/` | [kenney.nl/assets/splat-pack](https://kenney.nl/assets/splat-pack) | CC0 |
 
 Only FBX + Textures were kept from each Kenney pack (each also ships
 redundant OBJ/glTF/Blend copies); each folder still has its `License.txt`.
@@ -139,7 +142,9 @@ list) is locked enough that the work won't get thrown away.
   Plugs directly into [InventoryUI.cs](../Assets/Scripts/UI/InventoryUI.cs)
   and [RoundUI.cs](../Assets/Scripts/UI/RoundUI.cs) once it looks right.
 - **Musical identity** — sketch the game's sonic palette (instrumentation,
-  tempo, genre lean). Doesn't need to be a finished track yet.
+  tempo, genre lean). Doesn't need to be a finished track yet. Full track
+  list, format, and looping/transition spec now in
+  [music-brief.md](music-brief.md).
 - **Logo / title treatment** — for the eventual title screen, no rush.
 
 ### Needed for Stage 3 (full offline loop) — current stage
@@ -188,7 +193,9 @@ list) is locked enough that the work won't get thrown away.
   been spotted" loop, **crossfading based on nearby Homeowner/Police alert
   state** (confirmed trigger, not just a concept) — the binary state
   transitions already in `HomeownerAI.cs`/`PoliceAI.cs` are what should
-  drive the crossfade.
+  drive the crossfade. See [music-brief.md](music-brief.md) for the exact
+  layered-stems approach this needs and the full track list (Day/Night
+  variants, Menu/Lobby themes, stingers).
 
 ### Needed for Stage 5–6 (Steam multiplayer, sabotage)
 

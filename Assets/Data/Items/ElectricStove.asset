@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Items.ItemDefinition
   itemName: Electric Stove
   value: 85
+  lootUnlockBatch: 2
   icon: {fileID: 0}
   worldModelPrefab: {fileID: 8388366463712354910, guid: 1cfb87122fe3e466584220227b9e28dd, type: 3}
   worldModelScale: {x: 0.45, y: 0.45, z: 0.45}

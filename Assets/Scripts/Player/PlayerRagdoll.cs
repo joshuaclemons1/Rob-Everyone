@@ -136,6 +136,29 @@ namespace RobEveryone.Player
             skinSpawner = GetComponent<PlayerSkinSpawner>();
             cameraRig = GetComponent<PlayerCameraRig>();
             carryable = GetComponent<Carryable>();
+
+            // Issue #52: a live skin swap (pedestal/mirror) destroys the
+            // exact GameObject every cached reference below (hipsRigidbody,
+            // ragdollBodies, allBones, this class's own animator, etc.)
+            // points into. Resetting `initialized` false is enough --
+            // TryInitializeRagdoll already re-derives everything from
+            // scratch off the new SkinInstance the next time it's called,
+            // same lazy-retry path it already uses while waiting for a
+            // remote player's skin to arrive in the first place. Only
+            // relevant in practice while in the Lobby (where pedestals/
+            // the mirror live) -- issue #52 is explicitly Lobby-only, so
+            // there's no case of this firing mid-ragdoll during a round.
+            skinSpawner.OnSkinRebuilt += HandleSkinRebuilt;
+        }
+
+        private void HandleSkinRebuilt()
+        {
+            initialized = false;
+        }
+
+        private void OnDestroy()
+        {
+            if (skinSpawner != null) skinSpawner.OnSkinRebuilt -= HandleSkinRebuilt;
         }
 
         // True once TryInitializeRagdoll has either fully succeeded or hit

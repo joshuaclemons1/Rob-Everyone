@@ -169,6 +169,46 @@ namespace RobEveryone.Inventory
             }
         }
 
+        // Issue #77: whether any occupied slot is real stolen loot, not
+        // just a sabotage tool -- same SabotageType != None distinction
+        // ClearLoot already uses to tell "loot" (cleared at round start)
+        // apart from "tools" (kept). RoundManager.NotifyPlayerCaught reads
+        // this to decide whether a catch should actually jail the player
+        // or just search-and-release them: a player who dumped everything
+        // (or only ever carried, say, a Taser) has nothing worth arresting
+        // them over. The Prison Wallet is never part of this check at all --
+        // walletItemName lives outside slotItemNames entirely.
+        public bool HasAnyStolenLoot()
+        {
+            for (int i = 0; i < slotItemNames.Count; i++)
+            {
+                string itemName = slotItemNames[i];
+                if (string.IsNullOrEmpty(itemName) || itemName == ContinuationMarker) continue;
+
+                ItemDefinition item = catalog != null ? catalog.GetByName(itemName) : null;
+                if (item != null && item.SabotageType == SabotageType.None) return true;
+            }
+            return false;
+        }
+
+        // Issue #77 follow-up (real playtest): a just-caught player -- jailed
+        // or released -- needs a brief window fully exempt from being
+        // caught again by anyone. Confirmed real bug: a released
+        // (empty-handed) catch changes nothing PoliceAI's own catch check
+        // reads, so the same officer re-acquires and re-catches the very
+        // next frame, and two officers converging on the same target at
+        // once double up on that loop independently -- see UpdateChase's
+        // own comment on the exact mechanics. Server-only, not a SyncVar --
+        // only [Server]-gated AI code ever reads this, same reasoning
+        // JailState.jailAnchor already uses.
+        [SerializeField] private float catchCooldownDuration = 6f;
+        private float catchCooldownUntil;
+
+        public bool IsCatchCooldownActive => Time.time < catchCooldownUntil;
+
+        [Server]
+        public void StartCatchCooldown() => catchCooldownUntil = Time.time + catchCooldownDuration;
+
         public event Action<int> OnTotalValueChanged;
         public event Action OnSlotsChanged;
         public event Action<int> OnSelectedSlotChanged;
@@ -500,6 +540,55 @@ namespace RobEveryone.Inventory
         [Command]
         public void CmdDropSelected(Vector3 position, Quaternion rotation) =>
             DropSlot(selectedSlot, position, rotation);
+
+        // Issue #81: replaces the old interactive steal-window mechanic
+        // (PlayerImpactRelay.ServerApplyPvpImpact used to open a window
+        // a rival could press E during) -- instead, a landed PvP hit
+        // rolls a flat chance to drop one random carried item right
+        // there, pickupable by anyone including the player themselves
+        // once they recover. Collects every currently-occupied head slot
+        // (skipping empty and ContinuationMarker slots the same way
+        // DropSlot itself already guards against) and picks one at
+        // random; a no-op if nothing is actually carried.
+        [Server]
+        public void DropRandomSlot(Vector3 position, Quaternion rotation)
+        {
+            List<int> occupiedHeads = new();
+            for (int i = 0; i < SlotCount; i++)
+            {
+                if (!string.IsNullOrEmpty(slotItemNames[i]) && slotItemNames[i] != ContinuationMarker)
+                {
+                    occupiedHeads.Add(i);
+                }
+            }
+            if (occupiedHeads.Count == 0) return;
+
+            int chosen = occupiedHeads[UnityEngine.Random.Range(0, occupiedHeads.Count)];
+            DropSlot(chosen, position, rotation);
+        }
+
+        // Issue #81: replaces ResetInventory's silent full wipe on a
+        // police catch -- drops every occupied normal slot as real,
+        // pickupable items at the catch location instead of just
+        // deleting them. Deliberately doesn't touch the Prison Wallet
+        // (walletItemName/walletUses aren't part of this loop, same
+        // exclusion ResetInventory itself already had) -- that slot
+        // stays hidden/protected exactly as before. Scatters each drop a
+        // little so a full inventory doesn't spawn as one overlapping
+        // pile at a single point.
+        [Server]
+        public void DropAllSlots(Vector3 position, Quaternion rotation)
+        {
+            const float scatterRadius = 0.6f;
+            for (int i = 0; i < SlotCount; i++)
+            {
+                if (string.IsNullOrEmpty(slotItemNames[i]) || slotItemNames[i] == ContinuationMarker) continue;
+
+                Vector2 offset = UnityEngine.Random.insideUnitCircle * scatterRadius;
+                Vector3 dropPosition = position + new Vector3(offset.x, 0f, offset.y);
+                DropSlot(i, dropPosition, rotation);
+            }
+        }
 
         // Called by CarryController when a carry starts/ends. While
         // carrying: no slot is selected (SelectedSlot == -1) and

@@ -1,0 +1,12 @@
+Pedestal
+
+Author: Quaternius
+Source: https://poly.pizza/m/wUeoDKnFBF
+Published: August 31, 2021
+
+License: Public Domain (CC0 1.0 Universal)
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Same source/license family as Assets/Art/Characters/
+Quaternius-UltimateAnimatedCharacterPack/ -- no attribution required,
+fully commercial-safe.

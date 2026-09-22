@@ -68,6 +68,21 @@ namespace RobEveryone.Core
         public int BatchNumber => batchNumber;
         public int RoundInBatch => roundInBatch;
 
+        // Issue #61, per direct request: the shop should unlock a
+        // batch's items starting the Lobby that *precedes* that batch's
+        // own final/Night round, not the Lobby that follows it -- giving
+        // players a shot at the next tier's gear before their toughest
+        // round, instead of only after they've already gotten through
+        // it. roundInBatch reaching 3 means the batch's final round is
+        // upcoming (or currently being played); from that point through
+        // the rest of the batch, shop-unlock checks should treat the
+        // batch as one higher than BatchNumber's own literal,
+        // not-yet-incremented value. Scoped to shop-unlock gating only
+        // (ShopShelfItem/BatchUnlockPopupUI) -- BatchNumber itself still
+        // means exactly what it always has everywhere else (quota
+        // tracking, Discord Rich Presence, HUD text).
+        public int EffectiveShopBatch => batchNumber + (roundInBatch >= 3 ? 1 : 0);
+
         // Static, not instance-bound -- a subscriber (NightModeVisuals)
         // needs to hook this up the instant its own scene loads, which can
         // easily race GameFlowManager.Instance itself still being null on
@@ -133,6 +148,25 @@ namespace RobEveryone.Core
         // scene's own JailPoint objects are recreated then -- any old
         // reference in here would otherwise be stale.
         private readonly Dictionary<PlayerInventory, JailPoint> occupiedJailPoints = new();
+
+        // Global teleport de-dupe/self-heal state, keyed per player --
+        // issue #5's actual root cause, confirmed via live log evidence
+        // (see JailState.EnterJail's own comment): NetworkTransformReliable
+        // is client-authoritative, so TeleportPlayerTo's remote path is an
+        // async TargetRpc round-trip, not an instant write. ANY server-side
+        // code that re-checks a remote player's Transform before that round
+        // trip lands is reading a stale value -- the jail confinement check
+        // was one caller that got bitten by this; there's nothing stopping
+        // any other current or future caller (Lobby spawn placement, exit
+        // car seating, rescue, fall-safety) from hitting the identical gap.
+        // Rather than fix each call site one at a time as bugs surface,
+        // this makes the guarantee true at the one shared choke point every
+        // caller already goes through.
+        private readonly Dictionary<NetworkIdentity, float> lastTeleportIssuedAt = new();
+        private readonly Dictionary<NetworkIdentity, Vector3> lastTeleportTarget = new();
+        private const float TeleportDebounceWindow = 0.5f;
+        private const float TeleportSettleTimeout = 1.5f;
+        private const int MaxTeleportRetries = 3;
 
         // The gameplay-vs-shop phase gate (used by PlayerInventory's
         // Prison Wallet rules: stash only mid-round, retrieve only in the
@@ -236,7 +270,7 @@ namespace RobEveryone.Core
         [Server]
         private void RescuePlayer(Transform player)
         {
-            PlayerSpawnPoint[] spawns = FindObjectsByType<PlayerSpawnPoint>(FindObjectsSortMode.None);
+            PlayerSpawnPoint[] spawns = FindObjectsByType<PlayerSpawnPoint>();
             if (spawns.Length == 0) return;
 
             TeleportPlayerTo(player, spawns[0].transform);
@@ -262,7 +296,7 @@ namespace RobEveryone.Core
         [Server]
         private JailPoint ClaimJailPoint(PlayerInventory player)
         {
-            JailPoint[] slots = FindObjectsByType<JailPoint>(FindObjectsSortMode.None);
+            JailPoint[] slots = FindObjectsByType<JailPoint>();
             if (slots.Length == 0) return null;
 
             foreach (JailPoint slot in slots)
@@ -289,7 +323,7 @@ namespace RobEveryone.Core
             PlayerInventory inventory = player.GetComponent<PlayerInventory>();
             if (inventory != null) occupiedJailPoints.Remove(inventory);
 
-            JailExitPoint exit = FindFirstObjectByType<JailExitPoint>();
+            JailExitPoint exit = FindAnyObjectByType<JailExitPoint>();
             if (exit != null) TeleportPlayerTo(player, exit.transform);
         }
 
@@ -333,7 +367,7 @@ namespace RobEveryone.Core
             Camera playerCamera = NetworkClient.localPlayer.GetComponentInChildren<Camera>(true);
             if (playerCamera == null) yield break;
 
-            foreach (Canvas canvas in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+            foreach (Canvas canvas in FindObjectsByType<Canvas>())
             {
                 if (canvas.renderMode == RenderMode.ScreenSpaceCamera && canvas.worldCamera == null)
                 {
@@ -353,7 +387,9 @@ namespace RobEveryone.Core
             // this player's object, which means its PlayerInventory's own
             // OnStartServer has already added it to AllPlayers -- so it's
             // the last entry, and that's the index to place it at.
-            StartCoroutine(PositionNewPlayerNextFrame(playerIdentity, PlayerInventory.AllPlayers.Count - 1));
+            int index = PlayerInventory.AllPlayers.Count - 1;
+            Debug.Log($"[Issue5] HandlePlayerAdded netId={playerIdentity.netId} conn={playerIdentity.connectionToClient?.connectionId} assignedIndex={index} allPlayersCount={PlayerInventory.AllPlayers.Count}");
+            StartCoroutine(PositionNewPlayerNextFrame(playerIdentity, index));
         }
 
         // A one-frame delay before the very first PositionPlayer call for
@@ -369,16 +405,19 @@ namespace RobEveryone.Core
         private IEnumerator PositionNewPlayerNextFrame(NetworkIdentity playerIdentity, int index)
         {
             yield return null;
+            Debug.Log($"[Issue5] PositionNewPlayerNextFrame resuming netId={playerIdentity.netId} index={index} frame={Time.frameCount}");
             PositionPlayer(playerIdentity.transform, index);
         }
 
         [Server]
         public void HandlePlayerRemoved(NetworkIdentity playerIdentity)
         {
-            // No bookkeeping needed here beyond what PlayerInventory's own
-            // OnStopServer already does (removing itself from AllPlayers)
-            // -- kept as a named hook in case a disconnect mid-round ever
-            // needs special handling (e.g. auto-resolving their round).
+            // Otherwise a disconnected player's entry lingers in these
+            // forever -- harmless functionally (their NetworkIdentity can
+            // never match a future lookup), but an unbounded leak over a
+            // long-running host session.
+            lastTeleportIssuedAt.Remove(playerIdentity);
+            lastTeleportTarget.Remove(playerIdentity);
         }
 
         [Server]
@@ -405,6 +444,7 @@ namespace RobEveryone.Core
             // NetworkServer.SpawnObjects()'s own comment ("NetworkIdentity
             // objects in a scene are disabled by default").
             List<PlayerInventory> players = PlayerInventory.AllPlayers;
+            Debug.Log($"[Issue5] HandleSceneLoaded scene={scene.name} frame={Time.frameCount} playerCount={players.Count} order=[{string.Join(",", players.ConvertAll(p => p != null ? p.GetComponent<NetworkIdentity>().netId.ToString() : "null"))}]");
             for (int i = 0; i < players.Count; i++)
             {
                 PositionPlayer(players[i].transform, i);
@@ -543,15 +583,19 @@ namespace RobEveryone.Core
         [Server]
         private void PositionPlayer(Transform player, int index)
         {
-            PlayerSpawnPoint[] spawns = FindObjectsByType<PlayerSpawnPoint>(FindObjectsSortMode.None);
-            if (spawns.Length == 0) return;
+            PlayerSpawnPoint[] spawns = FindObjectsByType<PlayerSpawnPoint>();
+            if (spawns.Length == 0)
+            {
+                Debug.Log($"[Issue5] PositionPlayer FOUND ZERO SPAWN POINTS for index={index}, no-op -- player left wherever it physically was.");
+                return;
+            }
 
             Transform spawn = spawns[index % spawns.Length].transform;
             // TEMPORARY (issue #5 debugging): the server's own intended
             // target -- compare this against what PositionLocalPlayerWhenReady
             // logs it actually applied, and against any Issue5PositionDebug
             // jump warning, to see exactly where the three diverge.
-            Debug.Log($"[Issue5] Server PositionPlayer: {player.name} -> index {index} -> spawn '{spawn.name}' at {spawn.position}, scene={SceneManager.GetActiveScene().name}, t={Time.time:F2}");
+            Debug.Log($"[Issue5] Server PositionPlayer: {player.name} -> index {index} -> spawn '{spawn.name}' at {spawn.position}, spawnCount={spawns.Length}, scene={SceneManager.GetActiveScene().name}, t={Time.time:F2}");
             TeleportPlayerTo(player, spawn);
         }
 
@@ -578,9 +622,33 @@ namespace RobEveryone.Core
             NetworkIdentity identity = player.GetComponent<NetworkIdentity>();
             bool remote = identity != null && !identity.isLocalPlayer && identity.connectionToClient != null;
 
+            Debug.Log($"[Issue5] TeleportPlayerTo netId={identity?.netId} remote={remote} target={position} frame={Time.frameCount}");
+
             if (remote)
             {
+                // Global debounce: if an equivalent teleport for this exact
+                // player is already in flight (issued within the last
+                // TeleportDebounceWindow, same target), skip re-issuing --
+                // this is the general shape of the jail confinement bug
+                // (an Update() loop re-checking a not-yet-converged
+                // Transform and re-firing every frame), now closed for
+                // every caller at once instead of one at a time as each is
+                // individually discovered. A genuinely DIFFERENT target
+                // still goes through immediately -- this only suppresses
+                // redundant duplicates, never a real change of destination.
+                if (lastTeleportIssuedAt.TryGetValue(identity, out float issuedAt)
+                    && Time.time - issuedAt < TeleportDebounceWindow
+                    && lastTeleportTarget.TryGetValue(identity, out Vector3 lastTarget)
+                    && Vector3.Distance(lastTarget, position) < 0.1f)
+                {
+                    Debug.Log($"[Issue5] TeleportPlayerTo DEBOUNCED (duplicate within {TeleportDebounceWindow}s) netId={identity.netId} target={position}");
+                    return;
+                }
+                lastTeleportIssuedAt[identity] = Time.time;
+                lastTeleportTarget[identity] = position;
+
                 TargetPositionPlayer(identity.connectionToClient, position, rotation);
+                StartCoroutine(VerifyAndRetryTeleport(identity, player, position, rotation, attempt: 1));
                 return;
             }
 
@@ -600,8 +668,53 @@ namespace RobEveryone.Core
         private void TargetPositionPlayer(NetworkConnectionToClient target, Vector3 position, Quaternion rotation)
         {
             // TEMPORARY (issue #5 debugging).
-            Debug.Log($"[Issue5] TargetPositionPlayer received: target={position}, scene={SceneManager.GetActiveScene().name}, t={Time.time:F2}");
+            Debug.Log($"[Issue5] TargetPositionPlayer received: target={position}, scene={SceneManager.GetActiveScene().name}, t={Time.time:F2}, frame={Time.frameCount}");
             StartCoroutine(PositionLocalPlayerWhenReady(position, rotation));
+        }
+
+        // Self-heals a remote teleport that never actually landed. Does
+        // the SERVER's own copy of this Transform (what ReadySpot's
+        // OnTriggerEnter/Exit -- server-only -- actually checks against,
+        // and what blocked round start in the original bug report) ever
+        // converge to the intended position? NetworkTransformReliable is
+        // client-authoritative, so this Transform only updates once the
+        // owning client's own sync snapshots (regular interval + the
+        // CmdTeleport round-trip) actually arrive back here -- a dropped
+        // packet, a client-side exception mid-coroutine, or any cause we
+        // haven't identified yet can all leave that round trip never
+        // completing. Re-issuing (bounded to MaxTeleportRetries, so a
+        // genuinely disconnected client doesn't retry forever) recovers
+        // from any of those without needing to know which one happened --
+        // this is the actual guarantee: not just "don't cause new
+        // desyncs" but "notice and correct one no matter the cause."
+        [Server]
+        private IEnumerator VerifyAndRetryTeleport(NetworkIdentity identity, Transform player, Vector3 intended, Quaternion rotation, int attempt)
+        {
+            yield return new WaitForSeconds(TeleportSettleTimeout);
+            if (player == null || identity == null) yield break;
+
+            float distance = Vector3.Distance(player.position, intended);
+            if (distance <= 0.5f)
+            {
+                Debug.Log($"[Issue5] Teleport settled OK netId={identity.netId} attempt={attempt} distance={distance:F2}");
+                yield break;
+            }
+
+            if (attempt >= MaxTeleportRetries)
+            {
+                Debug.LogWarning($"[Issue5] Teleport FAILED TO SETTLE after {attempt} attempts netId={identity.netId} intended={intended} actualServerPos={player.position} distance={distance:F2} -- giving up, likely a dead/dropped connection.");
+                yield break;
+            }
+
+            Debug.LogWarning($"[Issue5] Teleport didn't settle (attempt {attempt}), retrying -- netId={identity.netId} intended={intended} actualServerPos={player.position} distance={distance:F2}");
+
+            // Bypass the debounce above -- this retry IS the exception to
+            // "don't re-issue a duplicate," since the whole point is that
+            // the previous issue never actually landed.
+            lastTeleportIssuedAt[identity] = Time.time;
+            lastTeleportTarget[identity] = intended;
+            TargetPositionPlayer(identity.connectionToClient, intended, rotation);
+            StartCoroutine(VerifyAndRetryTeleport(identity, player, intended, rotation, attempt + 1));
         }
 
         // Mirrors WireLocalCameraToCanvases' own reasoning above -- this
@@ -614,7 +727,8 @@ namespace RobEveryone.Core
         {
             bool hadToWait = NetworkClient.localPlayer == null; // TEMPORARY (issue #5 debugging)
             float timeout = Time.time + 5f;
-            while (NetworkClient.localPlayer == null && Time.time < timeout) yield return null;
+            int waitedFrames = 0;
+            while (NetworkClient.localPlayer == null && Time.time < timeout) { waitedFrames++; yield return null; }
 
             if (NetworkClient.localPlayer == null)
             {
@@ -626,6 +740,7 @@ namespace RobEveryone.Core
             Debug.Log($"[Issue5] localPlayer ready (hadToWait={hadToWait}), applying target={position}, t={Time.time:F2}");
 
             Transform player = NetworkClient.localPlayer.transform;
+            Debug.Log($"[Issue5] PositionLocalPlayerWhenReady applying netId={NetworkClient.localPlayer.netId} target={position} waitedFrames={waitedFrames} preApplyPos={player.position} frame={Time.frameCount}");
 
             // A raw Transform.position set here moves the object locally,
             // but NetworkTransform's own interpolation/delta-compression
@@ -664,7 +779,7 @@ namespace RobEveryone.Core
                 // and whether CmdTeleport was even sent -- if netTransform
                 // is null here, the reset broadcast every OTHER observer
                 // depends on never went out at all.
-                Debug.Log($"[Issue5] Applied locally: {player.position}, CmdTeleport sent={netTransform != null}, t={Time.time:F2}");
+                Debug.Log($"[Issue5] Applied locally: {player.position}, CmdTeleport sent={netTransform != null}, t={Time.time:F2}, frame={Time.frameCount}");
             });
         }
 
@@ -806,7 +921,7 @@ namespace RobEveryone.Core
         [TargetRpc]
         private void TargetShowLoadingScreen(NetworkConnectionToClient target, string message)
         {
-            LoadingScreenUI screen = FindFirstObjectByType<LoadingScreenUI>();
+            LoadingScreenUI screen = FindAnyObjectByType<LoadingScreenUI>();
             if (screen != null) screen.Show(message);
         }
 
@@ -820,7 +935,7 @@ namespace RobEveryone.Core
         [TargetRpc]
         private void TargetShowQuotaResult(NetworkConnectionToClient target, string message)
         {
-            LoadingScreenUI screen = FindFirstObjectByType<LoadingScreenUI>();
+            LoadingScreenUI screen = FindAnyObjectByType<LoadingScreenUI>();
             if (screen == null) return;
             screen.Show(message);
             screen.Hide();
@@ -829,7 +944,7 @@ namespace RobEveryone.Core
         [ClientRpc]
         private void RpcShowLoadingScreen(string message)
         {
-            LoadingScreenUI screen = FindFirstObjectByType<LoadingScreenUI>();
+            LoadingScreenUI screen = FindAnyObjectByType<LoadingScreenUI>();
             if (screen != null) screen.Show(message);
         }
 
@@ -845,7 +960,7 @@ namespace RobEveryone.Core
         // call site now hides it directly instead.
         public void HandleClientSceneChanged()
         {
-            LoadingScreenUI screen = FindFirstObjectByType<LoadingScreenUI>();
+            LoadingScreenUI screen = FindAnyObjectByType<LoadingScreenUI>();
             if (screen != null) screen.Hide();
         }
     }

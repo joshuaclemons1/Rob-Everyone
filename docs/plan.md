@@ -15,7 +15,7 @@ at a glance; check Issues for the current, authoritative state. See
 Steam), sabotage items, and the full meta-game (shop, Jail & Bail,
 Homeowner/Police AI, night mode) are all built and playtested — see the
 closed issues for the detailed record (start from the `[Done]`-titled
-ones). Five alpha builds have shipped (`v1.0.0-alpha` → `v1.0.4-alpha`) and
+ones). Eight alpha builds have shipped (`v1.0.0-alpha` → `v1.0.7-alpha`) and
 the team is now in the friend-group-playtest stage, filing real bugs as
 they turn up.
 
@@ -60,10 +60,39 @@ migration, rebinding, audio mixer, graphics, accessibility, pause menu),
 [ui-implementation-setup.md](stages/ui-implementation-setup.md) (crosshair,
 Cash/Quota/Timer HUD), and
 [launcher-setup.md](stages/launcher-setup.md) (pre-launch auto-update
-launcher, replacing the old in-game update popup), and
+launcher, replacing the old in-game update popup),
 [t1-2-bug-fixes.md](stages/t1-2-bug-fixes.md) (code-only fixes for the
 Tier 1/2 priority-list bugs, written without Editor access — the
-checklist for testing them once back at a PC).
+checklist for testing them once back at a PC), and
+[main-menu-character-preview-setup.md](stages/main-menu-character-preview-setup.md)
+(issue #39: persistent character preview + Settings fall animation,
+the Editor checklist for the pieces that needed real eyes), and
+[main-menu-background-flythrough-setup.md](stages/main-menu-background-flythrough-setup.md)
+(issue #51: replacing the static diorama with a moving drone-shot
+flythrough over a procedural stand-in neighborhood), [reconnect-setup.md](stages/reconnect-setup.md) (issue #53: rejoining
+an in-progress lobby after a disconnect/crash without losing your run),
+and
+[lobby-customization-building-plan.md](stages/lobby-customization-building-plan.md)
+(issue #52: implementation plan for the in-Lobby skin/color
+customization building; Phases 0-2 are built, see the plan for what
+each does), and
+[lobby-customization-building-editor-setup.md](stages/lobby-customization-building-editor-setup.md)
+(Phases 3 & 4 of the same issue: placing/wiring the pedestals, paint
+cans, mirror cycle buttons, and the mirror's own reflection rendering
+in `Lobby.unity`, with rest points), [sfx-plan.md](stages/sfx-plan.md) (issues #22/#23: what audio already
+exists vs. the real gaps, sabotage item use sounds first), and
+[retention-research.md](stages/retention-research.md) (why playtest
+sessions stall after the first quota batch, researched directly
+against Super Battle Golf and Gamble With Your Friends), and
+[polish-deep-dive.md](stages/polish-deep-dive.md) (a second, deeper
+research pass covering both gameplay depth and graphics/visual
+fidelity, with a prioritized actionable list for each), and
+[postprocessing-setup.md](stages/postprocessing-setup.md) (issue #64:
+Editor walkthrough for the post-processing pass, with three named
+value-table presets to compare), and
+[batch-unlock-popup-setup.md](stages/batch-unlock-popup-setup.md)
+(issue #61: Editor setup for the in-Lobby "Item Unlocked" popup, plus
+why the original loading-screen-text approach never showed up).
 Style/asset reference (palette, sourced packs, remaining art to-do) is in
 [art-info.md](art-info.md); UI/menu element spec is in
 [ui-design.md](stages/ui-design.md); main menu build docs are

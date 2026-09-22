@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using Mirror;
 using RobEveryone.Customization;
 using UnityEngine;
@@ -55,12 +57,36 @@ namespace RobEveryone.Player
         public int SkinIndex => syncedSkinIndex;
         public int ColorIndex => syncedColorIndex;
 
+        // Issue #52 (Phase 1): fired once a rebuilt skin instance is
+        // fully set up (same point BuildSkinInstance finishes its own
+        // setup, first spawn or later swap alike). Every script that
+        // caches a reference *into* SkinInstance (PlayerAnimationDriver's
+        // Animator, PlayerRagdoll's ragdoll bodies, PlayerHeadTalkScale/
+        // HeldItemDisplay's bone lookups) subscribes and re-resolves its
+        // own cached reference here, instead of PlayerSkinSpawner needing
+        // hardcoded knowledge of every consumer -- same event-driven
+        // decoupling PlayerCosmeticSelection.OnChanged already uses
+        // successfully elsewhere in this project.
+        public event Action OnSkinRebuilt;
+
+        // The skin/color combination currently actually displayed --
+        // distinct from syncedSkinIndex/syncedColorIndex themselves,
+        // which OnCosmeticsChanged compares against to tell "this SyncVar
+        // update is just confirming what I already applied locally"
+        // (the owner's own initial spawn, applied synchronously in
+        // OnStartLocalPlayer before the Command round-trips back) apart
+        // from "this is a genuine new change" (any later swap, whether
+        // triggered by this client or, for an observer, by someone
+        // else's).
+        private int displayedSkinIndex = -1;
+        private int displayedColorIndex = -1;
+
         public override void OnStartLocalPlayer()
         {
             int skinIndex = PlayerCosmeticSelection.SkinIndex;
             int colorIndex = PlayerCosmeticSelection.ColorIndex;
 
-            SpawnSkin(skinIndex, colorIndex);
+            BuildSkinInstance(skinIndex, colorIndex);
             CmdSetCosmetics(skinIndex, colorIndex);
         }
 
@@ -71,23 +97,40 @@ namespace RobEveryone.Player
             syncedColorIndex = colorIndex;
         }
 
-        // Fires on every non-owner client once the server-held values
-        // arrive (including late joiners, who get the current SyncVar
-        // value immediately on spawn -- no separate "catch up" logic
-        // needed). Ignored on the owner's own client, which already
-        // spawned itself synchronously in OnStartLocalPlayer above rather
-        // than waiting on a round trip to see its own choice.
+        // Fires whenever either SyncVar changes -- the initial sync for
+        // every client (including a late joiner, who gets the
+        // then-current value immediately) and every later live swap
+        // alike (issue #52's SkinOfferPedestal/MirrorSkinCycleButton
+        // both apply their result server-side first and rely entirely on
+        // this hook to tell every client, owner included, rather than a
+        // separate owner-specific path). The displayedSkinIndex/
+        // displayedColorIndex check above is what actually distinguishes
+        // "just confirming what I already applied" from "a genuine
+        // change" -- not a blanket isOwned skip, which would also
+        // incorrectly skip a later swap the owner didn't trigger through
+        // OnStartLocalPlayer's own synchronous path.
         private void OnCosmeticsChanged(int _, int _2)
         {
-            if (isOwned) return;
             if (syncedSkinIndex < 0 || syncedColorIndex < 0) return;
+            if (syncedSkinIndex == displayedSkinIndex && syncedColorIndex == displayedColorIndex) return;
 
-            SpawnSkin(syncedSkinIndex, syncedColorIndex);
+            if (SkinInstance == null) BuildSkinInstance(syncedSkinIndex, syncedColorIndex);
+            else RebuildSkin(syncedSkinIndex, syncedColorIndex);
+
+            // Only the owner's own choice should ever persist to their
+            // own local PlayerPrefs -- an observer reacting to someone
+            // else's skin change has nothing of their own to remember
+            // here.
+            if (isOwned)
+            {
+                PlayerCosmeticSelection.SkinIndex = syncedSkinIndex;
+                PlayerCosmeticSelection.ColorIndex = syncedColorIndex;
+            }
         }
 
-        private void SpawnSkin(int skinIndex, int colorIndex)
+        private void BuildSkinInstance(int skinIndex, int colorIndex)
         {
-            if (SkinInstance != null) return; // already spawned -- both hooks can fire once each, guard against a double-spawn
+            if (SkinInstance != null) return; // already spawned -- RebuildSkin below is the actual "replace it" path
             if (skinRoster == null || skinRoster.Count == 0) return;
 
             GameObject prefab = skinRoster.GetSkin(skinIndex);
@@ -113,9 +156,9 @@ namespace RobEveryone.Player
 
             // Owner-only: trim the head (and, airborne, the upper body)
             // so first person isn't a floating camera and doesn't clip
-            // through the model. isOwned is reliable here -- the owner
-            // path (OnStartLocalPlayer) always has it true, the remote
-            // path (OnCosmeticsChanged) is guarded to non-owners.
+            // through the model. isOwned is reliable here regardless of
+            // whether this is the owner's very first spawn or a later
+            // live swap -- both go through this same method.
             if (isOwned)
             {
                 SkinInstance.AddComponent<FirstPersonBodyTrim>()
@@ -129,6 +172,112 @@ namespace RobEveryone.Player
             {
                 colorizer.ApplyBodyColor(palette.Colors[colorIndex]);
             }
+
+            displayedSkinIndex = skinIndex;
+            displayedColorIndex = colorIndex;
+
+            OnSkinRebuilt?.Invoke();
+        }
+
+        // Issue #52 (Phase 1): tears down the current skin and builds a
+        // fresh one in its place -- unlike BuildSkinInstance (guarded,
+        // first-spawn only), this is the actual "swap live" path a
+        // pedestal/mirror interaction needs. Reuses BuildSkinInstance for
+        // the actual instantiate/setup work rather than duplicating it --
+        // clearing SkinInstance first is what lets that guard fall
+        // through instead of no-op'ing.
+        private void RebuildSkin(int skinIndex, int colorIndex)
+        {
+            if (SkinInstance != null)
+            {
+                Destroy(SkinInstance);
+                SkinInstance = null;
+            }
+
+            BuildSkinInstance(skinIndex, colorIndex);
+        }
+
+        // ---- issue #52: pedestal / paint-can / mirror interactions ----
+
+        // Called by PaintCan.Interact() (server-side, via the standard
+        // IInteractable/Interactor flow -- confirmed Interact() itself
+        // always runs server-side, never on a client). Colors are always
+        // fully available with no unlock gating, so this applies
+        // immediately -- the SyncVar write above is what makes every
+        // client (including the interactor's own) pick it up via
+        // OnCosmeticsChanged, no separate round trip back to the
+        // interactor needed the way the two methods below require.
+        [Server]
+        public void ServerSwapCosmetics(int? skinIndex, int? colorIndex)
+        {
+            if (skinIndex.HasValue) syncedSkinIndex = skinIndex.Value;
+            if (colorIndex.HasValue) syncedColorIndex = colorIndex.Value;
+        }
+
+        // Called by SkinOfferPedestal.Interact() (server-side). Unlocking
+        // is purely local PlayerPrefs state (PlayerSkinUnlocks), which
+        // only the interactor's own client can actually write -- doesn't
+        // touch syncedSkinIndex/syncedColorIndex at all, since unlocking
+        // a skin doesn't equip it (see the cycle methods below for the
+        // actual equip path, via the mirror).
+        [Server]
+        public void ServerNotifySkinUnlocked(int skinIndex)
+        {
+            TargetNotifySkinUnlocked(connectionToClient, skinIndex);
+        }
+
+        [TargetRpc]
+        private void TargetNotifySkinUnlocked(NetworkConnectionToClient target, int skinIndex)
+        {
+            PlayerSkinUnlocks.Unlock(skinIndex);
+        }
+
+        // Called by MirrorSkinCycleButton.Interact() (server-side).
+        // "Which skin is next" depends on the interactor's own unlocked
+        // set, which -- same as above -- only their own client actually
+        // has, so this asks their client to work it out and report back
+        // rather than the server guessing at something it can't see.
+        [Server]
+        public void ServerRequestSkinCycle(bool forward)
+        {
+            TargetComputeSkinCycle(connectionToClient, forward);
+        }
+
+        [TargetRpc]
+        private void TargetComputeSkinCycle(NetworkConnectionToClient target, bool forward)
+        {
+            CmdApplySkinCycle(ComputeCycledSkinIndex(forward));
+        }
+
+        [Command]
+        private void CmdApplySkinCycle(int skinIndex) => ServerSwapCosmetics(skinIndex, null);
+
+        // Cyclic, wrapping at both ends -- same shape as the old Main
+        // Menu Customization screen's own ChangeSkin, just walking
+        // PlayerSkinUnlocks.UnlockedSkins (this player's own accumulated
+        // set) instead of the full roster. If the currently-selected
+        // skin somehow isn't in the unlocked list at all (shouldn't
+        // normally happen -- everything selected got there by being
+        // unlocked first), starts from the beginning rather than
+        // throwing.
+        private static int ComputeCycledSkinIndex(bool forward)
+        {
+            IReadOnlyList<int> unlocked = PlayerSkinUnlocks.UnlockedSkins;
+            if (unlocked.Count == 0) return PlayerCosmeticSelection.SkinIndex; // shouldn't happen -- 0 is always included
+
+            int currentPosition = 0;
+            for (int i = 0; i < unlocked.Count; i++)
+            {
+                if (unlocked[i] == PlayerCosmeticSelection.SkinIndex)
+                {
+                    currentPosition = i;
+                    break;
+                }
+            }
+
+            int delta = forward ? 1 : -1;
+            int nextPosition = (currentPosition + delta + unlocked.Count) % unlocked.Count;
+            return unlocked[nextPosition];
         }
 
         // A SkinnedMeshRenderer computes its visibility bounds around where

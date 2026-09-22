@@ -1,4 +1,6 @@
 using Mirror;
+using RobEveryone.Core;
+using RobEveryone.Inventory;
 using UnityEngine;
 
 namespace RobEveryone.Items
@@ -47,6 +49,20 @@ namespace RobEveryone.Items
     public class LootSpawnPoint : NetworkBehaviour
     {
         [SerializeField] private LootTable lootTable;
+
+        // Issue #74: this point has a chance of coming up empty instead
+        // of always spawning something -- a house search should sometimes
+        // be a bust, which is what makes actually finding loot feel worth
+        // it. baseSpawnChance is calibrated for a single player; each
+        // additional connected player nudges the chance up, so a fuller
+        // lobby (more competition for the same houses) sees meaningfully
+        // more loot on the map overall without needing a separate
+        // map-wide "total budget" coordinator across every spawn point --
+        // each point still rolls independently, just with a
+        // player-count-aware chance.
+        [SerializeField, Range(0f, 1f)] private float baseSpawnChance = 0.6f;
+        [SerializeField, Range(0f, 0.2f)] private float spawnChancePerExtraPlayer = 0.08f;
+
         // What ResolveSpawnOverlap/SnapToSurfaceBelow treat as solid world
         // geometry -- walls/floors/furniture all sit on the ordinary
         // Default layer in this project (confirmed no dedicated "level
@@ -89,7 +105,13 @@ namespace RobEveryone.Items
         {
             if (lootTable == null) return;
 
-            ItemDefinition item = lootTable.GetRandomItem();
+            if (Random.value > EffectiveSpawnChance())
+            {
+                return; // came up empty this round, on purpose -- see this field's own comment
+            }
+
+            int currentBatch = GameFlowManager.Instance != null ? GameFlowManager.Instance.BatchNumber : 1;
+            ItemDefinition item = lootTable.GetRandomItem(currentBatch);
             if (item == null || item.WorldModelPrefab == null)
             {
                 Debug.LogWarning($"[LootSpawnPoint] '{gameObject.name}' rolled a null item or one with no WorldModelPrefab -- nothing spawned.");
@@ -148,6 +170,17 @@ namespace RobEveryone.Items
             pickup.Initialize(item);
 
             NetworkServer.Spawn(instance);
+        }
+
+        // Issue #74. Clamped to [0,1] since spawnChancePerExtraPlayer *
+        // (playerCount - 1) has no natural ceiling on its own -- a very
+        // full lobby should cap out at "always spawns," not overshoot
+        // past a real probability.
+        private float EffectiveSpawnChance()
+        {
+            int playerCount = Mathf.Max(1, PlayerInventory.AllPlayers.Count);
+            float chance = baseSpawnChance + spawnChancePerExtraPlayer * (playerCount - 1);
+            return Mathf.Clamp01(chance);
         }
 
         // Iteratively pushes `instance` out of whatever solid geometry its

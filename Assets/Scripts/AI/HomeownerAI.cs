@@ -319,7 +319,7 @@ namespace RobEveryone.AI
         // more officers exist.
         private bool AreaClear()
         {
-            foreach (PoliceAI police in FindObjectsByType<PoliceAI>(FindObjectsSortMode.None))
+            foreach (PoliceAI police in FindObjectsByType<PoliceAI>())
             {
                 if (police.State != PoliceState.Patrol) return false;
             }

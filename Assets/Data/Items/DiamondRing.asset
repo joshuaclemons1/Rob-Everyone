@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Items.ItemDefinition
   itemName: Diamond Ring
   value: 65
+  lootUnlockBatch: 2
   icon: {fileID: 0}
   worldModelPrefab: {fileID: 317360703770835057, guid: 068217ee4caf94ce6b4b7650c8def8db, type: 3}
   worldModelScale: {x: 0.15, y: 0.15, z: 0.15}

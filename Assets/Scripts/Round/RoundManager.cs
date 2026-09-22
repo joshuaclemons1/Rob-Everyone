@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Mirror;
+using RobEveryone.AI;
 using RobEveryone.Core;
 using RobEveryone.Inventory;
 using UnityEngine;
@@ -173,9 +174,53 @@ namespace RobEveryone.Round
         [Server]
         public void NotifyPlayerCaught(PlayerInventory player)
         {
+            // Issue #77 follow-up: starts the moment ANY catch is
+            // processed, jailed or released -- see PlayerInventory.
+            // IsCatchCooldownActive's own comment for the two real
+            // playtest bugs (instant re-catch, dueling-officer loop) this
+            // closes. PoliceAI's own catch check reads this before ever
+            // calling in here, so setting it up front (rather than only
+            // in the release branch) also protects the jail path against
+            // the same two-officers-same-frame edge case.
+            player.StartCatchCooldown();
+
+            // Issue #77 follow-up (real playtest): every officer actually
+            // chasing this player right now -- not just whoever landed
+            // this particular catch -- breaks off and heads back to
+            // patrol (or home, if dispatched) immediately, rather than
+            // standing on top of a released player for the whole cooldown
+            // window. A no-op for any officer not currently chasing them.
+            foreach (PoliceAI officer in PoliceAI.AllOfficers)
+            {
+                // Defensive, same as PoliceDispatcher's own use of this
+                // kind of list -- a dispatched officer can NetworkServer.
+                // Destroy itself (UpdateReturning) before its own
+                // OnStopServer unregister has actually run this frame.
+                if (officer != null) officer.AbandonChaseIfTargeting(player.transform);
+            }
+
+            // Issue #77: caught with nothing to actually arrest them over
+            // (no real stolen loot -- sabotage tools and the Prison Wallet
+            // both excluded, see HasAnyStolenLoot's own comment) means
+            // Police search and let them go instead of jailing them --
+            // rewards dumping your loot under pressure as its own valid
+            // way to survive a chase. Checked before DropAllSlots below so
+            // an empty-handed player (nothing to drop anyway) takes this
+            // path cleanly rather than falling through.
+            if (!player.HasAnyStolenLoot())
+            {
+                player.GetComponent<JailState>()?.NotifySearchedAndReleased();
+                return;
+            }
+
             // Caught players lose whatever they were carrying -- an exited
             // (or timed-out) player keeps theirs to sell at the Lobby.
-            player.ResetInventory();
+            // Issue #81: dropped on the ground at the catch spot as real,
+            // pickupable items instead of ResetInventory's old silent
+            // full wipe -- DropAllSlots already excludes the Prison
+            // Wallet the same way ResetInventory did, so that slot stays
+            // protected exactly as before.
+            player.DropAllSlots(player.transform.position, player.transform.rotation);
             player.GetComponent<JailState>()?.EnterJail(endOfBatch: false);
             NotifyPlayerJailed(player, endOfBatch: false);
         }

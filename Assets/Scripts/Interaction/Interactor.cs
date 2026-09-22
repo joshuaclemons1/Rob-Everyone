@@ -158,7 +158,7 @@ namespace RobEveryone.Interaction
             Carryable best = null;
             float bestAngle = ragdollAssistMaxAngle;
 
-            foreach (Carryable candidate in FindObjectsByType<Carryable>(FindObjectsSortMode.None))
+            foreach (Carryable candidate in FindObjectsByType<Carryable>())
             {
                 if (candidate.gameObject == gameObject || !candidate.CanBeGrabbed) continue;
 
@@ -191,7 +191,7 @@ namespace RobEveryone.Interaction
             JailState best = null;
             float bestAngle = jailAssistMaxAngle;
 
-            foreach (JailState candidate in FindObjectsByType<JailState>(FindObjectsSortMode.None))
+            foreach (JailState candidate in FindObjectsByType<JailState>())
             {
                 if (candidate.gameObject == gameObject || !candidate.IsJailed) continue;
 

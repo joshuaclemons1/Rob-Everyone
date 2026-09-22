@@ -90,7 +90,7 @@ namespace RobEveryone.UI
         {
             if (localCapture == null)
             {
-                localCapture = FindFirstObjectByType<SteamVoiceCapture>();
+                localCapture = FindAnyObjectByType<SteamVoiceCapture>();
                 if (localCapture == null) return;
             }
 

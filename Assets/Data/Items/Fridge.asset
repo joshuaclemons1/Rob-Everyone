@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Items.ItemDefinition
   itemName: Fridge
   value: 100
+  lootUnlockBatch: 3
   icon: {fileID: 0}
   worldModelPrefab: {fileID: 3016968428595015628, guid: fc02679f7ab44498884f26309d596de0, type: 3}
   worldModelScale: {x: 0.45, y: 0.45, z: 0.45}

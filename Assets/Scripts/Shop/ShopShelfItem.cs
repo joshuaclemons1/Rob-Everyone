@@ -25,10 +25,26 @@ namespace RobEveryone.Shop
         // multiple rivals at once).
         [SerializeField] private int unlockBatch = 1;
 
-        private bool Unlocked =>
-            GameFlowManager.Instance != null && GameFlowManager.Instance.BatchNumber >= unlockBatch;
+        // Read by BatchUnlockPopupUI (issue #61) to find what's newly
+        // unlocked -- exposed rather than making that code reach past the
+        // SerializeFields directly. Item is the full ItemDefinition (not
+        // just its name) since the popup needs WorldModelPrefab for its
+        // spinning preview too.
+        public int UnlockBatch => unlockBatch;
+        public ItemDefinition Item => item;
 
-        // Reuses the same curve quota itself grows on (GameFlowManager's
+        // Reads EffectiveShopBatch, not BatchNumber directly -- unlocks
+        // starting the Lobby before a batch's own Night round, not the
+        // one after it (see EffectiveShopBatch's own comment).
+        private bool Unlocked =>
+            GameFlowManager.Instance != null && GameFlowManager.Instance.EffectiveShopBatch >= unlockBatch;
+
+        // Deliberately still keyed to the literal BatchNumber, not
+        // EffectiveShopBatch -- an item bought during its early-unlock
+        // preview window (the Lobby before the current batch's Night
+        // round) costs that *current* batch's price, not the higher
+        // price it'll carry once the batch actually turns over. Reuses
+        // the same curve quota itself grows on (GameFlowManager's
         // quotaGrowthMultiplier) rather than a second, separately-tuned
         // price curve -- batch 1 = base price, batch 2 = x1.5, etc.
         public int CurrentPrice

@@ -111,7 +111,7 @@ namespace RobEveryone.Round
         // as Interactor.FindRagdolledPlayerNearby).
         private void CycleTarget()
         {
-            PlayerInventory[] all = FindObjectsByType<PlayerInventory>(FindObjectsSortMode.None);
+            PlayerInventory[] all = FindObjectsByType<PlayerInventory>();
             List<Transform> candidates = new();
 
             foreach (PlayerInventory player in all)

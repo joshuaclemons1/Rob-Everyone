@@ -85,12 +85,28 @@ namespace RobEveryone.Player
         {
             inventory.OnSlotsChanged += Refresh;
             inventory.OnSelectedSlotChanged += HandleSelectedSlotChanged;
+            // Issue #52: a live skin swap (pedestal/mirror) destroys the
+            // hand bone heldInstance is parented under, taking
+            // heldInstance down with it -- dropping all three cached
+            // references lets Update's own already-lazy TryResolveHandBone
+            // re-find the socket on the new skin and Refresh() re-attach
+            // whatever's currently selected, the same path already used
+            // while waiting for the very first skin to arrive.
+            skinSpawner.OnSkinRebuilt += HandleSkinRebuilt;
         }
 
         private void OnDisable()
         {
             inventory.OnSlotsChanged -= Refresh;
             inventory.OnSelectedSlotChanged -= HandleSelectedSlotChanged;
+            skinSpawner.OnSkinRebuilt -= HandleSkinRebuilt;
+        }
+
+        private void HandleSkinRebuilt()
+        {
+            handBone = null;
+            heldInstance = null; // was a child of the just-destroyed SkinInstance -- already gone
+            currentItem = null; // force Refresh to treat the next resolve as a real change, not "no change"
         }
 
         private void HandleSelectedSlotChanged(int _) => Refresh();

@@ -33,6 +33,13 @@ namespace RobEveryone.Items
     {
         [SerializeField] private string itemName = "Watch";
         [SerializeField] private int value = 25;
+        // Issue #74: which batch this item is allowed to roll as house
+        // loot -- a safe/high-value item shouldn't be available to fill
+        // quota on round 1. Mirrors ShopShelfItem.unlockBatch's own
+        // pattern, just for LootTable's roll instead of a shop purchase.
+        // 1 = available from the very first batch (the default, so every
+        // existing item stays exactly as available as it already was).
+        [SerializeField, Min(1)] private int lootUnlockBatch = 1;
         [SerializeField] private Sprite icon;
         [SerializeField] private GameObject worldModelPrefab;
         // The scale WorldModelPrefab needs to actually look right in the
@@ -86,6 +93,7 @@ namespace RobEveryone.Items
 
         public string ItemName => itemName;
         public int Value => value;
+        public int LootUnlockBatch => lootUnlockBatch;
         public Sprite Icon => icon;
         public GameObject WorldModelPrefab => worldModelPrefab;
         public Vector3 WorldModelScale => worldModelScale;

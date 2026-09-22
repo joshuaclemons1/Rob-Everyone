@@ -17,12 +17,13 @@ namespace RobEveryone.UI
     // on -- rather than every background panel independently sliding to
     // the same fixed offset and landing on top of each other.
     //
-    // Deliberately out of scope for this pass (see plan.md/todo.md):
-    // Settings stays a flat SetActive swap via MenuActions, not part of
-    // this stack -- per the design doc it's a separate full-screen branch
-    // off Main, not a slide transition. The title's continuous pulse and
-    // Settings' fall-through-frame/fall-from-sky character animation
-    // aren't built here either.
+    // Settings still isn't part of this stack -- per the design doc it's
+    // a separate full-screen branch off Main, not one more entry in this
+    // horizontal slide. It gets its own vertical slide animation instead,
+    // driven by MenuActions (see that script's SettingsSlideRoutine) --
+    // not a flat SetActive swap anymore, just not this particular
+    // animation. The title's continuous pulse and Settings' fall-through-
+    // frame/fall-from-sky character animation aren't built here either.
     public class MenuNavigator : MonoBehaviour
     {
         [SerializeField] private float slideDuration = 0.5f;

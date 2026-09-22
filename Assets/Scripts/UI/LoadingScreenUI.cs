@@ -32,6 +32,12 @@ namespace RobEveryone.UI
         // the scene behind it loads.
         [SerializeField] private float minimumDisplayDuration = 5f;
 
+        // Issue #61: lets another client-side UI element (BatchUnlockPopupUI)
+        // wait for this cover to actually be gone before starting its own
+        // reveal, rather than racing it blind -- see that component's own
+        // comment for the confirmed bug this fixes.
+        public bool IsShowing => panel != null && panel.activeSelf;
+
         private float frameTimer;
         private int frameIndex;
         private float shownAt;

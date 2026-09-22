@@ -64,6 +64,19 @@ namespace RobEveryone.Round
         [Server]
         public void EnterJail(bool endOfBatch)
         {
+            // Confirmed real bug (issue #5's own log evidence): with
+            // multiple Police officers now possible, two different
+            // PoliceAI instances can both catch the same player within
+            // the same or adjacent frames -- NotifyPlayerCaught had no
+            // guard, so EnterJail ran twice. GameFlowManager.ClaimJailPoint
+            // marks a slot "occupied" by this player but never frees their
+            // *previous* slot on re-entry, so the second call always found
+            // its own prior slot "taken" and got bumped to the next one --
+            // observed live as a sustained back-and-forth between two
+            // JailPoints, once per re-trigger, since the remote teleport
+            // is async and never visually resolves before the next call.
+            if (isJailed) return;
+
             isJailed = true;
             isEndOfBatchJail = endOfBatch;
             jailedAtRoundOrdinal = GameFlowManager.Instance != null ? GameFlowManager.Instance.RoundOrdinal : 0;
@@ -95,7 +108,7 @@ namespace RobEveryone.Round
         [TargetRpc]
         private void TargetShowJailNotification(NetworkConnectionToClient target, string message)
         {
-            JailNotificationUI ui = FindFirstObjectByType<JailNotificationUI>();
+            JailNotificationUI ui = FindAnyObjectByType<JailNotificationUI>();
             if (ui != null) ui.Show(message, 3f);
         }
 
@@ -107,7 +120,7 @@ namespace RobEveryone.Round
         {
             if (playerName == PlayerInventory.LocalPlayer?.DisplayName) return;
 
-            JailAlertUI alert = FindFirstObjectByType<JailAlertUI>();
+            JailAlertUI alert = FindAnyObjectByType<JailAlertUI>();
             if (alert != null) alert.Show($"{playerName} got caught! Bail price is ${bailPrice}");
         }
 
@@ -120,6 +133,21 @@ namespace RobEveryone.Round
                 ? Mathf.RoundToInt(GameFlowManager.Instance.CurrentQuota / (isEndOfBatchJail ? 3f : 6f))
                 : 0;
 
+        // Issue #77: Police caught this player but found nothing worth
+        // arresting them over (RoundManager.NotifyPlayerCaught's own
+        // PlayerInventory.HasAnyStolenLoot check gates this) -- no jailing,
+        // no loot loss beyond whatever DropAllSlots already scattered, just
+        // a distinct feedback moment so it doesn't read as the catch
+        // silently doing nothing. Reuses the exact same own-client-only
+        // notification pipeline EnterJail's TargetShowJailNotification
+        // already uses, just with different text and no state change.
+        [Server]
+        public void NotifySearchedAndReleased()
+        {
+            if (connectionToClient != null)
+                TargetShowJailNotification(connectionToClient, "Searched -- nothing on you.\nYou're free to go.");
+        }
+
         // Clears state without a payout -- used by both a real rescue and
         // round-end/self-bail finalization.
         [Server]
@@ -128,6 +156,19 @@ namespace RobEveryone.Round
             isJailed = false;
             jailAnchor = null;
         }
+
+        // Server-only cooldown gate for the confinement correction below --
+        // confirmed real bug (issue #5's own log evidence, same root cause
+        // as EnterJail's re-entry guard above): TeleportPlayerTo's remote
+        // path is a TargetRpc round-trip, so this Transform (the server's
+        // own copy, driven by NetworkTransform's client-authoritative sync)
+        // doesn't actually reflect a just-issued correction for at least a
+        // frame or two. Without this cooldown, a still-stale read on the
+        // very next Update() looked exactly as out-of-bounds as before and
+        // fired ANOTHER correction on top of the one still in flight --
+        // observed live as a sustained per-frame flood of racing
+        // TargetRpc calls to the same client.
+        private float nextConfinementCorrection;
 
         // Issue #8 fix. Horizontal-only (Y excluded) so a jailed player
         // can still jump in place without tripping this -- only actually
@@ -138,11 +179,16 @@ namespace RobEveryone.Round
         private void Update()
         {
             if (!isServer || !isJailed || jailAnchor == null) return;
+            if (Time.time < nextConfinementCorrection) return;
 
             Vector3 offset = transform.position - jailAnchor.position;
             offset.y = 0f;
             if (offset.sqrMagnitude <= confinementRadius * confinementRadius) return;
 
+            // Long enough for the TargetRpc -> client apply -> CmdTeleport
+            // round trip to plausibly land before the next check trusts
+            // this Transform again.
+            nextConfinementCorrection = Time.time + 1f;
             GameFlowManager.Instance?.TeleportPlayerTo(transform, jailAnchor);
         }
 

@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Items.ItemDefinition
   itemName: Safe
   value: 250
+  lootUnlockBatch: 4
   icon: {fileID: 0}
   worldModelPrefab: {fileID: 1975296764638969639, guid: ee00aae2704e7426c8102b490551f590, type: 3}
   worldModelScale: {x: 1.2, y: 1.2, z: 1.2}

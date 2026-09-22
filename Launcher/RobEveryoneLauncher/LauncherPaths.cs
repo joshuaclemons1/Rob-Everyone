@@ -17,6 +17,13 @@ public static class LauncherPaths
 
     public static string StateFilePath => Path.Combine(RootDir, "launcher-state.json");
 
+    // The update-check failure path used to swallow the real exception
+    // entirely (a bare `catch { }`), so a genuine failure and "you're
+    // actually offline" looked identical on screen with zero way to tell
+    // them apart. Written next to the exe for the same "self-contained
+    // folder" reason as everything else here.
+    public static string ErrorLogPath => Path.Combine(RootDir, "launcher-error.log");
+
     // Used while downloading/extracting so a crash or killed process mid-
     // update never leaves GameDir in a half-overwritten, unlaunchable state
     // -- UpdateService extracts here first, then atomically swaps it in.

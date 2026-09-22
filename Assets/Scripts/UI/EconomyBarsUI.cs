@@ -34,7 +34,7 @@ namespace RobEveryone.UI
             // or have the spawner call a public RecalculateMax() here)
             // or it'll sum zero/partial items depending on Start() order.
             maxPossibleValue = 0;
-            foreach (PickupItem item in FindObjectsByType<PickupItem>(FindObjectsSortMode.None))
+            foreach (PickupItem item in FindObjectsByType<PickupItem>())
             {
                 maxPossibleValue += item.Value;
             }

@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Items.ItemDefinition
   itemName: Washer
   value: 75
+  lootUnlockBatch: 2
   icon: {fileID: 0}
   worldModelPrefab: {fileID: 4017205405447724296, guid: e85db07647f6547f590bfc3624d2ecd9, type: 3}
   worldModelScale: {x: 0.45, y: 0.45, z: 0.45}
