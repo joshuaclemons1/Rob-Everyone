@@ -50,6 +50,20 @@ tracking issue), but the normal flow going forward is: open an issue
 when work starts (or when a gap is noticed), close it when the work
 ships.
 
+### `needs testing`
+
+An open issue can carry `needs testing` — code and/or Editor work is
+actually done, but it isn't closeable yet because per "Open vs. closed
+is the status" above, closed means *confirmed* working (a real
+playtest, or a real Editor check for something that can't be verified
+any other way), not just pushed. Apply it the moment that work lands;
+remove it (along with closing the issue, with the usual what-shipped
+comment) once someone's actually confirmed it. This is what separates
+"still needs someone to sit down and write the code" from "written,
+just needs a human to go try it" at a glance in the issue list — don't
+leave it off an issue that's genuinely in that state, and don't leave
+it on one that's already been confirmed and closed.
+
 ## Priority labels
 
 Four labels, applied alongside `bug`/`enhancement`, exist specifically
