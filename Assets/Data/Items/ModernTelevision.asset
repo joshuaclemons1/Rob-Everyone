@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Items.ItemDefinition
   itemName: Modern Television
   value: 90
+  lootUnlockBatch: 2
   icon: {fileID: 0}
   worldModelPrefab: {fileID: 6430707185952084154, guid: abe62e1f4229d4d78a5706308c780556, type: 3}
   worldModelScale: {x: 0.45, y: 0.45, z: 0.45}

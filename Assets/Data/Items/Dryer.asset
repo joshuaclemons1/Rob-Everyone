@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Items.ItemDefinition
   itemName: Dryer
   value: 70
+  lootUnlockBatch: 2
   icon: {fileID: 0}
   worldModelPrefab: {fileID: 2251364710293881162, guid: 5310dde1b06464e838967cfd29ec51e8, type: 3}
   worldModelScale: {x: 0.4, y: 0.4, z: 0.4}
