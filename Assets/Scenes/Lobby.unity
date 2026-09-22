@@ -19416,9 +19416,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3cf7b30987574647b7cb6063eb4b6561, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RobEveryone.Customization.MirrorCharacterPreview
-  skinRoster: {fileID: 0}
-  palette: {fileID: 0}
-  playerAnimatorController: {fileID: 0}
+  skinRoster: {fileID: 11400000, guid: 3c1530e97fff4b7bb2052ea0582e939e, type: 2}
+  palette: {fileID: 11400000, guid: 9937d1164956e40c293a381f5235a1ce, type: 2}
+  playerAnimatorController: {fileID: 9100000, guid: ed6ba06c3ff1bf44bb6c535a0b75e27a, type: 2}
   previewCamera: {fileID: 908445000}
   modelSpawnPoint: {fileID: 2018795228}
 --- !u!1 &2019126054
