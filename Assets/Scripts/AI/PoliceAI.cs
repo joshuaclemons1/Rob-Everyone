@@ -457,6 +457,28 @@ namespace RobEveryone.AI
             // wrong way with nothing to correct it.
             agent.SetDestination(chaseTarget.position);
 
+            // Issue #75/#76: a player who's committed to boarding the exit
+            // van (ExitCarState.IsWaiting flips true the instant they
+            // board, well before the vulnerable window's own
+            // carWaitDuration actually elapses) is safe from a catch
+            // outright -- same intent as the van's own safety window, just
+            // enforced here too, since a straight proximity+geometry check
+            // has zero awareness of it on its own. Confirmed real bug:
+            // Police camping right next to the van could still land a
+            // catch before that window ever got a chance to matter.
+            // Reading it straight from the target rather than caching it
+            // once in EnterChase -- boarding can happen well after a chase
+            // already started. Also closes #76's "caught through the
+            // van's own walls" report, whatever's actually causing a
+            // seated player's model to clip through the geometry in the
+            // first place -- this makes it moot regardless.
+            ExitCarState exitState = chaseTarget.GetComponentInParent<ExitCarState>();
+            if (exitState != null && exitState.IsWaiting)
+            {
+                timeSinceSeenPlayer = 0f;
+                return;
+            }
+
             // Catching is pure proximity, not gated on the vision cone --
             // standing on top of someone is a catch regardless of exactly
             // which way Police is facing at that instant. It IS gated on

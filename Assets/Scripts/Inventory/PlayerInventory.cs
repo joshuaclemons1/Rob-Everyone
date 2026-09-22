@@ -169,6 +169,28 @@ namespace RobEveryone.Inventory
             }
         }
 
+        // Issue #77: whether any occupied slot is real stolen loot, not
+        // just a sabotage tool -- same SabotageType != None distinction
+        // ClearLoot already uses to tell "loot" (cleared at round start)
+        // apart from "tools" (kept). RoundManager.NotifyPlayerCaught reads
+        // this to decide whether a catch should actually jail the player
+        // or just search-and-release them: a player who dumped everything
+        // (or only ever carried, say, a Taser) has nothing worth arresting
+        // them over. The Prison Wallet is never part of this check at all --
+        // walletItemName lives outside slotItemNames entirely.
+        public bool HasAnyStolenLoot()
+        {
+            for (int i = 0; i < slotItemNames.Count; i++)
+            {
+                string itemName = slotItemNames[i];
+                if (string.IsNullOrEmpty(itemName) || itemName == ContinuationMarker) continue;
+
+                ItemDefinition item = catalog != null ? catalog.GetByName(itemName) : null;
+                if (item != null && item.SabotageType == SabotageType.None) return true;
+            }
+            return false;
+        }
+
         public event Action<int> OnTotalValueChanged;
         public event Action OnSlotsChanged;
         public event Action<int> OnSelectedSlotChanged;

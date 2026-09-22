@@ -133,6 +133,21 @@ namespace RobEveryone.Round
                 ? Mathf.RoundToInt(GameFlowManager.Instance.CurrentQuota / (isEndOfBatchJail ? 3f : 6f))
                 : 0;
 
+        // Issue #77: Police caught this player but found nothing worth
+        // arresting them over (RoundManager.NotifyPlayerCaught's own
+        // PlayerInventory.HasAnyStolenLoot check gates this) -- no jailing,
+        // no loot loss beyond whatever DropAllSlots already scattered, just
+        // a distinct feedback moment so it doesn't read as the catch
+        // silently doing nothing. Reuses the exact same own-client-only
+        // notification pipeline EnterJail's TargetShowJailNotification
+        // already uses, just with different text and no state change.
+        [Server]
+        public void NotifySearchedAndReleased()
+        {
+            if (connectionToClient != null)
+                TargetShowJailNotification(connectionToClient, "Searched -- nothing on you.\nYou're free to go.");
+        }
+
         // Clears state without a payout -- used by both a real rescue and
         // round-end/self-bail finalization.
         [Server]

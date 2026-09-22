@@ -173,6 +173,20 @@ namespace RobEveryone.Round
         [Server]
         public void NotifyPlayerCaught(PlayerInventory player)
         {
+            // Issue #77: caught with nothing to actually arrest them over
+            // (no real stolen loot -- sabotage tools and the Prison Wallet
+            // both excluded, see HasAnyStolenLoot's own comment) means
+            // Police search and let them go instead of jailing them --
+            // rewards dumping your loot under pressure as its own valid
+            // way to survive a chase. Checked before DropAllSlots below so
+            // an empty-handed player (nothing to drop anyway) takes this
+            // path cleanly rather than falling through.
+            if (!player.HasAnyStolenLoot())
+            {
+                player.GetComponent<JailState>()?.NotifySearchedAndReleased();
+                return;
+            }
+
             // Caught players lose whatever they were carrying -- an exited
             // (or timed-out) player keeps theirs to sell at the Lobby.
             // Issue #81: dropped on the ground at the catch spot as real,
