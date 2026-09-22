@@ -1,6 +1,7 @@
 using System.Collections;
 using Mirror;
 using RobEveryone.Audio;
+using RobEveryone.Inventory;
 using UnityEngine;
 
 namespace RobEveryone.Player
@@ -20,9 +21,17 @@ namespace RobEveryone.Player
     // (each client's copy can settle into a slightly different final
     // pose), the standard tradeoff for a temporary hit-reaction.
     //
-    // The PvP path additionally opens a *steal window* (IsStealable) --
-    // during it a rival can press E to open the steal screen and drag one
-    // item out of this player's hotbar (PlayerTheftTarget).
+    // Issue #81: the PvP path used to also open a *steal window*
+    // (IsStealable) -- during it a rival could press E to open a steal
+    // screen and drag one item out of this player's hotbar
+    // (PlayerTheftTarget). Replaced with an automatic chance to drop one
+    // random item on the ground instead (ragdollDropChance below) --
+    // IsStealable/stealableUntil/ClearStealableNow are all still present
+    // (PlayerTheftTarget and InventoryScreenUI's own Mode.Steal code
+    // still reads them), but nothing sets IsStealable true anymore, so
+    // that whole flow is now permanently unreachable rather than
+    // formally deleted -- ripping out the shared steal-screen UI code
+    // safely is its own separate, more invasive cleanup.
     [RequireComponent(typeof(PlayerRagdoll))]
     public class PlayerImpactRelay : NetworkBehaviour
     {
@@ -33,7 +42,13 @@ namespace RobEveryone.Player
         [SerializeField] private AudioClip[] impactClips;
         [SerializeField, Range(0f, 1f)] private float impactVolume = 0.6f;
 
+        // Issue #81: chance a landed PvP hit drops one random carried
+        // item, replacing the old steal-window mechanic -- see this
+        // class's own comment above.
+        [SerializeField, Range(0f, 1f)] private float ragdollDropChance = 0.5f;
+
         private PlayerRagdoll ragdoll;
+        private PlayerInventory inventory;
 
         // Server-queryable "is this player currently stunned" flag --
         // PlayerRagdoll can't hold this itself (plain MonoBehaviour, no
@@ -42,16 +57,11 @@ namespace RobEveryone.Player
         [field: SyncVar]
         public bool IsStunned { get; private set; }
 
-        // Separate from IsStunned -- a car impact also sets IsStunned but
-        // shouldn't open a theft window (gameplay-design.md frames the
-        // steal mechanic as specifically "stunning a rival," i.e. PvP
-        // sabotage items only). Client-visible so PlayerTheftTarget's
-        // CanInteract can gate the "Steal from ..." prompt without a round
-        // trip; the steal Command still re-validates server-side.
+        // No longer ever set true (see this class's own comment) --
+        // kept only because PlayerTheftTarget/InventoryScreenUI's dormant
+        // Mode.Steal code still reads it.
         [field: SyncVar]
         public bool IsStealable { get; private set; }
-
-        private const float DefaultStealWindowSeconds = 6f;
 
         // Expiry timestamp (server clock) rather than a coroutine: two PvP
         // hits on the same target in quick succession would otherwise
@@ -63,6 +73,7 @@ namespace RobEveryone.Player
         private void Awake()
         {
             ragdoll = GetComponent<PlayerRagdoll>();
+            inventory = GetComponent<PlayerInventory>();
         }
 
         [Server]
@@ -79,22 +90,24 @@ namespace RobEveryone.Player
 
         // PvP sabotage hits call this instead of the plain
         // ServerApplyImpact -- everything about the stun is identical,
-        // this just also opens the steal window. CarDriver keeps calling
-        // the plain version unchanged.
+        // this just also rolls the item-drop chance (issue #81). CarDriver
+        // keeps calling the plain version unchanged, so a car impact never
+        // drops loot, matching the old steal-window's own PvP-only scope.
         [Server]
-        public void ServerApplyPvpImpact(Vector3 direction, float force, float duration) => ServerApplyPvpImpact(direction, force, duration, DefaultStealWindowSeconds);
-
-        [Server]
-        public void ServerApplyPvpImpact(Vector3 direction, float force, float duration, float stealWindowSeconds)
+        public void ServerApplyPvpImpact(Vector3 direction, float force, float duration)
         {
             // Deliberate: the inner ServerApplyImpact no-ops if the target
-            // was already stunned (e.g. a car got them first), but we
-            // still open the steal window here. They're already down --
-            // robbing them is fair game, and the window shouldn't depend
-            // on which hit type happened to land first.
+            // was already stunned (e.g. a car got them first), but the
+            // drop roll still happens here regardless -- they're already
+            // down, dropping loot is fair game the same way robbing them
+            // used to be, and shouldn't depend on which hit type happened
+            // to land first.
             ServerApplyImpact(direction, force, duration);
-            IsStealable = true;
-            stealableUntil = NetworkTime.time + stealWindowSeconds;
+
+            if (inventory != null && Random.value < ragdollDropChance)
+            {
+                inventory.DropRandomSlot(transform.position, transform.rotation);
+            }
         }
 
         // Called by a successful steal (PlayerTheftTarget) so a second

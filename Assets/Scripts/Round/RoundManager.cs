@@ -175,7 +175,12 @@ namespace RobEveryone.Round
         {
             // Caught players lose whatever they were carrying -- an exited
             // (or timed-out) player keeps theirs to sell at the Lobby.
-            player.ResetInventory();
+            // Issue #81: dropped on the ground at the catch spot as real,
+            // pickupable items instead of ResetInventory's old silent
+            // full wipe -- DropAllSlots already excludes the Prison
+            // Wallet the same way ResetInventory did, so that slot stays
+            // protected exactly as before.
+            player.DropAllSlots(player.transform.position, player.transform.rotation);
             player.GetComponent<JailState>()?.EnterJail(endOfBatch: false);
             NotifyPlayerJailed(player, endOfBatch: false);
         }
