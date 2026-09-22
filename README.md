@@ -6,6 +6,36 @@ same houses, and everyone's a legitimate target. Steam multiplayer,
 4–8 players, no fixed round count — an endless score-attack you keep
 coming back to, not a match with a winner.
 
+## Get the game
+
+Playing requires the launcher — a one-time download that installs the
+game and keeps it updated automatically from then on.
+
+1. Download **[RobEveryoneLauncher.exe](https://github.com/joshuaclemons1/Rob-Everyone/releases/download/launcher-v1/RobEveryoneLauncher.exe)**.
+2. Move it into its own folder wherever you want to keep it (Desktop is
+   fine) — simplest to just leave it there permanently, don't bury it
+   in Downloads.
+3. Run **RobEveryoneLauncher.exe**.
+4. First run: it downloads the current build automatically (may take a
+   minute depending on your connection) and launches it when done. It
+   also creates a **"Rob Everyone"** folder right next to itself — that's
+   the actual game. Leave it alone; the launcher manages it.
+5. Every time after that: just run the same **RobEveryoneLauncher.exe**
+   again. It checks for a newer build on its own, installs it if you're
+   behind, then starts the game — no manual download, ever again.
+
+That's it — no zip to extract, no install wizard. Download the one
+file, run it, done. Windows only for now.
+
+You'll need **Steam** running (signed into your own account) to play —
+that's how multiplayer lobbies work, you don't need to own anything.
+
+**Having trouble?** If the launcher shows an error and you're sure
+you're online, try running it again — a flaky connection mid-check is
+the most common cause. Still stuck, or something in-game is broken? Say
+so in [Issues](https://github.com/joshuaclemons1/Rob-Everyone/issues/new/choose)
+or just tell Chayton directly.
+
 ## The gameplay loop
 
 Each round you spawn into a neighborhood of houses surrounding a fenced
@@ -17,7 +47,8 @@ houses and loot what you find into a 5-slot hotbar, while:
 - **Police** patrol, respond, chase, and catch — getting caught strips
   your loot and jails you, but you're not out of the round: another
   player can rescue you for a Cash bond, or you self-bail if nobody
-  does.
+  does. Caught with nothing stolen on you, though, and they just let
+  you go.
 - **Rivals** are fair game — sabotage items (Taser, Baseball Bat,
   Hammer, Tranquilizer Gun, Dynamite, Alarm Clock) let you stun and
   steal from another player directly, or even pick up their downed body
@@ -29,51 +60,13 @@ Reach the exit (or survive to the timer) before you're caught, then sell
 your loot and buy gear back at the Lobby's pawn shop between rounds.
 Quota and prices grow every 3-round batch, Cash above quota gets wiped
 at the batch boundary, and the last round of each batch is a harder
-night round. Full design detail:
-[docs/stages/gameplay-design.md](docs/stages/gameplay-design.md).
+night round.
 
-## Team
+This is a rough alpha, actively being playtested and changed — expect
+rough edges, and expect them to keep moving.
 
-- **Chayton** (`jclem's-branch`) — lead, most of the scripting
-- **Zach** (`zach's-branch`) — house/level design, art
-- **Brian** (`brian's-branch`) — house/level design, local playtesting
-- **Goodson** (`goodson's-branch`) — house/level design, local playtesting
+## For the dev team
 
-New here? Start with **[Setup.md](Setup.md)**.
-
-## Tech stack
-
-| Layer | Pick |
-|---|---|
-| Engine | Unity 6 (`6000.5.9f1`), URP |
-| Language | C# |
-| Networking | [Mirror](https://mirror-networking.com/) + FizzySteamworks transport |
-| Steam layer | Steamworks.NET (test AppID `480`/Spacewar until closer to release) |
-| Input | Unity's Input System package, fully rebindable |
-| Version control | Git + GitHub, Git LFS for art/audio/video |
-
-## Status
-
-Alpha — eight builds shipped so far (`v1.0.0-alpha` → `v1.0.7-alpha`), the
-core loop plus the full meta-game (shop, Jail & Bail, AI, night mode,
-VoIP, a real Settings menu) are built and playtested. Status lives in
-**[GitHub Issues](https://github.com/joshuaclemons1/Rob-Everyone/issues)**
-now — closed issues are what's actually done, open ones (`enhancement`/
-`bug` labels) are what's genuinely still open.
-
-## Docs
-
-- **[Setup.md](Setup.md)** — get the project running and start
-  contributing.
-- **[docs/plan.md](docs/plan.md)** — the dev plan, build order, and an
-  index of every stage's build-it-yourself walkthrough doc.
-- **[Issues](https://github.com/joshuaclemons1/Rob-Everyone/issues)** —
-  current status, bug reports, and feature/polish tracking. See
-  **[docs/issue-tracking.md](docs/issue-tracking.md)** for how this
-  project uses them.
-- **[docs/stages/gameplay-design.md](docs/stages/gameplay-design.md)** —
-  full economy/capacity/jail-bail/sabotage/movement design.
-- **[docs/stages/ui-design.md](docs/stages/ui-design.md)** — UI element
-  spec.
-- **[docs/art-info.md](docs/art-info.md)** — art style/palette/sourced-asset
-  reference.
+Contributing, or setting the project up from source? Start with
+**[Setup.md](Setup.md)** — engine version, branches, and the day-to-day
+workflow live there, not here.

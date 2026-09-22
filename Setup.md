@@ -107,11 +107,30 @@ will misbehave — always open `MainMenu` first.
   If you're telling Chayton about it directly instead, he can file it
   for you from the conversation.
 
+## Tech stack
+
+| Layer | Pick |
+|---|---|
+| Engine | Unity 6 (`6000.5.9f1`), URP |
+| Language | C# |
+| Networking | [Mirror](https://mirror-networking.com/) + FizzySteamworks transport |
+| Steam layer | Steamworks.NET (test AppID `480`/Spacewar until closer to release) |
+| Input | Unity's Input System package, fully rebindable |
+| Launcher | Avalonia (.NET, cross-platform) — see
+  [docs/stages/launcher-setup.md](docs/stages/launcher-setup.md) |
+| Version control | Git + GitHub, Git LFS for art/audio/video |
+
 ## Where things live
 
-- [README.md](README.md) — what the game is, the gameplay loop, tech
-  stack, and links to every design/build doc.
-- [docs/plan.md](docs/plan.md) — the dev plan and build order.
+- [README.md](README.md) — what the game *is* and how a player installs
+  it. Not a dev doc — that's this file.
+- [docs/plan.md](docs/plan.md) — the dev plan, build order, and an index
+  of every stage's build-it-yourself walkthrough doc.
+- [docs/stages/gameplay-design.md](docs/stages/gameplay-design.md) —
+  full economy/capacity/jail-bail/sabotage/movement design.
+- [docs/stages/ui-design.md](docs/stages/ui-design.md) — UI element spec.
+- [docs/art-info.md](docs/art-info.md) — art style/palette/sourced-asset
+  reference.
 - [Issues](https://github.com/joshuaclemons1/Rob-Everyone/issues) —
   current status (closed = done, open = still open), bug reports (use
   the **Bug report** template), and feature/polish tracking (`enhancement`
