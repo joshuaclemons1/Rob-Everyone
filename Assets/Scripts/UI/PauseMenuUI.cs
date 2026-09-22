@@ -1,7 +1,9 @@
+using Mirror;
 using RobEveryone.Input;
 using RobEveryone.Inventory;
 using RobEveryone.Player;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace RobEveryone.UI
 {
@@ -49,5 +51,24 @@ namespace RobEveryone.UI
         }
 
         public void OnBackButtonPressed() => SetOpen(false);
+
+        // Wire to a "Leave Game" button added specifically for the
+        // in-game pause context -- see the Back button's own pattern in
+        // SettingsPanel.prefab for why this needs a scene-level override
+        // rather than living in the shared prefab's default wiring: the
+        // same prefab is also the Main Menu's own Settings screen, which
+        // has no game to leave.
+        //
+        // RobEveryoneNetworkManager.offlineScene is deliberately unset
+        // (see its own field), so stopping the host/client doesn't load
+        // anything on its own -- explicitly load MainMenu after, same
+        // target IntroSequence uses once the intro finishes.
+        public void OnLeaveGameButtonPressed()
+        {
+            if (NetworkServer.active) NetworkManager.singleton.StopHost();
+            else if (NetworkClient.isConnected) NetworkManager.singleton.StopClient();
+
+            SceneManager.LoadScene("MainMenu");
+        }
     }
 }
