@@ -37,12 +37,35 @@ namespace RobEveryone.Customization
         // Quad's own Transform.
         [SerializeField] private Transform modelSpawnPoint;
 
+        // The mirror Quad's own rotation doesn't necessarily put its
+        // texture's "up" in line with world up (confirmed real for this
+        // specific Quad: its local Y axis maps to world X, not world Y) --
+        // whatever previewCamera captures right-side-up can still end up
+        // displayed sideways on the Quad's face. Rather than guess the
+        // exact compensating roll from the Quad's rotation quaternion
+        // (gotten wrong from pure math before, elsewhere in this
+        // project's own history), this rolls the camera around its own
+        // forward axis by a value you dial in live in Play Mode and
+        // compare against the actual displayed result -- same reasoning
+        // as MirrorReflectionCamera's old upRotationOffset, just kept
+        // this time since the Quad's own quirk didn't go away with it.
+        [SerializeField, Range(0f, 360f)] private float cameraRollDegrees;
+
         private static readonly int SpeedParam = Animator.StringToHash("Speed");
         private static readonly int GroundedParam = Animator.StringToHash("Grounded");
         private static readonly int CarryingParam = Animator.StringToHash("Carrying");
 
         private GameObject modelInstance;
         private PlayerColorizer modelColorizer;
+
+        // Captured once, before any roll is ever applied -- ApplyCameraRoll
+        // always recomputes from this fixed baseline rather than
+        // multiplying the camera's *current* rotation, which would
+        // compound a little further every time OnValidate fires (e.g.
+        // every Inspector edit while nudging the slider) instead of
+        // setting an absolute roll amount.
+        private Quaternion cameraBaseRotation;
+        private bool cameraBaseRotationCaptured;
 
         private void Awake()
         {
@@ -53,7 +76,30 @@ namespace RobEveryone.Customization
                 return;
             }
 
-            if (previewCamera != null) previewCamera.cullingMask = 1 << layer;
+            if (previewCamera != null)
+            {
+                previewCamera.cullingMask = 1 << layer;
+                ApplyCameraRoll();
+            }
+        }
+
+        // Re-callable (not just Awake-only) so nudging the Camera Roll
+        // Degrees slider in the Inspector during Play Mode actually
+        // updates it live instead of needing a re-enter-Play per attempt.
+        private void OnValidate()
+        {
+            if (previewCamera != null) ApplyCameraRoll();
+        }
+
+        private void ApplyCameraRoll()
+        {
+            if (!cameraBaseRotationCaptured)
+            {
+                cameraBaseRotation = previewCamera.transform.rotation;
+                cameraBaseRotationCaptured = true;
+            }
+
+            previewCamera.transform.rotation = cameraBaseRotation * Quaternion.Euler(0f, 0f, cameraRollDegrees);
         }
 
         private void OnEnable()
