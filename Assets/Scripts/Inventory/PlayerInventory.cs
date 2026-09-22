@@ -191,6 +191,24 @@ namespace RobEveryone.Inventory
             return false;
         }
 
+        // Issue #77 follow-up (real playtest): a just-caught player -- jailed
+        // or released -- needs a brief window fully exempt from being
+        // caught again by anyone. Confirmed real bug: a released
+        // (empty-handed) catch changes nothing PoliceAI's own catch check
+        // reads, so the same officer re-acquires and re-catches the very
+        // next frame, and two officers converging on the same target at
+        // once double up on that loop independently -- see UpdateChase's
+        // own comment on the exact mechanics. Server-only, not a SyncVar --
+        // only [Server]-gated AI code ever reads this, same reasoning
+        // JailState.jailAnchor already uses.
+        [SerializeField] private float catchCooldownDuration = 6f;
+        private float catchCooldownUntil;
+
+        public bool IsCatchCooldownActive => Time.time < catchCooldownUntil;
+
+        [Server]
+        public void StartCatchCooldown() => catchCooldownUntil = Time.time + catchCooldownDuration;
+
         public event Action<int> OnTotalValueChanged;
         public event Action OnSlotsChanged;
         public event Action<int> OnSelectedSlotChanged;

@@ -457,6 +457,32 @@ namespace RobEveryone.AI
             // wrong way with nothing to correct it.
             agent.SetDestination(chaseTarget.position);
 
+            // Issue #77 follow-up (real playtest): a just-caught player is
+            // fully exempt from being caught again -- by this officer or
+            // any other -- until PlayerInventory.IsCatchCooldownActive
+            // clears. Confirmed real bug without this: a released
+            // (empty-handed) catch resets this officer's own State to
+            // Respond in CatchPlayer below, but nothing about the release
+            // moved the player or made them any less visible, so the very
+            // next frame's FindVisiblePlayer/EnterChase immediately
+            // re-acquires them and re-triggers this same check -- an
+            // infinite catch/release loop. Worse with two officers
+            // converging on the same target at once: each one
+            // independently runs that same loop, and every re-entry into
+            // Chase re-fires RpcChaseStarted's "spotted you" audio (only
+            // suppressed by wasAlreadyChasing when State doesn't actually
+            // flip) -- the reported dueling, spamming "searching noise".
+            // Skipping the catch here instead of just skipping
+            // NotifyPlayerCaught downstream is what actually stops the
+            // loop: State stays in Chase (no flip, no re-fired audio)
+            // rather than bouncing through Respond every single frame.
+            PlayerInventory targetInventory = chaseTarget.GetComponentInParent<PlayerInventory>();
+            if (targetInventory != null && targetInventory.IsCatchCooldownActive)
+            {
+                timeSinceSeenPlayer = 0f;
+                return;
+            }
+
             // Issue #75/#76: a player who's committed to boarding the exit
             // van (ExitCarState.IsWaiting flips true the instant they
             // board, well before the vulnerable window's own

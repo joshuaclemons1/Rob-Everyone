@@ -173,6 +173,16 @@ namespace RobEveryone.Round
         [Server]
         public void NotifyPlayerCaught(PlayerInventory player)
         {
+            // Issue #77 follow-up: starts the moment ANY catch is
+            // processed, jailed or released -- see PlayerInventory.
+            // IsCatchCooldownActive's own comment for the two real
+            // playtest bugs (instant re-catch, dueling-officer loop) this
+            // closes. PoliceAI's own catch check reads this before ever
+            // calling in here, so setting it up front (rather than only
+            // in the release branch) also protects the jail path against
+            // the same two-officers-same-frame edge case.
+            player.StartCatchCooldown();
+
             // Issue #77: caught with nothing to actually arrest them over
             // (no real stolen loot -- sabotage tools and the Prison Wallet
             // both excluded, see HasAnyStolenLoot's own comment) means
