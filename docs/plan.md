@@ -15,7 +15,7 @@ at a glance; check Issues for the current, authoritative state. See
 Steam), sabotage items, and the full meta-game (shop, Jail & Bail,
 Homeowner/Police AI, night mode) are all built and playtested — see the
 closed issues for the detailed record (start from the `[Done]`-titled
-ones). Seven alpha builds have shipped (`v1.0.0-alpha` → `v1.0.6-alpha`) and
+ones). Eight alpha builds have shipped (`v1.0.0-alpha` → `v1.0.7-alpha`) and
 the team is now in the friend-group-playtest stage, filing real bugs as
 they turn up.
 
