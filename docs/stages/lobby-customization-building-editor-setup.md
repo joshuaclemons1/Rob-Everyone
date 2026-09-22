@@ -101,10 +101,16 @@ For each of the palette's 8 colors:
    values) so a player can tell them apart at a glance without reading
    every prompt — cosmetic, not required for the interaction to work.
 
-No `NetworkIdentity`/networking needed here — `PaintCan` is a plain
-`MonoBehaviour`, not a `NetworkBehaviour` (it doesn't hold any state of
-its own to sync; `colorIndex` is a fixed, identical value on every
-client already, baked into the scene).
+**Still needs a `NetworkIdentity`**, even though `PaintCan` is a plain
+`MonoBehaviour`, not a `NetworkBehaviour`, and holds no state of its own
+to sync (`colorIndex` is fixed and identical on every client already).
+Confirmed real bug from a live Editor session: `Interactor.FireInteract`
+resolves `GetComponentInParent<NetworkIdentity>()` on whatever you're
+looking at and silently returns (never sending the `Command` at all) if
+that comes back null — it needs the identity purely as a network handle
+to reference the target across the client→server call, regardless of
+whether the target itself holds synced state. Add a `NetworkIdentity`
+component to each can (no other component needed alongside it).
 
 ### 🔴 Rest point 2 — paint cans
 
@@ -126,8 +132,11 @@ renders anything yet).
 2. Leave `Forward` checked (`true`) on one, uncheck it on the other —
    these are your Next/Previous.
 
-No networking needed here either (plain `MonoBehaviour`, no state of
-its own).
+Same correction as Stage 3's paint cans: add a `NetworkIdentity` to
+each of these two objects too, even though `MirrorSkinCycleButton` is a
+plain `MonoBehaviour` with no state of its own — `Interactor` needs it
+as a network handle regardless, and pressing E silently does nothing
+without one (confirmed live, not theoretical).
 
 ### 🔴 Rest point 3 — cycling, the real test of Phases 0–2 together
 
@@ -161,74 +170,60 @@ end and Phase 5 (removing the old Main Menu Customization screen)
 becomes safe to do whenever you're ready — no need to wait for the
 mirror itself.
 
-## Stage 5 — the mirror's actual reflection
+## Stage 5 — the mirror's character preview
 
-`MirrorReflectionCamera.cs` (already written, Phase 4's actual driver
-script) does the per-frame reflection math — this stage is entirely
-about giving it something to render onto and through.
+**Replaces the original live reflection-camera design.** A true planar
+reflection (`MirrorReflectionCamera.cs`, now deleted) turned out to need
+more real, open, correctly-shaped space behind the mirror's wall than
+this room actually has, on top of several genuine bugs along the way
+(a backward-facing normal, a sign error in the activation gate, the
+camera capturing its own surface) — see git history on that file for the
+full trail if useful context ever comes up again. Confirmed working, but
+felt "janky" once live (motion lag, the fragility of needing real depth
+behind every wall a mirror ever gets placed on).
 
-1. **Create the mirror surface**: a `Quad` (or a flat plane from
-   whatever art kit) sized to how big you want the mirror to read,
-   placed on the wall. This is `mirrorPlane`'s eventual home — its
-   forward direction needs to point *out* into the room, the direction
-   a player standing in front of it would be facing while looking at
-   it.
-2. **Create a `RenderTexture`** asset (`Assets > Create > Render
-   Texture`) — 1024×1024 is a reasonable starting size, tune later if
-   it looks too soft/too expensive.
-3. **Create a Material** using that `RenderTexture` as its main
-   texture (an Unlit shader is fine — the reflection camera is already
-   rendering a fully lit scene into the texture, no need to light the
-   quad displaying it again on top). Assign this material to the Quad
-   from step 1.
-4. **Add the reflection camera**: a new `Camera` GameObject anywhere
-   in the scene (its starting Transform doesn't matter — the script
-   overwrites its position/rotation every frame it's active). Set its
-   `Target Texture` to the `RenderTexture` from step 2. Consider
-   giving it its own culling mask if you don't want it rendering UI
-   layers/other cameras' preview stages (`MenuPreview`, `ItemPreview`)
-   into the mirror — "everything except those two" is a reasonable
-   starting mask.
-5. **Wire `MirrorReflectionCamera`**: add the component to any
-   GameObject (the mirror Quad itself is a natural home), set
-   `Reflection Camera` to the camera from step 4, and `Mirror Plane` to
-   the Quad's own Transform from step 1.
-6. Tune `Max Active Distance`/`Max Active Angle` once you can see it
-   working — the defaults (6 units, 100°) are a starting guess, not
-   measured against this specific room's actual scale.
+Replaced with the same proven pattern `MenuCharacterPreview.cs` already
+uses for the Main Menu: no live camera reflection at all, just a static
+idle model of your own currently-selected skin, posed to look like it's
+standing inside the frame. `MirrorCharacterPreview.cs` is the new driver
+script — it reuses the *same* `RenderTexture`/Material/Quad chain Stage
+5 originally set up (nothing there needs to change), just points a
+repurposed camera at a small isolated stage instead of doing per-frame
+reflection math.
 
-### 🔴 Rest point 4 — the mirror itself
+1. **Add the `MirrorPreview` layer** (`Project Settings > Tags and
+   Layers`) if it isn't there already — `MirrorCharacterPreview` sets
+   the preview camera's culling mask to only this layer at runtime, so
+   nothing else in the room ever renders into the mirror by accident.
+2. **Create `modelSpawnPoint`**: an empty child GameObject under the
+   mirror (or anywhere convenient), positioned at roughly floor height,
+   a couple of units in front of the mirror's existing camera (reuse the
+   same "MirrorCamera" object from the old setup — `MirrorCharacterPreview`
+   already has it wired as `Preview Camera`). Rotate this object so its
+   forward axis points back toward the camera — this is the one
+   genuinely Editor-only step, same as ever with 3D placement: watch the
+   Scene view gizmo, not a predicted number.
+3. Wire `modelSpawnPoint` into `MirrorCharacterPreview`'s **Model Spawn
+   Point** field. `Skin Roster`, `Palette`, and `Player Animator
+   Controller` are already wired to the same assets every other
+   customization script uses.
 
-This is the piece with real, unverified-until-now correctness risk —
-watch closely, not just "does it look roughly right":
+### 🔴 Rest point 4 — the mirror's preview
 
-1. Stand in front of the mirror. Confirm you see your own reflection,
-   correctly mirrored (left/right, not doubled or facing the wrong
-   way), tracking your movement smoothly as you walk around/turn.
-2. Walk away past `Max Active Distance` (or well off to the side, past
-   `Max Active Angle`) — the reflection camera should stop rendering
-   (check its own `enabled` state in the Inspector, or just notice
-   performance) rather than running constantly regardless of whether
-   anyone's actually looking.
-3. **The known likely artifact**: geometry *behind* the mirror surface
-   showing up reflected into view, since this first pass deliberately
-   skips the oblique near-clip-plane technique (see
-   `MirrorReflectionCamera.ApplyReflection`'s own comment) that
-   normally prevents that. If it's visually distracting, that's the
-   next thing to add — not a sign anything here is broken, just the
-   one corner deliberately cut to avoid guessing at camera-projection
-   math with no way to check it.
-4. Two clients, both near the mirror: confirm each sees *their own*
-   reflection (not the other player's) — this should already be
-   correct by construction (`MirrorReflectionCamera` reads
-   `NetworkClient.localPlayer` specifically, and every client runs its
-   own independent, non-networked copy of this script), but worth
-   confirming since it's exactly the kind of thing that's easy to get
-   subtly wrong and hard to reason about without seeing two clients
-   side by side.
-5. Test cycling skins (Stage 4's buttons) while actually looking in
-   the mirror — this is the payoff shot the whole feature was framed
-   around ("a real mirror... so you can preview the skins").
+1. Look at the mirror. Confirm it shows an idle, standing pose of
+   whatever skin/color you currently have selected — not a live
+   reflection, just a static "mannequin," which is the whole point.
+2. Cycle skins/colors (Stage 4's buttons) and confirm the mirror updates
+   to match (`PlayerCosmeticSelection.OnChanged`-driven, same refresh
+   path `MenuCharacterPreview` already uses on the Main Menu).
+3. Two clients: confirm each sees *their own* selection in the mirror,
+   not the other player's — this is automatic by construction (every
+   client reads its own local `PlayerCosmeticSelection`), but worth a
+   real look since it's the kind of thing that's easy to get subtly
+   wrong.
+4. Walk around/away from the mirror — the model should hold still (no
+   camera-tracking motion, unlike the old reflection) since there's
+   nothing live being computed anymore.
 
 ## After all four rest points pass
 
