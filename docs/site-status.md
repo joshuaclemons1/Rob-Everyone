@@ -20,10 +20,10 @@
 - Day / Night rounds
 - Steam proximity voice chat
 - A real, rebindable Settings menu
+- A launcher that updates itself
 
 ## Coming next
 
-- A launcher that updates itself
 - Windows, macOS & Linux builds
 - More houses to rob
 - Music & sound pass
